@@ -1,0 +1,17 @@
+import { Router } from 'express';
+import { ExamController } from '../controllers/examController.js';
+import { authenticateUser } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
+import { submitExamSchema, examEventSchema } from '../validators/index.js';
+
+const router = Router();
+
+router.use(authenticateUser);
+
+router.get('/', ExamController.getAvailableExams);
+router.get('/:id', ExamController.getExamDetails);
+router.post('/:id/start', ExamController.startExam);
+router.post('/:id/event', validate(examEventSchema), ExamController.recordEvent);
+router.post('/:id/submit', validate(submitExamSchema), ExamController.submitExam);
+
+export default router;
