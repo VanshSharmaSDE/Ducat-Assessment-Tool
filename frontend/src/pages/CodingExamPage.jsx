@@ -52,6 +52,7 @@ export default function CodingExamPage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showFullscreenModal, setShowFullscreenModal] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [terminatedModal, setTerminatedModal] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -244,10 +245,10 @@ export default function CodingExamPage() {
 
         if (terminated) {
           await exitFullscreenSafe();
-          alert(
-            `Your examination has been terminated due to exceeding ${maxViolations} violations.`,
-          );
-          navigate(`/results/${attemptRef.current._id}`);
+          setTerminatedModal({
+            message: `Your examination has been terminated due to exceeding ${maxViolations} proctoring violations.`,
+            attemptId: attemptRef.current?._id,
+          });
           return;
         }
 
@@ -417,12 +418,11 @@ export default function CodingExamPage() {
           setViolationCount(data.violationCount);
         }
         if (data.terminated) {
-          alert(
-            "Your examination has been terminated due to excessive proctoring violations.",
-          );
-          if (attemptRef.current?._id) {
-            navigate(`/results/${attemptRef.current._id}`);
-          }
+          exitFullscreenSafe();
+          setTerminatedModal({
+            message: "Your examination has been terminated due to excessive proctoring violations.",
+            attemptId: attemptRef.current?._id,
+          });
         }
       }
     };
@@ -1112,6 +1112,51 @@ export default function CodingExamPage() {
               Please maximize your browser window or switch to a compatible
               desktop/laptop computer to resume.
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Proctoring Rules Violation Termination Custom Modal */}
+      {terminatedModal && (
+        <div className="fixed inset-0 z-[300] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 select-none animate-in fade-in duration-150">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm sm:max-w-md w-full p-5 shadow-2xl space-y-3.5 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-2.5 border-b border-slate-800 pb-3">
+              <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shrink-0">
+                <ShieldAlert className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-sm sm:text-base font-semibold text-white tracking-tight truncate">
+                  Examination Terminated
+                </h3>
+                <p className="text-[11px] text-rose-400 font-medium">
+                  Proctoring Violation Limit Exceeded
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 space-y-1.5 leading-relaxed">
+              <p className="text-slate-200 font-medium">
+                {terminatedModal.message}
+              </p>
+              <p className="text-slate-400 text-[11px]">
+                All further actions have been locked. Your submitted code has been saved.
+              </p>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-800">
+              <button
+                onClick={() => {
+                  if (terminatedModal.attemptId) {
+                    navigate(`/results/${terminatedModal.attemptId}`);
+                  } else {
+                    navigate('/results');
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer"
+              >
+                View Examination Results
+              </button>
+            </div>
           </div>
         </div>
       )}

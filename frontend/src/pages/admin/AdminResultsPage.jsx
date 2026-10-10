@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../../api/axios';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
+import { useModal } from '../../context/ModalContext';
 import {
   Award,
   Search,
@@ -20,6 +21,7 @@ import {
 
 export default function AdminResultsPage() {
   const { user } = useAuth();
+  const { showAlert } = useModal();
   const isAdmin = user?.role === 'ADMIN';
 
   const { socket } = useSocket();
@@ -113,7 +115,11 @@ export default function AdminResultsPage() {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Export error:', err);
-      alert('Failed to download Excel report.');
+      showAlert({
+        title: 'Export Failed',
+        message: 'Failed to download Excel report.',
+        type: 'error',
+      });
     } finally {
       setExporting(false);
     }

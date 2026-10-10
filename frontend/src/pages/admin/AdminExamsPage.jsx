@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
+import { useModal } from '../../context/ModalContext';
 import {
   FileCheck2,
   Plus,
@@ -20,6 +21,7 @@ import {
 
 export default function AdminExamsPage() {
   const { user } = useAuth();
+  const { showAlert, showConfirm } = useModal();
   const isAdmin = user?.role === 'ADMIN';
 
   const [exams, setExams] = useState([]);
@@ -48,20 +50,35 @@ export default function AdminExamsPage() {
       await api.post(`/admin/exams/${id}/duplicate`);
       await loadExams();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to duplicate exam');
+      await showAlert({
+        title: 'Duplicate Failed',
+        message: err.response?.data?.message || 'Failed to duplicate exam',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete/archive this exam?')) return;
+    const confirmed = await showConfirm({
+      title: 'Delete Examination',
+      message: 'Are you sure you want to delete/archive this exam?',
+      confirmText: 'Delete Exam',
+      isDanger: true,
+    });
+    if (!confirmed) return;
+
     try {
       setActionLoading(true);
       await api.delete(`/admin/exams/${id}`);
       await loadExams();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete exam');
+      await showAlert({
+        title: 'Delete Failed',
+        message: err.response?.data?.message || 'Failed to delete exam',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -76,7 +93,11 @@ export default function AdminExamsPage() {
       });
       await loadExams();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update exam status');
+      await showAlert({
+        title: 'Status Update Failed',
+        message: err.response?.data?.message || 'Failed to update exam status',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -100,7 +121,11 @@ export default function AdminExamsPage() {
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      alert('Failed to download exam report.');
+      await showAlert({
+        title: 'Export Failed',
+        message: 'Failed to download exam report.',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }

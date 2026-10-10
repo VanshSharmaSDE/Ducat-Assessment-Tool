@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../../api/axios';
+import { useModal } from '../../context/ModalContext';
 import {
   HelpCircle,
   Save,
@@ -22,6 +23,7 @@ export default function AdminQuestionEditorPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEditing = !!id;
+  const { showAlert, showConfirm } = useModal();
 
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
@@ -139,11 +141,19 @@ export default function AdminQuestionEditorPage() {
   const handleAddTestCase = async (e) => {
     e.preventDefault();
     if (!isEditing) {
-      alert('Please save the question first before adding test cases.');
+      await showAlert({
+        title: 'Save Required',
+        message: 'Please save the question first before adding test cases.',
+        type: 'warning',
+      });
       return;
     }
     if (!newTc.expectedOutput.trim()) {
-      alert('Expected output is required.');
+      await showAlert({
+        title: 'Input Missing',
+        message: 'Expected output is required.',
+        type: 'warning',
+      });
       return;
     }
 
@@ -152,17 +162,32 @@ export default function AdminQuestionEditorPage() {
       setTestCases([...testCases, res.data.data.testCase]);
       setNewTc({ input: '', expectedOutput: '', isHidden: true, marks: 5 });
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to add test case');
+      await showAlert({
+        title: 'Addition Failed',
+        message: err.response?.data?.message || 'Failed to add test case',
+        type: 'error',
+      });
     }
   };
 
   const handleDeleteTestCase = async (tcId) => {
-    if (!window.confirm('Delete this test case?')) return;
+    const confirmed = await showConfirm({
+      title: 'Delete Test Case',
+      message: 'Are you sure you want to delete this test case?',
+      confirmText: 'Delete',
+      isDanger: true,
+    });
+    if (!confirmed) return;
+
     try {
       await api.delete(`/admin/testcases/${tcId}`);
       setTestCases(testCases.filter((tc) => tc._id !== tcId));
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete test case');
+      await showAlert({
+        title: 'Delete Failed',
+        message: err.response?.data?.message || 'Failed to delete test case',
+        type: 'error',
+      });
     }
   };
 

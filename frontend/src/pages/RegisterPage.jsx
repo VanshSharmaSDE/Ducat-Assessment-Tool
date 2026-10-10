@@ -4,8 +4,18 @@ import { useAuth } from '../context/AuthContext';
 import { Code2, Lock, Mail, User, Phone, ArrowRight, AlertCircle } from 'lucide-react';
 
 export default function RegisterPage() {
-  const { register } = useAuth();
+  const { user, register } = useAuth();
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (user) {
+      if (user.role === 'ADMIN' || user.role === 'FACULTY') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    }
+  }, [user, navigate]);
 
   const [formData, setFormData] = useState({
     name: '',

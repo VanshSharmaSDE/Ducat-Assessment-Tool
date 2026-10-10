@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/axios';
+import { useModal } from '../../context/ModalContext';
 import {
   GraduationCap,
   Plus,
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react';
 
 export default function AdminFacultyPage() {
+  const { showAlert, showConfirm } = useModal();
   const [faculty, setFaculty] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -81,12 +83,20 @@ export default function AdminFacultyPage() {
     try {
       setActionLoading(true);
       await api.post('/admin/faculty', createFormData);
-      alert('Faculty account created successfully!');
+      await showAlert({
+        title: 'Faculty Created',
+        message: 'Faculty account created successfully!',
+        type: 'success',
+      });
       setShowCreateModal(false);
       setCreateFormData({ name: '', email: '', password: '', department: '', phone: '' });
       loadFaculty();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to create faculty member');
+      await showAlert({
+        title: 'Creation Failed',
+        message: err.response?.data?.message || 'Failed to create faculty member',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -112,11 +122,19 @@ export default function AdminFacultyPage() {
     try {
       setActionLoading(true);
       await api.put(`/admin/faculty/${editingFaculty._id}`, editFormData);
-      alert('Faculty account updated successfully!');
+      await showAlert({
+        title: 'Faculty Updated',
+        message: 'Faculty account updated successfully!',
+        type: 'success',
+      });
       setShowEditModal(false);
       loadFaculty();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update faculty member');
+      await showAlert({
+        title: 'Update Failed',
+        message: err.response?.data?.message || 'Failed to update faculty member',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -124,13 +142,24 @@ export default function AdminFacultyPage() {
 
   // Toggle Active/Inactive Status
   const handleToggleStatus = async (f) => {
-    if (!window.confirm(`Are you sure you want to ${f.isActive ? 'deactivate' : 'activate'} ${f.name}?`)) return;
+    const confirmed = await showConfirm({
+      title: `${f.isActive ? 'Deactivate' : 'Activate'} Faculty Account`,
+      message: `Are you sure you want to ${f.isActive ? 'deactivate' : 'activate'} ${f.name}?`,
+      confirmText: f.isActive ? 'Deactivate' : 'Activate',
+      isDanger: f.isActive,
+    });
+    if (!confirmed) return;
+
     try {
       setActionLoading(true);
       await api.put(`/admin/users/${f._id}/toggle-status`);
       loadFaculty();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to toggle status');
+      await showAlert({
+        title: 'Status Update Failed',
+        message: err.response?.data?.message || 'Failed to toggle status',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -138,14 +167,29 @@ export default function AdminFacultyPage() {
 
   // Delete Faculty Member
   const handleDeleteFaculty = async (f) => {
-    if (!window.confirm(`Are you sure you want to permanently delete faculty member "${f.name}"?`)) return;
+    const confirmed = await showConfirm({
+      title: 'Delete Faculty Member',
+      message: `Are you sure you want to permanently delete faculty member "${f.name}"? This action cannot be undone.`,
+      confirmText: 'Delete Faculty',
+      isDanger: true,
+    });
+    if (!confirmed) return;
+
     try {
       setActionLoading(true);
       await api.delete(`/admin/faculty/${f._id}`);
-      alert('Faculty member deleted successfully!');
+      await showAlert({
+        title: 'Faculty Deleted',
+        message: 'Faculty member deleted successfully!',
+        type: 'success',
+      });
       loadFaculty();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete faculty member');
+      await showAlert({
+        title: 'Delete Failed',
+        message: err.response?.data?.message || 'Failed to delete faculty member',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -166,7 +210,11 @@ export default function AdminFacultyPage() {
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      alert('Failed to download faculty template');
+      await showAlert({
+        title: 'Download Failed',
+        message: 'Failed to download faculty template.',
+        type: 'error',
+      });
     }
   };
 
@@ -174,7 +222,11 @@ export default function AdminFacultyPage() {
   const handleExcelUpload = async (e) => {
     e.preventDefault();
     if (!excelFile) {
-      alert('Please select an Excel file first');
+      await showAlert({
+        title: 'File Required',
+        message: 'Please select an Excel (.xlsx/.xls) file first before proceeding.',
+        type: 'warning',
+      });
       return;
     }
 
@@ -190,7 +242,11 @@ export default function AdminFacultyPage() {
       setUploadStatus(res.data);
       loadFaculty();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to process Excel upload');
+      await showAlert({
+        title: 'Upload Failed',
+        message: err.response?.data?.message || 'Failed to process Excel upload',
+        type: 'error',
+      });
     } finally {
       setIsUploading(false);
     }

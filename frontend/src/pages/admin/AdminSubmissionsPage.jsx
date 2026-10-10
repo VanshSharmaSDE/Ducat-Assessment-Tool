@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/axios';
+import { useModal } from '../../context/ModalContext';
 import {
   FileText,
   Download,
@@ -22,6 +23,7 @@ import {
 } from 'lucide-react';
 
 export default function AdminSubmissionsPage() {
+  const { showAlert } = useModal();
   // Navigation level: 'EXAMS' | 'STUDENTS' | 'DETAIL'
   const [currentLevel, setCurrentLevel] = useState('EXAMS');
 
@@ -69,7 +71,11 @@ export default function AdminSubmissionsPage() {
       setStudents(res.data.data.students || []);
       setCurrentLevel('STUDENTS');
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to load students for exam');
+      await showAlert({
+        title: 'Loading Failed',
+        message: err.response?.data?.message || 'Failed to load students for exam',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -87,7 +93,11 @@ export default function AdminSubmissionsPage() {
       setDetailData(res.data.data);
       setCurrentLevel('DETAIL');
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to load student submissions');
+      await showAlert({
+        title: 'Loading Failed',
+        message: err.response?.data?.message || 'Failed to load student submissions',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -113,7 +123,11 @@ export default function AdminSubmissionsPage() {
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to export Word (.docx) document');
+      await showAlert({
+        title: 'Export Failed',
+        message: err.response?.data?.message || 'Failed to export Word (.docx) document',
+        type: 'error',
+      });
     } finally {
       setDownloadingDocx(false);
     }

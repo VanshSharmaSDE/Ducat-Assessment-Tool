@@ -3,9 +3,8 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Code2, Lock, Mail, ArrowRight, AlertCircle } from 'lucide-react';
 import logo from '../assets/logo.jpeg';
-
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { user, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -14,7 +13,18 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const from = location.state?.from?.pathname || '/dashboard';
+  // If already logged in, redirect straight to their respective home
+  React.useEffect(() => {
+    if (user) {
+      if (user.role === 'ADMIN' || user.role === 'FACULTY') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    }
+  }, [user, navigate]);
+
+  const from = location.state?.from?.pathname;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,13 +32,15 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const user = await login(email, password);
-      if (user.role === 'ADMIN') {
-        navigate('/admin');
-      } else if (user.role === 'FACULTY') {
-        navigate('/faculty');
+      const loggedUser = await login(email, password);
+      if (loggedUser.role === 'ADMIN' || loggedUser.role === 'FACULTY') {
+        const target = (from && from.startsWith('/admin')) ? from : '/admin';
+        navigate(target, { replace: true });
       } else {
-        navigate(from, { replace: true });
+        const target = (from && from !== '/login' && !from.startsWith('/admin') && !from.startsWith('/faculty'))
+          ? from
+          : '/dashboard';
+        navigate(target, { replace: true });
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid email or password');
@@ -62,7 +74,7 @@ export default function LoginPage() {
           <img src={logo} alt="CodeAssess Logo" className="w-full h-full rounded-2xl" />
         </div>
         <h2 className="text-3xl font-extrabold tracking-tight text-white">
-          DuCat CodeAssess Platform
+          SkillCodex Assessment Platform
         </h2>
         <p className="mt-2 text-sm text-slate-400">
           Sign in to your account to take or manage examinations
@@ -132,7 +144,7 @@ export default function LoginPage() {
           </form>
 
           {/* Quick Demo Credentials */}
-          <div className="mt-6 pt-6 border-t border-slate-800/80">
+          {/* <div className="mt-6 pt-6 border-t border-slate-800/80">
             <p className="text-xs text-slate-400 font-medium mb-2.5 text-center">
               Quick One-Click Demo Credentials:
             </p>
@@ -142,24 +154,24 @@ export default function LoginPage() {
                 onClick={() => handleDemoFill('admin')}
                 className="px-2 py-2 text-[11px] font-semibold rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/20 hover:bg-amber-500/20 transition-all text-center"
               >
-                👑 Admin
+                Admin
               </button>
               <button
                 type="button"
                 onClick={() => handleDemoFill('faculty')}
                 className="px-2 py-2 text-[11px] font-semibold rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all text-center"
               >
-                🏛️ Faculty
+                Faculty
               </button>
               <button
                 type="button"
                 onClick={() => handleDemoFill('student')}
                 className="px-2 py-2 text-[11px] font-semibold rounded-lg bg-sky-500/10 text-sky-300 border border-sky-500/20 hover:bg-sky-500/20 transition-all text-center"
               >
-                🎓 Student
+                Student
               </button>
             </div>
-          </div>
+          </div> */}
 
           {/* <p className="mt-6 text-center text-xs text-slate-400">
             Don't have an account?{' '}

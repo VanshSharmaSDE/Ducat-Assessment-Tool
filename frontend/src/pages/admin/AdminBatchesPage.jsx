@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
+import { useModal } from '../../context/ModalContext';
 import {
   Layers,
   Plus,
@@ -20,6 +21,7 @@ import {
 
 export default function AdminBatchesPage() {
   const { user } = useAuth();
+  const { showConfirm } = useModal();
   const isAdmin = user?.role === 'ADMIN';
 
   const [batches, setBatches] = useState([]);
@@ -112,7 +114,14 @@ export default function AdminBatchesPage() {
   };
 
   const handleDeleteBatch = async (b) => {
-    if (!window.confirm(`Are you sure you want to delete batch "${b.name}"? Assigned students will have their batch cleared.`)) return;
+    const confirmed = await showConfirm({
+      title: 'Delete Batch',
+      message: `Are you sure you want to delete batch "${b.name}"? Assigned students will have their batch cleared.`,
+      confirmText: 'Delete Batch',
+      isDanger: true,
+    });
+    if (!confirmed) return;
+
     try {
       setActionLoading(true);
       await api.delete(`/admin/batches/${b._id}`);

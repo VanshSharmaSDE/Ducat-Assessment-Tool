@@ -52,7 +52,7 @@ export default function AdminLayout() {
         <div className="flex items-center space-x-2">
           <Code2 className="w-6 h-6 text-amber-400" />
           <span className="font-bold tracking-tight text-white">
-            {isSuperAdmin ? 'CodeAssess Admin' : 'CodeAssess Faculty'}
+            {isSuperAdmin ? 'SkillCodex Admin' : 'SkillCodex Faculty'}
           </span>
         </div>
         <button
@@ -74,19 +74,9 @@ export default function AdminLayout() {
           <div className="flex flex-col items-center px-6 mt-6 border-b border-slate-800/80 gap-3">
             <div className="w-32 h-14 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-sky-500/20">
               {/* <Code2 className="w-5 h-5 text-white" /> */}
-              <img src={logo} alt="CodeAssess Logo" className="w-full h-full rounded-xl" />
+              <img src={logo} alt="SkillCodex Logo" className="w-full h-full rounded-xl" />
             </div>
             <div>
-              <span className={`font-extrabold text-lg tracking-tight bg-clip-text text-transparent ${
-                isSuperAdmin 
-                  ? 'bg-gradient-to-r from-amber-400 to-orange-400' 
-                  : 'bg-gradient-to-r from-emerald-400 to-teal-400'
-              }`}>
-                {isSuperAdmin ? 'Control Hub' : 'Faculty Hub'}
-              </span>
-              <span className="block text-[10px] text-slate-400 font-medium uppercase tracking-wider">
-                {isSuperAdmin ? 'Super Administrator' : 'Faculty Instructor'}
-              </span>
             </div>
           </div>
 

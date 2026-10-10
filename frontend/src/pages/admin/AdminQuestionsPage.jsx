@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/axios';
+import { useModal } from '../../context/ModalContext';
 import {
   HelpCircle,
   Plus,
@@ -19,6 +20,7 @@ import {
 } from 'lucide-react';
 
 export default function AdminQuestionsPage() {
+  const { showAlert, showConfirm } = useModal();
   const [questions, setQuestions] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState('');
@@ -58,20 +60,35 @@ export default function AdminQuestionsPage() {
       await api.post(`/admin/questions/${id}/duplicate`);
       await loadQuestions();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to duplicate question');
+      await showAlert({
+        title: 'Duplicate Failed',
+        message: err.response?.data?.message || 'Failed to duplicate question',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this question?')) return;
+    const confirmed = await showConfirm({
+      title: 'Delete Question',
+      message: 'Are you sure you want to delete this question?',
+      confirmText: 'Delete Question',
+      isDanger: true,
+    });
+    if (!confirmed) return;
+
     try {
       setActionLoading(true);
       await api.delete(`/admin/questions/${id}`);
       await loadQuestions();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete question');
+      await showAlert({
+        title: 'Delete Failed',
+        message: err.response?.data?.message || 'Failed to delete question',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -92,7 +109,11 @@ export default function AdminQuestionsPage() {
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to download question template');
+      await showAlert({
+        title: 'Download Failed',
+        message: err.response?.data?.message || 'Failed to download question template',
+        type: 'error',
+      });
     }
   };
 
@@ -100,7 +121,11 @@ export default function AdminQuestionsPage() {
   const handleExcelUpload = async (e) => {
     e.preventDefault();
     if (!excelFile) {
-      alert('Please select an Excel file first');
+      await showAlert({
+        title: 'File Required',
+        message: 'Please select an Excel (.xlsx/.xls) file first before proceeding.',
+        type: 'warning',
+      });
       return;
     }
 
@@ -116,7 +141,11 @@ export default function AdminQuestionsPage() {
       setUploadStatus(res.data);
       loadQuestions();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to process Excel upload');
+      await showAlert({
+        title: 'Upload Processing Failed',
+        message: err.response?.data?.message || 'Failed to process Excel upload',
+        type: 'error',
+      });
     } finally {
       setIsUploading(false);
     }

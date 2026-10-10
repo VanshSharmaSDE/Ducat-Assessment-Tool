@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
+import { useModal } from '../../context/ModalContext';
 import * as XLSX from 'xlsx';
 import {
   Users,
@@ -25,6 +26,7 @@ import {
 
 export default function AdminUsersPage() {
   const { user } = useAuth();
+  const { showAlert, showConfirm } = useModal();
   const isAdmin = user?.role === 'ADMIN';
 
   const [users, setUsers] = useState([]);
@@ -113,27 +115,53 @@ export default function AdminUsersPage() {
   }, [page, searchTerm, statusFilter, batchFilter, genderFilter]);
 
   const handleToggleStatus = async (user) => {
-    if (!window.confirm(`Are you sure you want to ${user.isActive ? 'deactivate' : 'activate'} ${user.name}?`)) return;
+    const confirmed = await showConfirm({
+      title: `${user.isActive ? 'Deactivate' : 'Activate'} Candidate`,
+      message: `Are you sure you want to ${user.isActive ? 'deactivate' : 'activate'} ${user.name}?`,
+      confirmText: user.isActive ? 'Deactivate' : 'Activate',
+      isDanger: user.isActive,
+    });
+    if (!confirmed) return;
+
     try {
       setActionLoading(true);
       await api.put(`/admin/users/${user._id}/toggle-status`);
       await loadUsers();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update user status');
+      await showAlert({
+        title: 'Status Update Failed',
+        message: err.response?.data?.message || 'Failed to update user status',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleDeleteUser = async (user) => {
-    if (!window.confirm(`Are you sure you want to delete student "${user.name}"? This action will permanently remove their account, exam attempts, and submitted solutions.`)) return;
+    const confirmed = await showConfirm({
+      title: 'Delete Candidate Account',
+      message: `Are you sure you want to delete student "${user.name}"? This action will permanently remove their account, exam attempts, and submitted solutions.`,
+      confirmText: 'Delete Student',
+      isDanger: true,
+    });
+    if (!confirmed) return;
+
     try {
       setActionLoading(true);
       await api.delete(`/admin/users/${user._id}`);
-      alert('Student deleted successfully!');
+      await showAlert({
+        title: 'Student Deleted',
+        message: 'Student deleted successfully!',
+        type: 'success',
+      });
       await loadUsers();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete student');
+      await showAlert({
+        title: 'Delete Failed',
+        message: err.response?.data?.message || 'Failed to delete student',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -159,11 +187,19 @@ export default function AdminUsersPage() {
     try {
       setActionLoading(true);
       await api.put(`/admin/students/${editingUser._id}`, editFormData);
-      alert('Student updated successfully!');
+      await showAlert({
+        title: 'Student Updated',
+        message: 'Student updated successfully!',
+        type: 'success',
+      });
       setShowEditModal(false);
       await loadUsers();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update student');
+      await showAlert({
+        title: 'Update Failed',
+        message: err.response?.data?.message || 'Failed to update student',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -174,12 +210,20 @@ export default function AdminUsersPage() {
     e.preventDefault();
     try {
       await api.post('/admin/students/create', formData);
-      alert('Student created successfully!');
+      await showAlert({
+        title: 'Student Created',
+        message: 'Student created successfully!',
+        type: 'success',
+      });
       setShowManualModal(false);
       setFormData({ name: '', email: '', password: '', rollNumber: '', phone: '', batch: '', gender: '' });
       loadUsers();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to create student');
+      await showAlert({
+        title: 'Creation Failed',
+        message: err.response?.data?.message || 'Failed to create student',
+        type: 'error',
+      });
     }
   };
 
@@ -216,7 +260,11 @@ export default function AdminUsersPage() {
   const handleExcelUpload = async (e) => {
     e.preventDefault();
     if (!excelFile) {
-      alert('Please select an Excel file first');
+      await showAlert({
+        title: 'File Required',
+        message: 'Please select an Excel (.xlsx/.xls) file first before proceeding.',
+        type: 'warning',
+      });
       return;
     }
 
@@ -232,7 +280,11 @@ export default function AdminUsersPage() {
       setUploadStatus(res.data);
       loadUsers();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to process Excel upload');
+      await showAlert({
+        title: 'Upload Processing Failed',
+        message: err.response?.data?.message || 'Failed to process Excel upload',
+        type: 'error',
+      });
     } finally {
       setIsUploading(false);
     }

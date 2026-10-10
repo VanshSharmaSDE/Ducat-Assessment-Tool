@@ -38,7 +38,7 @@ export default function UserLayout() {
       <div className="md:hidden flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-800">
         <div className="flex items-center space-x-2">
           <Code2 className="w-6 h-6 text-sky-400" />
-          <span className="font-bold tracking-tight text-white">CodeAssess</span>
+          <span className="font-bold tracking-tight text-white">SkillCodex</span>
         </div>
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -59,13 +59,12 @@ export default function UserLayout() {
           <div className=" flex flex-col items-center mt-6 px-6 border-b border-slate-800/80 gap-3">
             <div className="w-32 h-14 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-sky-500/20">
               {/* <Code2 className="w-5 h-5 text-white" /> */}
-              <img src={logo} alt="CodeAssess Logo" className="w-full h-full rounded-xl" />
+              <img src={logo} alt="SkillCodex Logo" className="w-full h-full rounded-xl" />
             </div>
             <div>
               <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
-                CodeAssess
+                SkillCodex
               </span>
-              <span className="block text-[10px] text-sky-400 font-medium uppercase tracking-wider">Candidate Portal</span>
             </div>
           </div>
 
@@ -95,7 +94,7 @@ export default function UserLayout() {
               );
             })}
 
-            {user?.role === 'ADMIN' && (
+            {/* {user?.role === 'ADMIN' && (
               <div className="pt-4 mt-4 border-t border-slate-800">
                 <Link
                   to="/admin"
@@ -108,7 +107,7 @@ export default function UserLayout() {
                   <ChevronRight className="w-4 h-4" />
                 </Link>
               </div>
-            )}
+            )} */}
           </nav>
         </div>
 

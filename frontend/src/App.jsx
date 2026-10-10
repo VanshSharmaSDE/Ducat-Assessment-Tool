@@ -35,8 +35,35 @@ import AdminResultDetailPage from './pages/admin/AdminResultDetailPage';
 import AdminSubmissionsPage from './pages/admin/AdminSubmissionsPage';
 import AdminBatchesPage from './pages/admin/AdminBatchesPage';
 
+// Helper to determine destination by role
+export const getRoleHomeRoute = (role) => {
+  if (role === 'ADMIN' || role === 'FACULTY') {
+    return '/admin';
+  }
+  return '/dashboard';
+};
+
+// Root route resolver to automatically direct users based on role
+function RoleHomeRedirect() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-slate-950 text-white">
+        <div className="w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <Navigate to={getRoleHomeRoute(user.role)} replace />;
+}
+
 // Protected Route Guard
-function RequireAuth({ children, requiredRole, allowedRoles }) {
+function RequireAuth({ children, allowedRoles }) {
   const { user, loading } = useAuth();
   const location = useLocation();
 
@@ -52,12 +79,9 @@ function RequireAuth({ children, requiredRole, allowedRoles }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // If user role is not permitted on this route, redirect to their proper portal
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  if (requiredRole && user.role !== requiredRole) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={getRoleHomeRoute(user.role)} replace />;
   }
 
   return children;
@@ -72,11 +96,14 @@ export default function App() {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-      {/* Fullscreen Exam Session Route */}
+      {/* Root Landing Route - strictly directs by authentication & role */}
+      <Route path="/" element={<RoleHomeRedirect />} />
+
+      {/* Fullscreen Exam Session Route - Candidates/Students Only */}
       <Route
         path="/exams/:id/take"
         element={
-          <RequireAuth>
+          <RequireAuth allowedRoles={['USER']}>
             <ExamLayout />
           </RequireAuth>
         }
@@ -84,25 +111,23 @@ export default function App() {
         <Route index element={<CodingExamPage />} />
       </Route>
 
-      {/* Candidate Portal Routes */}
+      {/* Candidate Portal Routes - Strictly for USER/Student role */}
       <Route
-        path="/"
         element={
-          <RequireAuth>
+          <RequireAuth allowedRoles={['USER']}>
             <UserLayout />
           </RequireAuth>
         }
       >
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<UserDashboard />} />
-        <Route path="exams" element={<AvailableExamsPage />} />
-        <Route path="exams/:id/instructions" element={<ExamInstructionPage />} />
-        <Route path="results" element={<UserResultsPage />} />
-        <Route path="results/:id" element={<ResultDetailPage />} />
-        <Route path="profile" element={<ProfilePage />} />
+        <Route path="/dashboard" element={<UserDashboard />} />
+        <Route path="/exams" element={<AvailableExamsPage />} />
+        <Route path="/exams/:id/instructions" element={<ExamInstructionPage />} />
+        <Route path="/results" element={<UserResultsPage />} />
+        <Route path="/results/:id" element={<ResultDetailPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Route>
 
-      {/* Faculty Shortcut Route - seamlessly routes to Faculty Control Hub */}
+      {/* Faculty Shortcut Route - seamlessly routes to Admin & Faculty Control Hub */}
       <Route
         path="/faculty/*"
         element={
