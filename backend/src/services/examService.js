@@ -5,14 +5,74 @@ import { Question } from '../models/Question.js';
 import { Submission } from '../models/Submission.js';
 import { ExecutionJob } from '../models/ExecutionJob.js';
 import { addSubmissionJob } from '../queues/queueManager.js';
-import { DEFAULT_STARTER_CODE } from '../utils/starterCode.js';
+import { User } from '../models/User.js';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../utils/logger.js';
 import { emitToAdmin, emitToAttempt } from '../socket.js';
 
 export class ExamService {
+  static async canStudentAccessExam(exam, studentUser) {
+    if (!studentUser) return false;
+    // Admins and faculty have privileged access
+    if (['ADMIN', 'FACULTY'].includes(studentUser.role)) return true;
+
+    // Determine who created this student
+    let studentCreator = studentUser.createdBy;
+    if (studentCreator && typeof studentCreator === 'object' && !studentCreator.role) {
+      studentCreator = await User.findById(studentCreator._id || studentCreator).select('role');
+    } else if (studentCreator && typeof studentCreator !== 'object') {
+      studentCreator = await User.findById(studentCreator).select('role');
+    }
+
+    const isStudentOfAdmin = !studentCreator || studentCreator.role === 'ADMIN';
+
+    // Determine who created this exam
+    const examCreatorId = String(exam.createdBy?._id || exam.createdBy);
+    let examCreator = exam.populated?.('createdBy') ? exam.createdBy : null;
+    if (!examCreator || !examCreator.role) {
+      examCreator = await User.findById(examCreatorId).select('role');
+    }
+    const isExamByAdmin = examCreator?.role === 'ADMIN';
+
+    // If exam was created by Admin: only accessible to students created by Admin
+    if (isExamByAdmin) {
+      return isStudentOfAdmin;
+    }
+
+    // If exam was created by Faculty: only accessible to students created by that exact Faculty
+    if (!isStudentOfAdmin && studentCreator && studentCreator.role === 'FACULTY') {
+      const studentFacultyId = String(studentCreator._id || studentCreator);
+      return examCreatorId === studentFacultyId;
+    }
+
+    return false;
+  }
+
   static async getAvailableExams(userId, query = {}) {
     const filter = { isPublished: true };
+
+    const student = await User.findById(userId).populate('createdBy', 'role name email');
+    if (student && student.role === 'USER') {
+      const isStudentOfAdmin = !student.createdBy || student.createdBy.role === 'ADMIN';
+
+      if (isStudentOfAdmin) {
+        // Admin-created students ONLY see exams created by Admins
+        const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
+        filter.createdBy = { $in: adminIds };
+      } else if (student.createdBy && student.createdBy.role === 'FACULTY') {
+        // Faculty-created students ONLY see exams created by their own Faculty
+        const studentFacultyId = student.createdBy._id || student.createdBy;
+        filter.createdBy = studentFacultyId;
+      } else {
+        // Fallback for unassigned/other: match admin exams
+        const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
+        filter.createdBy = { $in: adminIds };
+      }
+    } else if (student && student.role === 'FACULTY') {
+      // Faculty previewing exams
+      filter.createdBy = student._id;
+    }
+
     const exams = await Exam.find(filter).sort({ startDate: 1 });
     const now = new Date();
 
@@ -78,6 +138,17 @@ export class ExamService {
       throw error;
     }
 
+    if (!isPrivileged) {
+      const studentUser = currentUser || await User.findById(userId).populate('createdBy', 'role');
+      const canAccess = await ExamService.canStudentAccessExam(exam, studentUser);
+      if (!canAccess) {
+        const error = new Error('Access denied. This examination is only available to students assigned to this instructor or administrator.');
+        error.statusCode = 403;
+        error.errorCode = 'EXAM_ACCESS_DENIED';
+        throw error;
+      }
+    }
+
     const now = new Date();
     let computedStatus = 'ACTIVE';
     if (now < exam.startDate) computedStatus = 'UPCOMING';
@@ -139,6 +210,15 @@ export class ExamService {
       const error = new Error('Exam is not currently available');
       error.statusCode = 403;
       error.errorCode = 'EXAM_NOT_PUBLISHED';
+      throw error;
+    }
+
+    const studentUser = await User.findById(userId).populate('createdBy', 'role');
+    const canAccess = await ExamService.canStudentAccessExam(exam, studentUser);
+    if (!canAccess) {
+      const error = new Error('Access denied. This examination is only available to students assigned to this instructor or administrator.');
+      error.statusCode = 403;
+      error.errorCode = 'EXAM_ACCESS_DENIED';
       throw error;
     }
 

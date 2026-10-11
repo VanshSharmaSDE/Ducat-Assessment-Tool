@@ -153,8 +153,17 @@ export class ResultService {
     const isFaculty = currentUser && currentUser.role === 'FACULTY';
 
     if (isFaculty) {
-      const myStudentIds = await User.find({ createdBy: currentUser._id }).distinct('_id');
-      filter.userId = { $in: myStudentIds };
+      const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
+      const allowedStudentIds = await User.find({
+        role: 'USER',
+        $or: [
+          { createdBy: currentUser._id },
+          { createdBy: { $in: adminIds } },
+          { createdBy: null },
+          { createdBy: { $exists: false } }
+        ]
+      }).distinct('_id');
+      filter.userId = { $in: allowedStudentIds };
     }
 
     if (query.examId) {
@@ -162,8 +171,17 @@ export class ResultService {
     }
     if (query.userId) {
       if (isFaculty) {
-        const isMyStudent = await User.exists({ _id: query.userId, createdBy: currentUser._id });
-        if (!isMyStudent) {
+        const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
+        const isAllowedStudent = await User.exists({
+          _id: query.userId,
+          $or: [
+            { createdBy: currentUser._id },
+            { createdBy: { $in: adminIds } },
+            { createdBy: null },
+            { createdBy: { $exists: false } }
+          ]
+        });
+        if (!isAllowedStudent) {
           filter.userId = { $in: [] };
         } else {
           filter.userId = query.userId;
@@ -179,7 +197,13 @@ export class ResultService {
     // Filter by student batch or gender
     const userFilter = {};
     if (isFaculty) {
-      userFilter.createdBy = currentUser._id;
+      const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
+      userFilter.$or = [
+        { createdBy: currentUser._id },
+        { createdBy: { $in: adminIds } },
+        { createdBy: null },
+        { createdBy: { $exists: false } }
+      ];
     }
     if (query.batch) userFilter.batch = query.batch;
     if (query.gender) userFilter.gender = query.gender;

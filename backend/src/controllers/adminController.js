@@ -535,8 +535,17 @@ export const getSubmissionsHierarchyExams = async (req, res) => {
       exams.map(async (exam) => {
         let attemptFilter = { examId: exam._id };
         if (req.user?.role === 'FACULTY') {
-          const myStudentIds = await User.find({ createdBy: req.user._id }).distinct('_id');
-          attemptFilter.userId = { $in: myStudentIds };
+          const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
+          const allowedStudentIds = await User.find({
+            role: 'USER',
+            $or: [
+              { createdBy: req.user._id },
+              { createdBy: { $in: adminIds } },
+              { createdBy: null },
+              { createdBy: { $exists: false } }
+            ]
+          }).distinct('_id');
+          attemptFilter.userId = { $in: allowedStudentIds };
         }
 
         const attemptCount = await ExamAttempt.countDocuments(attemptFilter);
@@ -572,8 +581,17 @@ export const getExamStudents = async (req, res) => {
     let attemptFilter = { examId };
 
     if (req.user?.role === 'FACULTY') {
-      const myStudentIds = await User.find({ createdBy: req.user._id }).distinct('_id');
-      attemptFilter.userId = { $in: myStudentIds };
+      const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
+      const allowedStudentIds = await User.find({
+        role: 'USER',
+        $or: [
+          { createdBy: req.user._id },
+          { createdBy: { $in: adminIds } },
+          { createdBy: null },
+          { createdBy: { $exists: false } }
+        ]
+      }).distinct('_id');
+      attemptFilter.userId = { $in: allowedStudentIds };
     }
 
     const attempts = await ExamAttempt.find(attemptFilter)
@@ -607,9 +625,11 @@ export const getStudentSubmissions = async (req, res) => {
     const { examId, userId } = req.params;
 
     if (req.user?.role === 'FACULTY') {
-      const student = await User.findById(userId);
-      if (!student || String(student.createdBy) !== String(req.user._id)) {
-        return res.status(403).json({ success: false, message: 'Access denied. You can only view submissions for your own students.' });
+      const student = await User.findById(userId).populate('createdBy', 'role');
+      const isMyStudent = student && String(student.createdBy?._id || student.createdBy) === String(req.user._id);
+      const isAdminStudent = !student?.createdBy || student?.createdBy?.role === 'ADMIN';
+      if (!isMyStudent && !isAdminStudent) {
+        return res.status(403).json({ success: false, message: 'Access denied. You can only view submissions for your own students or administrator students.' });
       }
     }
 
