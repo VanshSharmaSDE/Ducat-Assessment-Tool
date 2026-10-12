@@ -18,7 +18,8 @@ import {
   ShieldAlert,
   User,
   GraduationCap,
-  Layers
+  Layers,
+  Building2
 } from 'lucide-react';
 
 export default function AdminLayout() {
@@ -39,6 +40,7 @@ export default function AdminLayout() {
     { label: isSuperAdmin ? 'Question Bank' : 'My Questions', path: '/admin/questions', icon: HelpCircle },
     { label: isSuperAdmin ? 'Candidates' : 'My Students', path: '/admin/users', icon: Users },
     { label: isSuperAdmin ? 'Batches' : 'My Batches', path: '/admin/batches', icon: Layers },
+    { label: isSuperAdmin ? 'Organizations' : 'My Organization', path: '/admin/organizations', icon: Building2 },
     ...(isSuperAdmin ? [{ label: 'Faculty Management', path: '/admin/faculty', icon: GraduationCap }] : []),
     { label: isSuperAdmin ? 'Results & Reports' : 'Student Results', path: '/admin/results', icon: Award },
     { label: isSuperAdmin ? 'Raw Submissions' : 'Submissions', path: '/admin/submissions', icon: Terminal },

@@ -506,6 +506,14 @@ export default function CodingExamPage() {
   // Submit Exam Handler
   const handleFinalSubmit = async (forced = false) => {
     if (isSubmitting) return;
+
+    const totalQuestions = exam?.questions?.length || 0;
+    const allQuestionsVisited = totalQuestions > 0 && visitedQuestions.size >= totalQuestions;
+    if (!forced && !allQuestionsVisited) {
+      showToast(`Please visit all ${totalQuestions} questions before submitting assessment (${visitedQuestions.size}/${totalQuestions} visited).`);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -596,6 +604,9 @@ export default function CodingExamPage() {
       !isCodeAttempted(q, answers[q._id]) && !visitedQuestions.has(idx),
   ).length;
 
+  const totalQuestions = exam.questions.length;
+  const allQuestionsVisited = totalQuestions > 0 && visitedQuestions.size >= totalQuestions;
+
   return (
     <div className="h-screen w-screen flex flex-col bg-slate-950 text-slate-100 overflow-hidden font-sans select-none">
       {/* Toast Notification for Proctoring Warnings */}
@@ -671,11 +682,27 @@ export default function CodingExamPage() {
 
           {/* Final Submit Exam Button */}
           <button
-            onClick={() => setShowSubmitModal(true)}
-            className="flex items-center gap-2 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-600/20 transition-all"
+            onClick={() => {
+              if (!allQuestionsVisited) {
+                showToast(`Please visit all ${totalQuestions} questions before submitting assessment (${visitedQuestions.size}/${totalQuestions} visited).`);
+                return;
+              }
+              setShowSubmitModal(true);
+            }}
+            disabled={!allQuestionsVisited}
+            title={
+              allQuestionsVisited
+                ? "Finalize and submit examination"
+                : `Visit all ${totalQuestions} questions to enable submission (${visitedQuestions.size}/${totalQuestions} visited)`
+            }
+            className={`flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-xl transition-all ${
+              allQuestionsVisited
+                ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 cursor-pointer"
+                : "bg-slate-800 text-slate-500 border border-slate-700/60 cursor-not-allowed opacity-60 shadow-none"
+            }`}
           >
             <Send className="w-3.5 h-3.5" />
-            <span>Submit Exam</span>
+            <span>Submit Exam {!allQuestionsVisited && `(${visitedQuestions.size}/${totalQuestions})`}</span>
           </button>
         </div>
       </header>
@@ -946,6 +973,27 @@ export default function CodingExamPage() {
               >
                 Next <ChevronRight className="w-3.5 h-3.5" />
               </button>
+
+              {currentQIndex === exam.questions.length - 1 && (
+                <button
+                  onClick={() => {
+                    if (!allQuestionsVisited) {
+                      showToast(`Please visit all ${totalQuestions} questions before submitting assessment (${visitedQuestions.size}/${totalQuestions} visited).`);
+                      return;
+                    }
+                    setShowSubmitModal(true);
+                  }}
+                  disabled={!allQuestionsVisited}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    allQuestionsVisited
+                      ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20 cursor-pointer"
+                      : "bg-slate-800 text-slate-500 border border-slate-700/60 cursor-not-allowed opacity-60"
+                  }`}
+                >
+                  <Send className="w-3 h-3" />
+                  <span>Submit Exam {!allQuestionsVisited && `(${visitedQuestions.size}/${totalQuestions})`}</span>
+                </button>
+              )}
             </div>
 
             <div className="text-xs text-slate-400 italic">

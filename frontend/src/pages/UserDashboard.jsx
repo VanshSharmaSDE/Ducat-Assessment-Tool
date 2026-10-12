@@ -179,7 +179,16 @@ export default function UserDashboard() {
                         </span>
                       </div>
                       <p className="text-xs text-slate-400 line-clamp-1">{exam.description}</p>
-                      <div className="flex items-center gap-4 text-xs text-slate-400 pt-1">
+                      <div className="flex items-center gap-3 flex-wrap text-[11px] pt-1">
+                        <span className="font-mono text-emerald-400 font-medium">
+                          Starts: {new Date(exam.startDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                        </span>
+                        <span className="text-slate-600">•</span>
+                        <span className="font-mono text-rose-400 font-medium">
+                          Expires: {new Date(exam.endDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs text-slate-400 pt-0.5">
                         <span className="flex items-center gap-1">
                           <Clock className="w-3.5 h-3.5 text-slate-500" />
                           {exam.duration} mins

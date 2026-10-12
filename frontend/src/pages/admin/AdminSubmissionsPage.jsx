@@ -19,13 +19,19 @@ import {
   Calendar,
   Layers,
   Code2,
-  ExternalLink
+  ExternalLink,
+  Trash2
 } from 'lucide-react';
 
 export default function AdminSubmissionsPage() {
-  const { showAlert } = useModal();
+  const { showAlert, showConfirm } = useModal();
   // Navigation level: 'EXAMS' | 'STUDENTS' | 'DETAIL'
   const [currentLevel, setCurrentLevel] = useState('EXAMS');
+
+  // Bulk Selection States
+  const [selectedExams, setSelectedExams] = useState([]);
+  const [selectedSubmissions, setSelectedSubmissions] = useState([]);
+  const [actionLoading, setActionLoading] = useState(false);
 
   // Hierarchy Data States
   const [exams, setExams] = useState([]);
@@ -146,6 +152,7 @@ export default function AdminSubmissionsPage() {
     setSelectedStudent(null);
     setDetailData(null);
     setSearchTerm('');
+    setSelectedSubmissions([]);
   };
 
   const handleBackToStudents = () => {
@@ -153,6 +160,130 @@ export default function AdminSubmissionsPage() {
     setSelectedStudent(null);
     setDetailData(null);
     setSearchTerm('');
+    setSelectedSubmissions([]);
+  };
+
+  // Level 1: Exam Selection & Bulk Delete Handlers
+  const handleSelectAllExams = (e) => {
+    if (e.target.checked) {
+      setSelectedExams(exams.map((ex) => ex._id));
+    } else {
+      setSelectedExams([]);
+    }
+  };
+
+  const handleToggleSelectExam = (id) => {
+    setSelectedExams((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDeleteExams = async () => {
+    if (selectedExams.length === 0) return;
+    const confirmed = await showConfirm({
+      title: 'Bulk Delete Exams',
+      message: `Are you sure you want to permanently delete ${selectedExams.length} selected examination(s) and their student submissions?`,
+      confirmText: `Delete ${selectedExams.length} Exams`,
+      isDanger: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      setActionLoading(true);
+      await api.post('/admin/exams/bulk-delete', { examIds: selectedExams });
+      await showAlert({
+        title: 'Exams Deleted',
+        message: `Successfully deleted ${selectedExams.length} exam(s).`,
+        type: 'success',
+      });
+      setSelectedExams([]);
+      loadExamsHierarchy();
+    } catch (err) {
+      await showAlert({
+        title: 'Bulk Delete Failed',
+        message: err.response?.data?.message || 'Failed to delete selected exams',
+        type: 'error',
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Level 2: Student Submission Selection & Bulk Delete Handlers
+  const handleSelectAllSubmissions = (e) => {
+    if (e.target.checked) {
+      setSelectedSubmissions(students.map((s) => s.attemptId).filter(Boolean));
+    } else {
+      setSelectedSubmissions([]);
+    }
+  };
+
+  const handleToggleSelectSubmission = (attemptId) => {
+    setSelectedSubmissions((prev) =>
+      prev.includes(attemptId) ? prev.filter((item) => item !== attemptId) : [...prev, attemptId]
+    );
+  };
+
+  const handleBulkDeleteSubmissions = async () => {
+    if (selectedSubmissions.length === 0) return;
+    const confirmed = await showConfirm({
+      title: 'Bulk Delete Submissions',
+      message: `Are you sure you want to permanently delete ${selectedSubmissions.length} selected candidate submission(s)? All recorded answers and evaluation records will be removed.`,
+      confirmText: `Delete ${selectedSubmissions.length} Submissions`,
+      isDanger: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      setActionLoading(true);
+      await api.post('/admin/results/bulk-delete', { attemptIds: selectedSubmissions });
+      await showAlert({
+        title: 'Submissions Deleted',
+        message: `Successfully deleted ${selectedSubmissions.length} candidate submission(s).`,
+        type: 'success',
+      });
+      setSelectedSubmissions([]);
+      const res = await api.get(`/admin/submissions/hierarchy/exams/${selectedExam._id}/students`);
+      setStudents(res.data.data.students || []);
+    } catch (err) {
+      await showAlert({
+        title: 'Bulk Delete Failed',
+        message: err.response?.data?.message || 'Failed to delete selected submissions',
+        type: 'error',
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteSubmission = async (attemptId, studentName) => {
+    const confirmed = await showConfirm({
+      title: 'Delete Candidate Submission',
+      message: `Are you sure you want to delete the submission for "${studentName || 'Candidate'}"? This action cannot be undone.`,
+      confirmText: 'Delete Submission',
+      isDanger: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      setActionLoading(true);
+      await api.delete(`/admin/results/${attemptId}`);
+      await showAlert({
+        title: 'Submission Deleted',
+        message: 'Submission deleted successfully!',
+        type: 'success',
+      });
+      const res = await api.get(`/admin/submissions/hierarchy/exams/${selectedExam._id}/students`);
+      setStudents(res.data.data.students || []);
+    } catch (err) {
+      await showAlert({
+        title: 'Delete Failed',
+        message: err.response?.data?.message || 'Failed to delete submission',
+        type: 'error',
+      });
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   return (
@@ -250,7 +381,7 @@ export default function AdminSubmissionsPage() {
           {/* ======================================================== */}
           {currentLevel === 'EXAMS' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="relative max-w-sm w-full">
                   <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                   <input
@@ -261,7 +392,20 @@ export default function AdminSubmissionsPage() {
                     className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
-                <span className="text-xs text-slate-400">Total Exams: {exams.length}</span>
+
+                <div className="flex items-center gap-3">
+                  {selectedExams.length > 0 && (
+                    <button
+                      onClick={handleBulkDeleteExams}
+                      disabled={actionLoading}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>Delete Selected Exams ({selectedExams.length})</span>
+                    </button>
+                  )}
+                  <span className="text-xs text-slate-400">Total Exams: {exams.length}</span>
+                </div>
               </div>
 
               {exams.length === 0 ? (
@@ -276,6 +420,14 @@ export default function AdminSubmissionsPage() {
                     <table className="w-full text-left text-xs">
                       <thead>
                         <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
+                          <th className="py-3.5 px-4 w-10">
+                            <input
+                              type="checkbox"
+                              checked={exams.length > 0 && selectedExams.length === exams.length}
+                              onChange={handleSelectAllExams}
+                              className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 focus:ring-0 cursor-pointer"
+                            />
+                          </th>
                           <th className="py-3.5 px-4 font-semibold">Exam Title</th>
                           <th className="py-3.5 px-4 font-semibold">Duration</th>
                           <th className="py-3.5 px-4 font-semibold">Total Marks</th>
@@ -290,8 +442,18 @@ export default function AdminSubmissionsPage() {
                           .filter((e) =>
                             searchTerm ? e.title?.toLowerCase().includes(searchTerm.toLowerCase()) : true
                           )
-                          .map((exam) => (
-                            <tr key={exam._id} className="text-slate-300 hover:bg-slate-800/40">
+                          .map((exam) => {
+                            const isSelected = selectedExams.includes(exam._id);
+                            return (
+                            <tr key={exam._id} className={`text-slate-300 hover:bg-slate-800/40 transition-colors ${isSelected ? 'bg-amber-500/5' : ''}`}>
+                              <td className="py-3.5 px-4">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => handleToggleSelectExam(exam._id)}
+                                  className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 focus:ring-0 cursor-pointer"
+                                />
+                              </td>
                               <td className="py-3.5 px-4">
                                 <p className="font-bold text-white text-sm">{exam.title}</p>
                                 <p className="text-[11px] text-slate-500">ID: {exam._id}</p>
@@ -340,7 +502,8 @@ export default function AdminSubmissionsPage() {
                                 </div>
                               </td>
                             </tr>
-                          ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -354,14 +517,27 @@ export default function AdminSubmissionsPage() {
           {/* ======================================================== */}
           {currentLevel === 'STUDENTS' && selectedExam && (
             <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <button
-                  onClick={handleBackToExams}
-                  className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Back to Exam List</span>
-                </button>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleBackToExams}
+                    className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Back to Exam List</span>
+                  </button>
+
+                  {selectedSubmissions.length > 0 && (
+                    <button
+                      onClick={handleBulkDeleteSubmissions}
+                      disabled={actionLoading}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete Selected Submissions ({selectedSubmissions.length})</span>
+                    </button>
+                  )}
+                </div>
 
                 <div className="relative max-w-sm w-full">
                   <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -387,6 +563,14 @@ export default function AdminSubmissionsPage() {
                     <table className="w-full text-left text-xs">
                       <thead>
                         <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
+                          <th className="py-3.5 px-4 w-10">
+                            <input
+                              type="checkbox"
+                              checked={students.length > 0 && selectedSubmissions.length === students.length}
+                              onChange={handleSelectAllSubmissions}
+                              className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 focus:ring-0 cursor-pointer"
+                            />
+                          </th>
                           <th className="py-3.5 px-4 font-semibold">Candidate</th>
                           <th className="py-3.5 px-4 font-semibold">Roll No & Batch</th>
                           <th className="py-3.5 px-4 font-semibold">Status</th>
@@ -409,8 +593,18 @@ export default function AdminSubmissionsPage() {
                               item.user?.batch?.toLowerCase().includes(term)
                             );
                           })
-                          .map((item) => (
-                            <tr key={item.attemptId} className="text-slate-300 hover:bg-slate-800/40">
+                          .map((item) => {
+                            const isSelected = selectedSubmissions.includes(item.attemptId);
+                            return (
+                            <tr key={item.attemptId} className={`text-slate-300 hover:bg-slate-800/40 transition-colors ${isSelected ? 'bg-amber-500/5' : ''}`}>
+                              <td className="py-3.5 px-4">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => handleToggleSelectSubmission(item.attemptId)}
+                                  className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 focus:ring-0 cursor-pointer"
+                                />
+                              </td>
                               <td className="py-3.5 px-4">
                                 <p className="font-bold text-white text-sm">{item.user?.name || 'Candidate'}</p>
                                 <p className="text-[11px] text-slate-400">{item.user?.email}</p>
@@ -479,10 +673,19 @@ export default function AdminSubmissionsPage() {
                                     <span>View Solutions</span>
                                     <ChevronRight className="w-3.5 h-3.5" />
                                   </button>
+                                  <button
+                                    onClick={() => handleDeleteSubmission(item.attemptId, item.user?.name)}
+                                    disabled={actionLoading}
+                                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
+                                    title="Delete Submission"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
                                 </div>
                               </td>
                             </tr>
-                          ))}
+                            );
+                          })}
                       </tbody>
                     </table>
                   </div>

@@ -8,7 +8,7 @@ let ioInstance = null;
 export function initSocket(server) {
   ioInstance = new Server(server, {
     cors: {
-      origin: [config.clientUrl, 'http://localhost:5173', 'http://127.0.0.1:5173'],
+      origin: [config.clientUrl,'https://skillcodex,tech', 'http://localhost:5173', 'http://127.0.0.1:5173'],
       methods: ['GET', 'POST'],
       credentials: true,
     },

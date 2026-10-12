@@ -24,6 +24,7 @@ import {
 export default function AdminFacultyPage() {
   const { showAlert, showConfirm } = useModal();
   const [faculty, setFaculty] = useState([]);
+  const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -36,6 +37,7 @@ export default function AdminFacultyPage() {
     email: '',
     password: '',
     department: '',
+    organization: '',
     phone: '',
   });
 
@@ -46,6 +48,7 @@ export default function AdminFacultyPage() {
     name: '',
     email: '',
     department: '',
+    organization: '',
     phone: '',
     password: '',
   });
@@ -55,6 +58,16 @@ export default function AdminFacultyPage() {
   const [excelFile, setExcelFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState(null);
+
+  // Bulk Selection State
+  const [selectedFaculty, setSelectedFaculty] = useState([]);
+
+  const loadOrganizations = async () => {
+    try {
+      const res = await api.get('/admin/organizations');
+      setOrganizations(res.data.data.organizations || []);
+    } catch (_) {}
+  };
 
   const loadFaculty = async () => {
     try {
@@ -74,6 +87,10 @@ export default function AdminFacultyPage() {
   };
 
   useEffect(() => {
+    loadOrganizations();
+  }, []);
+
+  useEffect(() => {
     loadFaculty();
   }, [searchTerm, statusFilter]);
 
@@ -89,7 +106,7 @@ export default function AdminFacultyPage() {
         type: 'success',
       });
       setShowCreateModal(false);
-      setCreateFormData({ name: '', email: '', password: '', department: '', phone: '' });
+      setCreateFormData({ name: '', email: '', password: '', department: '', organization: '', phone: '' });
       loadFaculty();
     } catch (err) {
       await showAlert({
@@ -109,6 +126,7 @@ export default function AdminFacultyPage() {
       name: f.name || '',
       email: f.email || '',
       department: f.department || '',
+      organization: f.organization || '',
       phone: f.phone || '',
       password: '',
     });
@@ -218,6 +236,38 @@ export default function AdminFacultyPage() {
     }
   };
 
+  // Bulk Delete Faculty
+  const handleBulkDelete = async () => {
+    if (selectedFaculty.length === 0) return;
+    const confirmed = await showConfirm({
+      title: 'Delete Selected Faculty Accounts',
+      message: `Are you sure you want to permanently delete ${selectedFaculty.length} selected faculty member(s)? This action cannot be undone.`,
+      confirmText: `Delete (${selectedFaculty.length})`,
+      isDanger: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      setActionLoading(true);
+      const res = await api.post('/admin/faculty/bulk-delete', { facultyIds: selectedFaculty });
+      await showAlert({
+        title: 'Faculty Members Deleted',
+        message: res.data?.message || `Successfully deleted ${selectedFaculty.length} faculty member(s).`,
+        type: 'success',
+      });
+      setSelectedFaculty([]);
+      loadFaculty();
+    } catch (err) {
+      await showAlert({
+        title: 'Bulk Delete Failed',
+        message: err.response?.data?.message || 'Failed to delete selected faculty members',
+        type: 'error',
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // Upload Excel File
   const handleExcelUpload = async (e) => {
     e.preventDefault();
@@ -239,7 +289,13 @@ export default function AdminFacultyPage() {
       const res = await api.post('/admin/faculty/upload-excel', payload, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      setUploadStatus(res.data);
+      setShowExcelModal(false);
+      setExcelFile(null);
+      await showAlert({
+        title: 'Upload Successful',
+        message: res.data?.message || 'Faculty members uploaded successfully!',
+        type: 'success',
+      });
       loadFaculty();
     } catch (err) {
       await showAlert({
@@ -275,6 +331,17 @@ export default function AdminFacultyPage() {
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
+          {selectedFaculty.length > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              disabled={actionLoading}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Delete Selected ({selectedFaculty.length})</span>
+            </button>
+          )}
+
           <button
             onClick={() => {
               setExcelFile(null);
@@ -319,6 +386,12 @@ export default function AdminFacultyPage() {
           <option value="active">Active Only</option>
           <option value="inactive">Inactive Only</option>
         </select>
+
+        {selectedFaculty.length > 0 && (
+          <span className="text-xs text-slate-400 font-medium ml-auto">
+            {selectedFaculty.length} of {faculty.length} faculty selected
+          </span>
+        )}
       </div>
 
       {/* Faculty Table */}
@@ -336,7 +409,22 @@ export default function AdminFacultyPage() {
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
+                  <th className="py-3.5 px-4 w-10">
+                    <input
+                      type="checkbox"
+                      checked={faculty.length > 0 && selectedFaculty.length === faculty.length}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedFaculty(faculty.map((f) => f._id));
+                        } else {
+                          setSelectedFaculty([]);
+                        }
+                      }}
+                      className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 focus:ring-0 cursor-pointer"
+                    />
+                  </th>
                   <th className="py-3.5 px-4 font-semibold">Faculty Member</th>
+                  <th className="py-3.5 px-4 font-semibold">Organization</th>
                   <th className="py-3.5 px-4 font-semibold">Department</th>
                   <th className="py-3.5 px-4 font-semibold">Phone</th>
                   <th className="py-3.5 px-4 font-semibold">Status</th>
@@ -345,11 +433,36 @@ export default function AdminFacultyPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
-                {faculty.map((f) => (
-                  <tr key={f._id} className="text-slate-300 hover:bg-slate-800/40">
+                {faculty.map((f) => {
+                  const isSelected = selectedFaculty.includes(f._id);
+                  return (
+                  <tr key={f._id} className={`text-slate-300 hover:bg-slate-800/40 transition-colors ${isSelected ? 'bg-amber-500/5' : ''}`}>
+                    <td className="py-3.5 px-4">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedFaculty((prev) => [...prev, f._id]);
+                          } else {
+                            setSelectedFaculty((prev) => prev.filter((id) => id !== f._id));
+                          }
+                        }}
+                        className="w-4 h-4 rounded cursor-pointer"
+                      />
+                    </td>
                     <td className="py-3.5 px-4">
                       <p className="font-bold text-white text-sm">{f.name}</p>
                       <p className="text-[11px] text-slate-400">{f.email}</p>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      {f.organization ? (
+                        <span className="px-2 py-0.5 rounded-md text-[10px] bg-slate-800 text-amber-300 font-semibold border border-slate-700">
+                          {f.organization}
+                        </span>
+                      ) : (
+                        <span className="text-slate-500 italic text-[11px]">Unassigned</span>
+                      )}
                     </td>
                     <td className="py-3.5 px-4">
                       <span className="font-mono text-slate-200 font-semibold">{f.department || 'General Faculty'}</span>
@@ -404,7 +517,8 @@ export default function AdminFacultyPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                );
+              })}
               </tbody>
             </table>
           </div>
@@ -463,6 +577,22 @@ export default function AdminFacultyPage() {
                   placeholder="Minimum 6 characters"
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Assigned Organization</label>
+                <select
+                  value={createFormData.organization}
+                  onChange={(e) => setCreateFormData({ ...createFormData, organization: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="">Select Organization (Optional)</option>
+                  {organizations.map((org) => (
+                    <option key={org._id} value={org.name}>
+                      {org.name} {org.code ? `(${org.code})` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -547,6 +677,22 @@ export default function AdminFacultyPage() {
                   onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Assigned Organization</label>
+                <select
+                  value={editFormData.organization}
+                  onChange={(e) => setEditFormData({ ...editFormData, organization: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                >
+                  <option value="">Select Organization (Optional)</option>
+                  {organizations.map((org) => (
+                    <option key={org._id} value={org.name}>
+                      {org.name} {org.code ? `(${org.code})` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -643,6 +789,7 @@ export default function AdminFacultyPage() {
                   <li><strong className="text-slate-300">Full Name:</strong> Faculty name (Required)</li>
                   <li><strong className="text-slate-300">Email:</strong> Unique email address (Required)</li>
                   <li><strong className="text-slate-300">Password:</strong> Initial password (Optional, default: Faculty@123)</li>
+                  <li><strong className="text-slate-300">Organization:</strong> Organization Name (Optional, e.g. Tech University)</li>
                   <li><strong className="text-slate-300">Department:</strong> Department / Branch (Optional)</li>
                   <li><strong className="text-slate-300">Phone:</strong> Contact phone number (Optional)</li>
                 </ul>

@@ -131,6 +131,53 @@ export default function AdminExamsPage() {
     }
   };
 
+  const [selectedExams, setSelectedExams] = useState([]);
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedExams(exams.map((ex) => ex._id));
+    } else {
+      setSelectedExams([]);
+    }
+  };
+
+  const handleToggleSelect = (id) => {
+    setSelectedExams((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedExams.length === 0) return;
+    const confirmed = await showConfirm({
+      title: 'Bulk Delete Examinations',
+      message: `Are you sure you want to permanently delete ${selectedExams.length} selected examination(s)? This will also delete all candidate submissions and attempts associated with them.`,
+      confirmText: `Delete ${selectedExams.length} Exams`,
+      isDanger: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      setActionLoading(true);
+      const res = await api.post('/admin/exams/bulk-delete', { examIds: selectedExams });
+      await showAlert({
+        title: 'Exams Deleted',
+        message: res.data.message || `Successfully deleted ${selectedExams.length} examination(s).`,
+        type: 'success',
+      });
+      setSelectedExams([]);
+      await loadExams();
+    } catch (err) {
+      await showAlert({
+        title: 'Bulk Delete Failed',
+        message: err.response?.data?.message || 'Failed to delete selected exams.',
+        type: 'error',
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
@@ -153,13 +200,26 @@ export default function AdminExamsPage() {
           </p>
         </div>
 
-        <Link
-          to="/admin/exams/new"
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all shrink-0 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Create Examination</span>
-        </Link>
+        <div className="flex items-center gap-2">
+          {selectedExams.length > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              disabled={actionLoading}
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Delete Selected ({selectedExams.length})</span>
+            </button>
+          )}
+
+          <Link
+            to="/admin/exams/new"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all shrink-0 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Create Examination</span>
+          </Link>
+        </div>
       </div>
 
       {error && (
@@ -181,12 +241,20 @@ export default function AdminExamsPage() {
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
+                  <th className="py-3.5 px-4 w-10">
+                    <input
+                      type="checkbox"
+                      checked={exams.length > 0 && selectedExams.length === exams.length}
+                      onChange={handleSelectAll}
+                      className="w-4 h-4 rounded cursor-pointer"
+                    />
+                  </th>
                   <th className="py-3.5 px-4 font-semibold">Title</th>
                   {isAdmin && <th className="py-3.5 px-4 font-semibold">Created By (Faculty)</th>}
                   <th className="py-3.5 px-4 font-semibold">Questions</th>
                   <th className="py-3.5 px-4 font-semibold">Duration</th>
                   <th className="py-3.5 px-4 font-semibold">Marks</th>
-                  <th className="py-3.5 px-4 font-semibold">Schedule</th>
+                  <th className="py-3.5 px-4 font-semibold">Start & Expire Time</th>
                   <th className="py-3.5 px-4 font-semibold">Status</th>
                   <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
                 </tr>
@@ -194,6 +262,14 @@ export default function AdminExamsPage() {
               <tbody className="divide-y divide-slate-800/60">
                 {exams.map((exam) => (
                   <tr key={exam._id} className="text-slate-300 hover:bg-slate-800/40">
+                    <td className="py-3.5 px-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedExams.includes(exam._id)}
+                        onChange={() => handleToggleSelect(exam._id)}
+                        className="w-4 h-4 rounded cursor-pointer"
+                      />
+                    </td>
                     <td className="py-3.5 px-4">
                       <p className="font-bold text-white text-sm">{exam.title}</p>
                       <p className="text-[11px] text-slate-400 line-clamp-1">{exam.description || 'No description provided'}</p>
@@ -224,8 +300,17 @@ export default function AdminExamsPage() {
                     <td className="py-3.5 px-4 font-mono font-medium">{exam.questionCount || exam.questions?.length || 0} Qs</td>
                     <td className="py-3.5 px-4 font-mono">{exam.duration}m</td>
                     <td className="py-3.5 px-4 font-mono">{exam.totalMarks} (Pass: {exam.passingMarks})</td>
-                    <td className="py-3.5 px-4 text-slate-400 text-[11px]">
-                      {new Date(exam.startDate).toLocaleDateString()} - {new Date(exam.endDate).toLocaleDateString()}
+                    <td className="py-3.5 px-4 text-[11px]">
+                      <div className="space-y-0.5 font-mono">
+                        <div className="text-emerald-400 flex items-center gap-1">
+                          <span className="text-[10px] text-slate-500 font-sans">Start:</span>
+                          <span>{new Date(exam.startDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+                        </div>
+                        <div className="text-rose-400 flex items-center gap-1">
+                          <span className="text-[10px] text-slate-500 font-sans">End:</span>
+                          <span>{new Date(exam.endDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+                        </div>
+                      </div>
                     </td>
                     <td className="py-3.5 px-4">
                       <button
@@ -269,7 +354,7 @@ export default function AdminExamsPage() {
                           onClick={() => handleDelete(exam._id)}
                           disabled={actionLoading}
                           className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                          title="Delete / Archive Exam"
+                          title="Delete Exam"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>

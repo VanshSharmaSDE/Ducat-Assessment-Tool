@@ -4,15 +4,17 @@ import { v4 as uuidv4 } from 'uuid';
 import { User } from '../models/User.js';
 import { RefreshToken } from '../models/RefreshToken.js';
 import { config } from '../config/index.js';
+import { getIO } from '../socket.js';
 
 export class AuthService {
-  static generateAccessToken(user) {
+  static generateAccessToken(user, sessionId = null) {
     return jwt.sign(
       {
         userId: user._id,
         email: user.email,
         role: user.role,
         name: user.name,
+        sessionId: sessionId || user.currentSessionId || null,
       },
       config.jwt.secret,
       { expiresIn: config.jwt.expiresIn }
@@ -44,6 +46,7 @@ export class AuthService {
 
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
+    const sessionId = uuidv4();
 
     const user = await User.create({
       name,
@@ -51,11 +54,12 @@ export class AuthService {
       passwordHash,
       phone: phone || '',
       role: role === 'ADMIN' ? 'ADMIN' : 'USER',
+      currentSessionId: sessionId,
       isActive: true,
       isVerified: true,
     });
 
-    const accessToken = AuthService.generateAccessToken(user);
+    const accessToken = AuthService.generateAccessToken(user, sessionId);
     const refreshToken = await AuthService.generateRefreshToken(user._id);
 
     return {
@@ -89,7 +93,23 @@ export class AuthService {
       throw error;
     }
 
-    const accessToken = AuthService.generateAccessToken(user);
+    // Invalidate previous device/session by emitting socket event to existing connections
+    try {
+      const io = getIO();
+      if (io) {
+        io.to(`user:${user._id}`).emit('session:terminated', {
+          message: 'Your account was logged in from another device. You have been logged out.',
+        });
+      }
+    } catch (e) {
+      // Non-critical socket broadcast error
+    }
+
+    const sessionId = uuidv4();
+    user.currentSessionId = sessionId;
+    await user.save();
+
+    const accessToken = AuthService.generateAccessToken(user, sessionId);
     const refreshToken = await AuthService.generateRefreshToken(user._id);
 
     return {
@@ -123,13 +143,16 @@ export class AuthService {
       throw error;
     }
 
-    const accessToken = AuthService.generateAccessToken(user);
+    const accessToken = AuthService.generateAccessToken(user, user.currentSessionId);
     return { accessToken };
   }
 
-  static async logout(token) {
+  static async logout(token, userId = null) {
     if (token) {
       await RefreshToken.findOneAndUpdate({ token }, { revoked: true });
+    }
+    if (userId) {
+      await User.findByIdAndUpdate(userId, { currentSessionId: null });
     }
     return { success: true };
   }

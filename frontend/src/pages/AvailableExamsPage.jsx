@@ -170,7 +170,7 @@ export default function AvailableExamsPage() {
                   </div>
 
                   {/* Attributes */}
-                  <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-800 text-xs text-slate-300">
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800 text-xs text-slate-300">
                     <div className="flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5 text-slate-500" />
                       <span>{exam.duration} Minutes</span>
@@ -179,13 +179,31 @@ export default function AvailableExamsPage() {
                       <Code2 className="w-3.5 h-3.5 text-slate-500" />
                       <span>{exam.questionCount} Questions</span>
                     </div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 col-span-2">
                       <Award className="w-3.5 h-3.5 text-slate-500" />
                       <span>{exam.totalMarks} Marks (Pass: {exam.passingMarks})</span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                      <span className="truncate">{new Date(exam.endDate).toLocaleDateString()}</span>
+                  </div>
+
+                  {/* Schedule Timings */}
+                  <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px] space-y-1.5">
+                    <div className="flex items-center justify-between text-slate-300">
+                      <span className="text-slate-400 flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>Starts:</span>
+                      </span>
+                      <span className="font-mono text-emerald-300 font-semibold">
+                        {new Date(exam.startDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-300">
+                      <span className="text-slate-400 flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                        <span>Expires:</span>
+                      </span>
+                      <span className="font-mono text-rose-300 font-semibold">
+                        {new Date(exam.endDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                      </span>
                     </div>
                   </div>
                 </div>

@@ -3,6 +3,8 @@ import { ResultService } from '../services/resultService.js';
 import { Submission } from '../models/Submission.js';
 import * as XLSX from 'xlsx';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { config } from '../config/index.js';
 import User from '../models/User.js';
 import ExamAttempt from '../models/ExamAttempt.js';
 import { Exam } from '../models/Exam.js';
@@ -12,7 +14,7 @@ import { Exam } from '../models/Exam.js';
  */
 export const createStudent = async (req, res) => {
   try {
-    const { name, email, password, rollNumber, phone, batch, gender } = req.body;
+    const { name, email, password, rollNumber, phone, batch, organization, gender, age } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
@@ -32,7 +34,9 @@ export const createStudent = async (req, res) => {
       rollNumber: rollNumber ? String(rollNumber).trim() : '',
       phone: phone ? String(phone).trim() : '',
       batch: batch ? String(batch).trim() : '',
+      organization: organization ? String(organization).trim() : '',
       gender: gender ? String(gender).trim() : '',
+      age: age ? Number(age) : null,
       createdBy: req.user._id,
       isActive: true,
       isVerified: true,
@@ -47,6 +51,7 @@ export const createStudent = async (req, res) => {
         email: newStudent.email,
         rollNumber: newStudent.rollNumber,
         batch: newStudent.batch,
+        organization: newStudent.organization,
         gender: newStudent.gender,
         createdBy: req.user._id,
       },
@@ -75,6 +80,7 @@ export const uploadStudentsExcel = async (req, res) => {
     }
 
     const createdUsers = [];
+    const updatedUsers = [];
     const errors = [];
 
     for (let index = 0; index < sheetData.length; index++) {
@@ -87,6 +93,7 @@ export const uploadStudentsExcel = async (req, res) => {
       const rollNumber = String(row['Roll Number'] || row['rollNumber'] || row['Roll'] || '');
       const phone = String(row['Phone'] || row['phone'] || '');
       const batch = String(row['Batch'] || row['batch'] || '');
+      const organization = String(row['Organization'] || row['organization'] || row['Organisation'] || row['organisation'] || '');
       const gender = String(row['Gender'] || row['gender'] || '');
       const rawAge = row['Age'] || row['age'];
       const age = rawAge ? Number(rawAge) : null;
@@ -98,7 +105,33 @@ export const uploadStudentsExcel = async (req, res) => {
 
       const existing = await User.findOne({ email: String(email).toLowerCase().trim() });
       if (existing) {
-        errors.push(`Row ${rowNumber}: Email "${email}" already registered.`);
+        if (existing.role !== 'USER') {
+          errors.push(`Row ${rowNumber}: Email "${email}" belongs to an administrative account and cannot be modified.`);
+          continue;
+        }
+
+        // Update existing student profile information
+        if (name) existing.name = String(name).trim();
+        if (rollNumber) existing.rollNumber = rollNumber.trim();
+        if (phone) existing.phone = phone.trim();
+        if (batch) existing.batch = batch.trim();
+        if (organization) existing.organization = organization.trim();
+        if (gender) existing.gender = gender.trim();
+        if (age !== null && !isNaN(age)) existing.age = age;
+        if (row['Password'] || row['password']) {
+          existing.passwordHash = await bcrypt.hash(password, 10);
+        }
+
+        // If uploaded by faculty who is not the creator, link to assignedFaculties
+        if (req.user?.role === 'FACULTY' && String(existing.createdBy) !== String(req.user._id)) {
+          if (!existing.assignedFaculties) existing.assignedFaculties = [];
+          if (!existing.assignedFaculties.some((f) => String(f) === String(req.user._id))) {
+            existing.assignedFaculties.push(req.user._id);
+          }
+        }
+
+        await existing.save();
+        updatedUsers.push(existing.email);
         continue;
       }
 
@@ -111,6 +144,7 @@ export const uploadStudentsExcel = async (req, res) => {
         rollNumber: rollNumber.trim(),
         phone: phone.trim(),
         batch: batch.trim(),
+        organization: organization.trim(),
         gender: gender.trim(),
         age: age,
         createdBy: req.user._id,
@@ -121,12 +155,187 @@ export const uploadStudentsExcel = async (req, res) => {
       createdUsers.push(student.email);
     }
 
+    const message = updatedUsers.length > 0
+      ? `Imported ${createdUsers.length} new student(s) and updated ${updatedUsers.length} profile(s).`
+      : `Imported ${createdUsers.length} student(s) successfully.`;
+
     return res.status(200).json({
       success: true,
-      message: `Imported ${createdUsers.length} student(s) successfully.`,
+      message,
       importedCount: createdUsers.length,
+      updatedCount: updatedUsers.length,
       failedCount: errors.length,
       errors,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Download Student Sample Template Excel
+ */
+export const downloadStudentTemplate = async (req, res) => {
+  try {
+    const sampleData = [
+      {
+        'Full Name': 'Amit Verma',
+        'Email': 'amit.verma@example.com',
+        'Password': 'Student@123',
+        'Roll Number': 'CS2026-001',
+        'Phone': '9876543210',
+        'Batch': 'Batch-2026-A',
+        'Organization': 'SkillCodex Institute',
+        'Gender': 'Male',
+        'Age': 21,
+      },
+      {
+        'Full Name': 'Sneha Rao',
+        'Email': 'sneha.rao@example.com',
+        'Password': 'Student@123',
+        'Roll Number': 'CS2026-002',
+        'Phone': '9876543211',
+        'Batch': 'Batch-2026-A',
+        'Organization': 'SkillCodex Institute',
+        'Gender': 'Female',
+        'Age': 20,
+      },
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(sampleData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Students_Template');
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="students_upload_template.xlsx"');
+    res.send(buffer);
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Generate Share Link / Token for Organization Students
+ */
+export const generateStudentShareToken = async (req, res) => {
+  try {
+    const { organization, batches } = req.body;
+    if (!organization) {
+      return res.status(400).json({ success: false, message: 'Organization is required to share students' });
+    }
+
+    // Role check: Faculty can ONLY share students from their own assigned organization
+    if (req.user.role === 'FACULTY') {
+      if (req.user.organization && req.user.organization.toLowerCase() !== organization.trim().toLowerCase()) {
+        return res.status(403).json({
+          success: false,
+          message: `Access denied. You can only share students from your assigned organization ("${req.user.organization}").`,
+        });
+      }
+    }
+
+    const filter = { role: 'USER', organization: organization.trim() };
+    if (req.user.role === 'FACULTY') {
+      filter.$or = [
+        { createdBy: req.user._id },
+        { assignedFaculties: req.user._id },
+      ];
+    }
+    if (batches && Array.isArray(batches) && batches.length > 0) {
+      filter.batch = { $in: batches };
+    }
+
+    const count = await User.countDocuments(filter);
+    if (count === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No students found in the selected organization and batches to share.',
+      });
+    }
+
+    const token = jwt.sign(
+      {
+        shareType: 'STUDENT_ORG_SHARE',
+        organization: organization.trim(),
+        batches: batches || [],
+        sharedBy: req.user._id,
+        sharedByName: req.user.name,
+      },
+      config.jwt.secret,
+      { expiresIn: '30d' }
+    );
+
+    return res.status(200).json({
+      success: true,
+      token,
+      studentCount: count,
+      message: `Share token generated for ${count} student(s). Share this token/link with another faculty member.`,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Import Shared Students Using Token
+ */
+export const importSharedStudents = async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'Share token is required' });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token.trim(), config.jwt.secret);
+    } catch (err) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired student share token' });
+    }
+
+    if (decoded.shareType !== 'STUDENT_ORG_SHARE' || !decoded.organization) {
+      return res.status(400).json({ success: false, message: 'Invalid share token format' });
+    }
+
+    // Role check: Faculty can ONLY import students belonging to their own organization
+    if (req.user.role === 'FACULTY') {
+      if (req.user.organization && decoded.organization && req.user.organization.toLowerCase() !== decoded.organization.toLowerCase()) {
+        return res.status(403).json({
+          success: false,
+          message: `Access denied. You can only import students from your own organization ("${req.user.organization}"). This shared token is for "${decoded.organization}".`,
+        });
+      }
+    }
+
+    const filter = { role: 'USER', organization: decoded.organization };
+    if (decoded.batches && Array.isArray(decoded.batches) && decoded.batches.length > 0) {
+      filter.batch = { $in: decoded.batches };
+    }
+
+    const students = await User.find(filter);
+    if (students.length === 0) {
+      return res.status(404).json({ success: false, message: 'No students found matching this shared organization' });
+    }
+
+    let linkedCount = 0;
+    for (const student of students) {
+      if (String(student.createdBy) !== String(req.user._id)) {
+        if (!student.assignedFaculties) student.assignedFaculties = [];
+        if (!student.assignedFaculties.some((fId) => String(fId) === String(req.user._id))) {
+          student.assignedFaculties.push(req.user._id);
+          await student.save();
+          linkedCount++;
+        }
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      linkedCount,
+      totalOrganizationStudents: students.length,
+      organization: decoded.organization,
+      message: `Successfully imported and linked ${linkedCount} student(s) from organization "${decoded.organization}" to your dashboard.`,
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -142,24 +351,32 @@ export const exportResultsExcel = async (req, res) => {
     const { batch, gender, language } = req.query;
 
     const filter = { 
-      status: { $in: ['EVALUATED', 'SUBMITTED', 'COMPLETED'] } 
+      status: { $in: ['EVALUATED', 'SUBMITTED', 'COMPLETED', 'EXPIRED', 'TERMINATED'] } 
     };
 
     if (examId) {
       filter.examId = examId;
     }
 
-    // Role check: Faculty can ONLY export results for students they created
+    // Role check: Faculty can export results for their students (created, assigned, or institutional)
     if (req.user?.role === 'FACULTY') {
-      const myStudentIds = await User.find({ createdBy: req.user._id }).distinct('_id');
-      filter.userId = { $in: myStudentIds };
+      const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
+      const allowedStudentIds = await User.find({
+        role: 'USER',
+        $or: [
+          { createdBy: req.user._id },
+          { assignedFaculties: req.user._id },
+          { organization: req.user.organization || '__NONE__' },
+          { createdBy: { $in: adminIds } },
+          { createdBy: null },
+          { createdBy: { $exists: false } },
+        ],
+      }).distinct('_id');
+      filter.userId = { $in: allowedStudentIds };
     }
 
     // Filter by student batch or gender
     const userFilter = {};
-    if (req.user?.role === 'FACULTY') {
-      userFilter.createdBy = req.user._id;
-    }
     if (batch) userFilter.batch = batch;
     if (gender) userFilter.gender = gender;
 
@@ -182,7 +399,7 @@ export const exportResultsExcel = async (req, res) => {
     const attempts = await ExamAttempt.find(filter)
       .populate({
         path: 'userId',
-        select: 'name email rollNumber batch gender createdBy',
+        select: 'name email rollNumber batch gender organization createdBy',
         populate: { path: 'createdBy', select: 'name email role' }
       })
       .populate({
@@ -212,7 +429,7 @@ export const exportResultsExcel = async (req, res) => {
       attemptLangMap[idStr].add(sub.language);
     });
 
-    const rows = attempts.map((att, idx) => {
+    const rows = attempts.length > 0 ? attempts.map((att, idx) => {
       const score = att.totalScore ?? att.totalScoreObtained ?? 0;
       const max = att.maxScore || att.examId?.totalMarks || 100;
       const passMarks = att.examId?.passingMarks || 40;
@@ -229,6 +446,7 @@ export const exportResultsExcel = async (req, res) => {
         'S.No': idx + 1,
         'Student Name': att.userId?.name || 'N/A',
         'Email': att.userId?.email || 'N/A',
+        'Organization': att.userId?.organization || 'N/A',
         'Roll Number': att.userId?.rollNumber || 'N/A',
         'Batch': att.userId?.batch || 'N/A',
         'Gender': att.userId?.gender || 'N/A',
@@ -243,7 +461,9 @@ export const exportResultsExcel = async (req, res) => {
         'Status': passed ? 'PASSED' : 'FAILED',
         'Submission Date': new Date(att.submittedAt || att.createdAt).toLocaleString()
       };
-    });
+    }) : [{
+      'Status': 'No student exam results found matching the selected filters'
+    }];
 
     const worksheet = XLSX.utils.json_to_sheet(rows);
     const workbook = XLSX.utils.book_new();
@@ -254,7 +474,7 @@ export const exportResultsExcel = async (req, res) => {
 
     res.setHeader('Content-Disposition', `attachment; filename="${cleanFileName}_Results.xlsx"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    return res.send(buffer);
+    return res.send(Buffer.from(buffer));
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -363,6 +583,46 @@ export class AdminController {
     }
   }
 
+  static async bulkDeleteExams(req, res, next) {
+    try {
+      const { ids } = req.body;
+      const result = await AdminService.bulkDeleteExams(ids, req.user);
+      res.status(200).json({
+        success: true,
+        ...result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async bulkDeleteUsers(req, res, next) {
+    try {
+      const { ids } = req.body;
+      const result = await AdminService.bulkDeleteUsers(ids, req.user);
+      res.status(200).json({
+        success: true,
+        ...result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async bulkDeleteFaculty(req, res, next) {
+    try {
+      const { ids, facultyIds } = req.body;
+      const targetIds = ids || facultyIds || [];
+      const result = await AdminService.bulkDeleteFaculty(targetIds);
+      res.status(200).json({
+        success: true,
+        ...result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async duplicateExam(req, res, next) {
     try {
       const { id } = req.params;
@@ -398,6 +658,32 @@ export class AdminController {
       res.status(200).json({
         success: true,
         data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async deleteResult(req, res, next) {
+    try {
+      const { id } = req.params;
+      const result = await AdminService.deleteResult(id, req.user);
+      res.status(200).json({
+        success: true,
+        ...result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async bulkDeleteResults(req, res, next) {
+    try {
+      const { ids } = req.body;
+      const result = await AdminService.bulkDeleteResults(ids, req.user);
+      res.status(200).json({
+        success: true,
+        ...result,
       });
     } catch (err) {
       next(err);
@@ -456,15 +742,17 @@ export class AdminController {
 export const updateStudent = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, rollNumber, phone, batch, gender, age, password } = req.body;
+    const { name, email, rollNumber, phone, batch, organization, gender, age, password } = req.body;
 
     const user = await User.findById(id);
     if (!user) {
       return res.status(404).json({ success: false, message: 'Student not found.' });
     }
 
-    if (req.user.role === 'FACULTY' && String(user.createdBy) !== String(req.user._id)) {
-      return res.status(403).json({ success: false, message: 'Access denied. You can only update students you created.' });
+    const isCreator = String(user.createdBy) === String(req.user._id);
+    const isAssigned = user.assignedFaculties?.some((fId) => String(fId) === String(req.user._id));
+    if (req.user.role === 'FACULTY' && !isCreator && !isAssigned) {
+      return res.status(403).json({ success: false, message: 'Access denied. You can only update students you created or have imported.' });
     }
 
     if (email && email.toLowerCase().trim() !== user.email) {
@@ -479,6 +767,7 @@ export const updateStudent = async (req, res) => {
     if (rollNumber !== undefined) user.rollNumber = String(rollNumber).trim();
     if (phone !== undefined) user.phone = String(phone).trim();
     if (batch !== undefined) user.batch = String(batch).trim();
+    if (organization !== undefined) user.organization = String(organization).trim();
     if (gender !== undefined) user.gender = String(gender).trim();
     if (age !== undefined) user.age = age === '' || age === null ? null : Number(age);
 
@@ -695,8 +984,12 @@ export const getFacultyList = async (req, res) => {
         { name: { $regex: req.query.search, $options: 'i' } },
         { email: { $regex: req.query.search, $options: 'i' } },
         { batch: { $regex: req.query.search, $options: 'i' } },
+        { organization: { $regex: req.query.search, $options: 'i' } },
         { phone: { $regex: req.query.search, $options: 'i' } },
       ];
+    }
+    if (req.query.organization) {
+      filter.organization = req.query.organization;
     }
     if (req.query.status !== undefined && req.query.status !== '') {
       filter.isActive = req.query.status === 'active';
@@ -716,6 +1009,7 @@ export const getFacultyList = async (req, res) => {
           email: f.email,
           phone: f.phone,
           department: f.batch || '',
+          organization: f.organization || '',
           isActive: f.isActive,
           createdAt: f.createdAt,
         })),
@@ -734,7 +1028,7 @@ export const getFacultyList = async (req, res) => {
 
 export const createFaculty = async (req, res) => {
   try {
-    const { name, email, password, department, phone } = req.body;
+    const { name, email, password, department, organization, phone } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
@@ -752,6 +1046,7 @@ export const createFaculty = async (req, res) => {
       passwordHash: hashedPassword,
       role: 'FACULTY',
       batch: department ? String(department).trim() : '',
+      organization: organization ? String(organization).trim() : '',
       phone: phone ? String(phone).trim() : '',
       createdBy: req.user._id,
       isActive: true,
@@ -768,6 +1063,7 @@ export const createFaculty = async (req, res) => {
           email: newFaculty.email,
           phone: newFaculty.phone,
           department: newFaculty.batch,
+          organization: newFaculty.organization,
           isActive: newFaculty.isActive,
         },
       },
@@ -780,7 +1076,7 @@ export const createFaculty = async (req, res) => {
 export const updateFaculty = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, phone, department, password } = req.body;
+    const { name, email, phone, department, organization, password } = req.body;
 
     const faculty = await User.findOne({ _id: id, role: 'FACULTY' });
     if (!faculty) {
@@ -798,6 +1094,7 @@ export const updateFaculty = async (req, res) => {
     if (name) faculty.name = name.trim();
     if (phone !== undefined) faculty.phone = String(phone).trim();
     if (department !== undefined) faculty.batch = String(department).trim();
+    if (organization !== undefined) faculty.organization = String(organization).trim();
 
     if (password && password.trim().length >= 6) {
       faculty.passwordHash = await bcrypt.hash(password.trim(), 10);
@@ -815,6 +1112,7 @@ export const updateFaculty = async (req, res) => {
           email: faculty.email,
           phone: faculty.phone,
           department: faculty.batch,
+          organization: faculty.organization,
           isActive: faculty.isActive,
         },
       },
@@ -850,6 +1148,7 @@ export const downloadFacultyTemplate = async (req, res) => {
         'Full Name': 'Dr. Rajesh Sharma',
         'Email': 'rajesh.sharma@university.edu',
         'Password': 'Faculty@123',
+        'Organization': 'Tech University',
         'Department': 'Computer Science & Engineering',
         'Phone': '9876543210',
       },
@@ -857,6 +1156,7 @@ export const downloadFacultyTemplate = async (req, res) => {
         'Full Name': 'Prof. Ananya Gupta',
         'Email': 'ananya.gupta@university.edu',
         'Password': 'Faculty@123',
+        'Organization': 'Tech University',
         'Department': 'Information Technology',
         'Phone': '9876543211',
       },
@@ -899,6 +1199,7 @@ export const uploadFacultyExcel = async (req, res) => {
       const name = row['Full Name'] || row['name'] || row['Name'];
       const email = row['Email'] || row['email'];
       const password = String(row['Password'] || row['password'] || 'Faculty@123');
+      const organization = String(row['Organization'] || row['organization'] || '');
       const department = String(row['Department'] || row['department'] || row['batch'] || '');
       const phone = String(row['Phone'] || row['phone'] || '');
 
@@ -920,6 +1221,7 @@ export const uploadFacultyExcel = async (req, res) => {
         passwordHash: hashedPassword,
         role: 'FACULTY',
         batch: department.trim(),
+        organization: organization.trim(),
         phone: phone.trim(),
         createdBy: req.user._id,
         isActive: true,

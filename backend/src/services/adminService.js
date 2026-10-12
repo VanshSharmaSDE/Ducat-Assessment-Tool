@@ -100,64 +100,125 @@ export class AdminService {
   }
 
   static async getUsers(query = {}, currentUser = null) {
-    const filter = { role: 'USER' };
+    const conditions = [{ role: 'USER' }];
     if (currentUser && currentUser.role === 'FACULTY') {
-      filter.createdBy = currentUser._id;
+      conditions.push({
+        $or: [
+          { createdBy: currentUser._id },
+          { assignedFaculties: currentUser._id },
+        ],
+      });
     }
 
     if (query.search) {
-      filter.$or = [
-        { name: { $regex: query.search, $options: 'i' } },
-        { email: { $regex: query.search, $options: 'i' } },
-        { rollNumber: { $regex: query.search, $options: 'i' } },
-      ];
+      conditions.push({
+        $or: [
+          { name: { $regex: query.search, $options: 'i' } },
+          { email: { $regex: query.search, $options: 'i' } },
+          { rollNumber: { $regex: query.search, $options: 'i' } },
+          { organization: { $regex: query.search, $options: 'i' } },
+        ],
+      });
     }
     if (query.status !== undefined && query.status !== '') {
-      filter.isActive = query.status === 'active';
+      conditions.push({ isActive: query.status === 'active' });
     }
     if (query.batch) {
-      filter.batch = query.batch;
+      conditions.push({ batch: query.batch });
     }
     if (query.gender) {
-      filter.gender = query.gender;
+      conditions.push({ gender: query.gender });
     }
+    if (query.organization) {
+      if (query.organization === 'unassigned') {
+        conditions.push({
+          $or: [
+            { organization: '' },
+            { organization: null },
+            { organization: { $exists: false } },
+          ],
+        });
+      } else {
+        conditions.push({ organization: query.organization });
+      }
+    }
+
+    const filter = conditions.length === 1 ? conditions[0] : { $and: conditions };
 
     const page = parseInt(query.page || '1', 10);
     const limit = parseInt(query.limit || '15', 10);
     const skip = (page - 1) * limit;
 
-    const [users, total, availableBatches, availableGenders] = await Promise.all([
-      User.find(filter)
-        .populate('createdBy', 'name email role')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit),
-      User.countDocuments(filter),
-      User.distinct('batch', { ...filter, batch: { $ne: '' } }),
-      User.distinct('gender', { ...filter, gender: { $ne: '' } }),
-    ]);
+    const baseFacultyFilter = { role: 'USER' };
+    if (currentUser && currentUser.role === 'FACULTY') {
+      baseFacultyFilter.$or = [
+        { createdBy: currentUser._id },
+        { assignedFaculties: currentUser._id },
+      ];
+    }
+
+    const [users, total, availableBatches, availableGenders, availableOrganizations, orgAggregate] =
+      await Promise.all([
+        User.find(filter)
+          .populate('createdBy', 'name email role')
+          .populate('assignedFaculties', 'name email role')
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit),
+        User.countDocuments(filter),
+        User.distinct('batch', { ...baseFacultyFilter, batch: { $ne: '' } }),
+        User.distinct('gender', { ...baseFacultyFilter, gender: { $ne: '' } }),
+        User.distinct('organization', { ...baseFacultyFilter, organization: { $ne: '' } }),
+        User.aggregate([
+          { $match: baseFacultyFilter },
+          {
+            $group: {
+              _id: { $ifNull: ['$organization', ''] },
+              studentCount: { $sum: 1 },
+              activeCount: { $sum: { $cond: ['$isActive', 1, 0] } },
+              batches: { $addToSet: '$batch' },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ]),
+      ]);
 
     // Attach attempts count and avg score for each user
     const usersWithStats = await Promise.all(
       users.map(async (u) => {
         const attempts = await ExamAttempt.find({ userId: u._id, status: 'EVALUATED' });
         const avgScore = attempts.length
-          ? +(attempts.reduce((acc, curr) => acc + (curr.percentage || 0), 0) / attempts.length).toFixed(1)
+          ? +(
+              attempts.reduce((acc, curr) => acc + (curr.percentage || 0), 0) /
+              attempts.length
+            ).toFixed(1)
           : 0;
 
         return {
           ...u.toJSON(),
+          organization: u.organization || '',
           createdBy: u.createdBy,
+          assignedFaculties: u.assignedFaculties,
           examsAttempted: attempts.length,
           averageScore: avgScore,
         };
       })
     );
 
+    const organizationsSummary = orgAggregate.map((item) => ({
+      name: item._id || 'Unassigned / Direct',
+      id: item._id || 'unassigned',
+      studentCount: item.studentCount,
+      activeCount: item.activeCount,
+      batches: (item.batches || []).filter(Boolean),
+    }));
+
     return {
       users: usersWithStats,
       availableBatches,
       availableGenders,
+      availableOrganizations,
+      organizationsSummary,
       pagination: {
         page,
         limit,
@@ -346,18 +407,143 @@ export class AdminService {
       throw error;
     }
 
-    // Check if exam has attempts
-    const attempts = await ExamAttempt.countDocuments({ examId: id });
-    if (attempts > 0) {
-      // Soft-delete or archive
-      exam.status = 'ARCHIVED';
-      exam.isPublished = false;
-      await exam.save();
-      return { message: 'Exam has candidate attempts; archived instead of deleted.' };
+    // Cascade delete attempts, submissions, and submission results
+    const attemptIds = await ExamAttempt.find({ examId: id }).distinct('_id');
+    if (attemptIds.length > 0) {
+      await SubmissionResult.deleteMany({ attemptId: { $in: attemptIds } });
+      await Submission.deleteMany({ attemptId: { $in: attemptIds } });
+      await ExamAttempt.deleteMany({ examId: id });
     }
 
     await Exam.findByIdAndDelete(id);
-    return { message: 'Exam deleted successfully.' };
+    return { message: 'Exam and all associated student attempts deleted successfully.' };
+  }
+
+  static async bulkDeleteExams(ids, currentUser = null) {
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      const error = new Error('No exam IDs provided for deletion');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    let filter = { _id: { $in: ids } };
+    if (currentUser && currentUser.role === 'FACULTY') {
+      filter.createdBy = currentUser._id;
+    }
+
+    const examsToDelete = await Exam.find(filter).distinct('_id');
+    if (examsToDelete.length === 0) {
+      return { count: 0, message: 'No eligible examinations found to delete' };
+    }
+
+    const attemptIds = await ExamAttempt.find({ examId: { $in: examsToDelete } }).distinct('_id');
+    if (attemptIds.length > 0) {
+      await SubmissionResult.deleteMany({ attemptId: { $in: attemptIds } });
+      await Submission.deleteMany({ attemptId: { $in: attemptIds } });
+      await ExamAttempt.deleteMany({ examId: { $in: examsToDelete } });
+    }
+
+    const deleteResult = await Exam.deleteMany({ _id: { $in: examsToDelete } });
+    return { count: deleteResult.deletedCount, message: `Successfully deleted ${deleteResult.deletedCount} examination(s).` };
+  }
+
+  static async bulkDeleteUsers(ids, currentUser = null) {
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      const error = new Error('No student IDs provided for deletion');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    let filter = { _id: { $in: ids }, role: 'USER' };
+    if (currentUser && currentUser.role === 'FACULTY') {
+      filter.$or = [
+        { createdBy: currentUser._id },
+        { assignedFaculties: currentUser._id }
+      ];
+    }
+
+    const usersToDelete = await User.find(filter).distinct('_id');
+    if (usersToDelete.length === 0) {
+      return { count: 0, message: 'No eligible students found to delete' };
+    }
+
+    const attemptIds = await ExamAttempt.find({ userId: { $in: usersToDelete } }).distinct('_id');
+    if (attemptIds.length > 0) {
+      await SubmissionResult.deleteMany({ attemptId: { $in: attemptIds } });
+      await Submission.deleteMany({ attemptId: { $in: attemptIds } });
+      await ExamAttempt.deleteMany({ userId: { $in: usersToDelete } });
+    }
+
+    const res = await User.deleteMany({ _id: { $in: usersToDelete } });
+    return { count: res.deletedCount, message: `Successfully deleted ${res.deletedCount} student(s).` };
+  }
+
+  static async bulkDeleteFaculty(ids) {
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      const error = new Error('No faculty IDs provided for deletion');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const res = await User.deleteMany({ _id: { $in: ids }, role: 'FACULTY' });
+    return { count: res.deletedCount, message: `Successfully deleted ${res.deletedCount} faculty member(s).` };
+  }
+
+  static async deleteResult(attemptId, currentUser = null) {
+    const attempt = await ExamAttempt.findById(attemptId);
+    if (!attempt) {
+      const error = new Error('Result attempt not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (currentUser && currentUser.role === 'FACULTY') {
+      const student = await User.findById(attempt.userId);
+      const isMyStudent = student && (
+        String(student.createdBy) === String(currentUser._id) ||
+        student.assignedFaculties?.some((fId) => String(fId) === String(currentUser._id))
+      );
+      if (!isMyStudent) {
+        const error = new Error('Access denied. You can only delete results for your students.');
+        error.statusCode = 403;
+        throw error;
+      }
+    }
+
+    await SubmissionResult.deleteMany({ attemptId });
+    await Submission.deleteMany({ attemptId });
+    await ExamAttempt.findByIdAndDelete(attemptId);
+    return { message: 'Result and associated submissions deleted successfully.' };
+  }
+
+  static async bulkDeleteResults(attemptIds, currentUser = null) {
+    if (!attemptIds || !Array.isArray(attemptIds) || attemptIds.length === 0) {
+      const error = new Error('No result IDs provided for deletion');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    let filter = { _id: { $in: attemptIds } };
+    if (currentUser && currentUser.role === 'FACULTY') {
+      const allowedStudentIds = await User.find({
+        role: 'USER',
+        $or: [
+          { createdBy: currentUser._id },
+          { assignedFaculties: currentUser._id }
+        ]
+      }).distinct('_id');
+      filter.userId = { $in: allowedStudentIds };
+    }
+
+    const validAttempts = await ExamAttempt.find(filter).distinct('_id');
+    if (validAttempts.length === 0) {
+      return { count: 0, message: 'No eligible results found to delete' };
+    }
+
+    await SubmissionResult.deleteMany({ attemptId: { $in: validAttempts } });
+    await Submission.deleteMany({ attemptId: { $in: validAttempts } });
+    const res = await ExamAttempt.deleteMany({ _id: { $in: validAttempts } });
+    return { count: res.deletedCount, message: `Successfully deleted ${res.deletedCount} result record(s).` };
   }
 
   static async duplicateExam(id, adminId, currentUser = null) {

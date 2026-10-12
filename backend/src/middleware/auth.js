@@ -51,6 +51,15 @@ export async function authenticateUser(req, res, next) {
       });
     }
 
+    // Check single device session invalidation (only allow the most recently logged-in session)
+    if (decoded.sessionId && user.currentSessionId && decoded.sessionId !== user.currentSessionId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Your account was logged in from another device. You have been logged out.',
+        errorCode: 'SESSION_TERMINATED',
+      });
+    }
+
     req.user = user;
     next();
   } catch (error) {

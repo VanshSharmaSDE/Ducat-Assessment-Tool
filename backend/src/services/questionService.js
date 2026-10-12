@@ -85,6 +85,29 @@ export class QuestionService {
     return { message: 'Question and associated test cases deleted successfully' };
   }
 
+  static async bulkDeleteQuestions(ids, currentUser = null) {
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      const error = new Error('No question IDs provided for deletion');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    let filter = { _id: { $in: ids } };
+    if (currentUser && currentUser.role === 'FACULTY') {
+      filter.createdBy = currentUser._id;
+    }
+
+    const validQuestions = await Question.find(filter).distinct('_id');
+    if (validQuestions.length === 0) {
+      return { count: 0, message: 'No eligible questions found to delete' };
+    }
+
+    // Delete associated test cases
+    await TestCase.deleteMany({ questionId: { $in: validQuestions } });
+    const res = await Question.deleteMany({ _id: { $in: validQuestions } });
+    return { count: res.deletedCount, message: `Successfully deleted ${res.deletedCount} question(s).` };
+  }
+
   static async duplicateQuestion(id, userId, currentUser = null) {
     const original = await Question.findById(id);
     if (!original) {

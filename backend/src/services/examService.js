@@ -39,10 +39,11 @@ export class ExamService {
       return isStudentOfAdmin;
     }
 
-    // If exam was created by Faculty: only accessible to students created by that exact Faculty
-    if (!isStudentOfAdmin && studentCreator && studentCreator.role === 'FACULTY') {
-      const studentFacultyId = String(studentCreator._id || studentCreator);
-      return examCreatorId === studentFacultyId;
+    // If exam was created by Faculty: accessible if student was created by that Faculty or assigned to that Faculty
+    if (!isStudentOfAdmin) {
+      const studentFacultyId = String(studentCreator?._id || studentCreator || '');
+      const isAssigned = studentUser.assignedFaculties?.some((fId) => String(fId?._id || fId) === examCreatorId);
+      return examCreatorId === studentFacultyId || isAssigned;
     }
 
     return false;
@@ -60,9 +61,10 @@ export class ExamService {
         const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
         filter.createdBy = { $in: adminIds };
       } else if (student.createdBy && student.createdBy.role === 'FACULTY') {
-        // Faculty-created students ONLY see exams created by their own Faculty
+        // Faculty-created students ONLY see exams created by their own Faculty or assigned faculties
         const studentFacultyId = student.createdBy._id || student.createdBy;
-        filter.createdBy = studentFacultyId;
+        const assignedIds = (student.assignedFaculties || []).map((f) => f._id || f);
+        filter.createdBy = { $in: [studentFacultyId, ...assignedIds] };
       } else {
         // Fallback for unassigned/other: match admin exams
         const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');

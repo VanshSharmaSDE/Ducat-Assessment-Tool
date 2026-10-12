@@ -24,6 +24,9 @@ export default function LoginPage() {
     }
   }, [user, navigate]);
 
+  // Check if redirected due to concurrent session login
+  const isConcurrentLogout = new URLSearchParams(location.search).get('reason') === 'concurrent_session';
+
   const from = location.state?.from?.pathname;
 
   const handleSubmit = async (e) => {
@@ -83,6 +86,13 @@ export default function LoginPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md z-10">
         <div className="bg-slate-900/80 backdrop-blur-xl py-8 px-6 shadow-2xl rounded-2xl border border-slate-800 sm:px-10">
+          {isConcurrentLogout && !error && (
+            <div className="mb-5 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs flex items-center gap-2.5">
+              <AlertCircle className="w-5 h-5 shrink-0 text-amber-400" />
+              <span>Your account was logged in from another device. You have been logged out from this session for security.</span>
+            </div>
+          )}
+
           {error && (
             <div className="mb-5 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm flex items-center gap-2.5">
               <AlertCircle className="w-5 h-5 shrink-0" />

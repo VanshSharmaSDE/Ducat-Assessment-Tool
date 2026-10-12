@@ -13,12 +13,21 @@ export function SocketProvider({ children }) {
     const newSocket = io(window.location.origin, {
       auth: { token },
       autoConnect: true,
-      reconnection: true,
     });
+
+    const handleSessionTerminated = () => {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      window.location.href = '/login?reason=concurrent_session';
+    };
+
+    newSocket.on('session:terminated', handleSessionTerminated);
 
     setSocket(newSocket);
 
     return () => {
+      newSocket.off('session:terminated', handleSessionTerminated);
       newSocket.disconnect();
     };
   }, [user]);

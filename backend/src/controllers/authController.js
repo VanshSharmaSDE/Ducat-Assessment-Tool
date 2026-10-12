@@ -44,7 +44,7 @@ export class AuthController {
   static async logout(req, res, next) {
     try {
       const { refreshToken } = req.body;
-      await AuthService.logout(refreshToken);
+      await AuthService.logout(refreshToken, req.user?._id);
       res.status(200).json({
         success: true,
         message: 'Logged out successfully',

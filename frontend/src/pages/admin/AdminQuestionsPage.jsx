@@ -27,6 +27,9 @@ export default function AdminQuestionsPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
+  // Bulk Selection State
+  const [selectedQuestions, setSelectedQuestions] = useState([]);
+
   // Excel Bulk Import Modal State
   const [showExcelModal, setShowExcelModal] = useState(false);
   const [excelFile, setExcelFile] = useState(null);
@@ -117,6 +120,51 @@ export default function AdminQuestionsPage() {
     }
   };
 
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedQuestions(questions.map((q) => q._id));
+    } else {
+      setSelectedQuestions([]);
+    }
+  };
+
+  const handleToggleSelect = (id) => {
+    setSelectedQuestions((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedQuestions.length === 0) return;
+    const confirmed = await showConfirm({
+      title: 'Bulk Delete Questions',
+      message: `Are you sure you want to permanently delete ${selectedQuestions.length} selected question(s) and their test cases?`,
+      confirmText: `Delete ${selectedQuestions.length} Questions`,
+      isDanger: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      setActionLoading(true);
+      const res = await api.post('/admin/questions/bulk-delete', { ids: selectedQuestions });
+      await showAlert({
+        title: 'Questions Deleted',
+        message: res.data.message || `Successfully deleted ${selectedQuestions.length} questions.`,
+        type: 'success',
+      });
+      setSelectedQuestions([]);
+      await loadQuestions();
+    } catch (err) {
+      await showAlert({
+        title: 'Bulk Delete Failed',
+        message: err.response?.data?.message || 'Failed to delete selected questions.',
+        type: 'error',
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // Handle Excel Upload
   const handleExcelUpload = async (e) => {
     e.preventDefault();
@@ -138,7 +186,13 @@ export default function AdminQuestionsPage() {
       const res = await api.post('/admin/questions/upload-excel', payload, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      setUploadStatus(res.data);
+      setShowExcelModal(false);
+      setExcelFile(null);
+      await showAlert({
+        title: 'Upload Successful',
+        message: res.data.message || `Successfully imported questions from Excel file.`,
+        type: 'success',
+      });
       loadQuestions();
     } catch (err) {
       await showAlert({
@@ -168,6 +222,17 @@ export default function AdminQuestionsPage() {
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
+          {selectedQuestions.length > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              disabled={actionLoading}
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Delete Selected ({selectedQuestions.length})</span>
+            </button>
+          )}
+
           <button
             onClick={() => {
               setExcelFile(null);
@@ -228,6 +293,14 @@ export default function AdminQuestionsPage() {
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
+                  <th className="py-3.5 px-4 w-10">
+                    <input
+                      type="checkbox"
+                      checked={questions.length > 0 && selectedQuestions.length === questions.length}
+                      onChange={handleSelectAll}
+                      className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 focus:ring-0 cursor-pointer"
+                    />
+                  </th>
                   <th className="py-3.5 px-4 font-semibold">Title</th>
                   <th className="py-3.5 px-4 font-semibold">Difficulty</th>
                   <th className="py-3.5 px-4 font-semibold">Marks</th>
@@ -237,8 +310,18 @@ export default function AdminQuestionsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
-                {questions.map((q) => (
-                  <tr key={q._id} className="text-slate-300 hover:bg-slate-800/40">
+                {questions.map((q) => {
+                  const isSelected = selectedQuestions.includes(q._id);
+                  return (
+                  <tr key={q._id} className={`text-slate-300 hover:bg-slate-800/40 transition-colors ${isSelected ? 'bg-amber-500/5' : ''}`}>
+                    <td className="py-3.5 px-4">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSelect(q._id)}
+                        className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 focus:ring-0 cursor-pointer"
+                      />
+                    </td>
                     <td className="py-3.5 px-4">
                       <p className="font-bold text-white text-sm">{q.title}</p>
                       <p className="text-[11px] text-slate-400 line-clamp-1">{q.description}</p>
@@ -298,7 +381,8 @@ export default function AdminQuestionsPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                );
+              })}
               </tbody>
             </table>
           </div>

@@ -52,6 +52,22 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: null,
     },
+    organization: {
+      type: String,
+      trim: true,
+      default: '',
+      index: true,
+    },
+    assignedFaculties: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
+    currentSessionId: {
+      type: String,
+      default: null,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

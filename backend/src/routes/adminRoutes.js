@@ -5,6 +5,7 @@ import { TestCaseController } from '../controllers/testCaseController.js';
 import { ExamController } from '../controllers/examController.js';
 import { ResultController } from '../controllers/resultController.js';
 import { BatchController } from '../controllers/batchController.js';
+import { OrganizationController } from '../controllers/organizationController.js';
 import { authenticateUser, requireAdmin, requireAdminOrFaculty } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import {
@@ -17,6 +18,9 @@ import {
   createStudent, 
   updateStudent,
   uploadStudentsExcel, 
+  downloadStudentTemplate,
+  generateStudentShareToken,
+  importSharedStudents,
   exportResultsExcel,
   exportSubmissionsDocx,
   getSubmissionsHierarchyExams,
@@ -42,24 +46,38 @@ router.get('/analytics', AdminController.getAnalytics);
 
 // User / Student Management
 router.get('/users', AdminController.getUsers);
+router.post('/users/bulk-delete', AdminController.bulkDeleteUsers);
 router.put('/users/:id/toggle-status', AdminController.toggleUserStatus);
 router.delete('/users/:id', AdminController.deleteUser);
 router.put('/students/:id', updateStudent);
 router.post('/students/create', createStudent);
+router.get('/students/template-excel', downloadStudentTemplate);
 router.post('/students/upload-excel', upload.single('file'), uploadStudentsExcel);
+router.post('/students/share-token', generateStudentShareToken);
+router.post('/students/import-shared', importSharedStudents);
 
 // Dedicated Batch Management (Admin & Faculty)
 router.get('/batches', BatchController.getAllBatches);
 router.get('/batches/:id', BatchController.getBatchById);
 router.post('/batches', BatchController.createBatch);
+router.post('/batches/bulk-delete', BatchController.bulkDeleteBatches);
 router.put('/batches/:id', BatchController.updateBatch);
 router.delete('/batches/:id', BatchController.deleteBatch);
 router.post('/batches/:id/students', BatchController.addStudentsToBatch);
 router.post('/batches/:id/remove-student', BatchController.removeStudentFromBatch);
 
+// Dedicated Organization Management (Admin creates/manages; Faculty views)
+router.get('/organizations', OrganizationController.getAllOrganizations);
+router.get('/organizations/:id', OrganizationController.getOrganizationById);
+router.post('/organizations', requireAdmin, OrganizationController.createOrganization);
+router.post('/organizations/bulk-delete', requireAdmin, OrganizationController.bulkDeleteOrganizations);
+router.put('/organizations/:id', requireAdmin, OrganizationController.updateOrganization);
+router.delete('/organizations/:id', requireAdmin, OrganizationController.deleteOrganization);
+
 // Dedicated Faculty Management (ADMIN ONLY)
 router.get('/faculty', requireAdmin, getFacultyList);
 router.post('/faculty', requireAdmin, createFaculty);
+router.post('/faculty/bulk-delete', requireAdmin, AdminController.bulkDeleteFaculty);
 router.put('/faculty/:id', requireAdmin, updateFaculty);
 router.delete('/faculty/:id', requireAdmin, deleteFaculty);
 router.get('/faculty/template-excel', requireAdmin, downloadFacultyTemplate);
@@ -69,6 +87,7 @@ router.post('/faculty/upload-excel', requireAdmin, upload.single('file'), upload
 router.get('/exams', AdminController.getAllExams);
 router.get('/exams/:id', ExamController.getExamDetails);
 router.post('/exams', validate(examSchema), AdminController.createExam);
+router.post('/exams/bulk-delete', AdminController.bulkDeleteExams);
 router.put('/exams/:id', validate(examSchema.partial()), AdminController.updateExam);
 router.delete('/exams/:id', AdminController.deleteExam);
 router.post('/exams/:id/duplicate', AdminController.duplicateExam);
@@ -81,6 +100,7 @@ router.get('/questions/template-excel', QuestionController.downloadQuestionTempl
 router.post('/questions/upload-excel', upload.single('file'), QuestionController.uploadQuestionsExcel);
 router.get('/questions/:id', QuestionController.getQuestionById);
 router.post('/questions', validate(questionSchema), QuestionController.createQuestion);
+router.post('/questions/bulk-delete', QuestionController.bulkDeleteQuestions);
 router.put('/questions/:id', validate(questionSchema.partial()), QuestionController.updateQuestion);
 router.delete('/questions/:id', QuestionController.deleteQuestion);
 router.post('/questions/:id/duplicate', QuestionController.duplicateQuestion);
@@ -92,13 +112,16 @@ router.put('/testcases/:id', validate(testCaseSchema.partial()), TestCaseControl
 router.delete('/testcases/:id', TestCaseController.deleteTestCase);
 
 // Results & Submissions
+router.get('/results/export-excel', exportResultsExcel);
 router.get('/results', AdminController.getAllResults);
+router.delete('/results/:id', AdminController.deleteResult);
+router.post('/results/bulk-delete', AdminController.bulkDeleteResults);
 router.get('/results/:id', ResultController.getResultDetails);
 router.get('/submissions', AdminController.getAllSubmissions);
 router.get('/submissions/export-docx', exportSubmissionsDocx);
 router.get('/submissions/hierarchy/exams', getSubmissionsHierarchyExams);
 router.get('/submissions/hierarchy/exams/:examId/students', getExamStudents);
 router.get('/submissions/hierarchy/exams/:examId/students/:userId', getStudentSubmissions);
-router.get('/results/export-excel', exportResultsExcel);
+
 
 export default router;

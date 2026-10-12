@@ -16,6 +16,19 @@ import {
   Save
 } from 'lucide-react';
 
+const toLocalDatetimeInput = (dateVal) => {
+  if (!dateVal) return '';
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  const year = d.getFullYear();
+  const month = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
 export default function AdminExamWizardPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -49,30 +62,34 @@ export default function AdminExamWizardPage() {
     async function loadInitial() {
       try {
         const qRes = await api.get('/admin/questions');
-        setAvailableQuestions(qRes.data.data.questions || []);
+        setAvailableQuestions(qRes.data?.data?.questions || []);
 
         if (isEditing) {
           const eRes = await api.get(`/admin/exams/${id}`);
-          const ex = eRes.data.data.exam;
+          const ex = eRes.data?.data?.exam || eRes.data?.data;
 
-          setFormData({
-            title: ex.title,
-            description: ex.description || '',
-            instructions: ex.instructions || '',
-            duration: ex.duration,
-            startDate: new Date(ex.startDate).toISOString().slice(0, 16),
-            endDate: new Date(ex.endDate).toISOString().slice(0, 16),
-            totalMarks: ex.totalMarks,
-            passingMarks: ex.passingMarks,
-            difficulty: ex.difficulty || 'INTERMEDIATE',
-            maxViolations: ex.maxViolations || 5,
-            isPublished: ex.isPublished ?? true,
-            questions: ex.questions.map((q) => ({
-              questionId: q._id || q.questionId,
-              marks: q.marks,
-              title: q.title,
-            })),
-          });
+          if (ex) {
+            setFormData({
+              title: ex.title || '',
+              description: ex.description || '',
+              instructions: ex.instructions || '',
+              duration: ex.duration !== undefined ? Number(ex.duration) : 60,
+              startDate: toLocalDatetimeInput(ex.startDate) || (new Date().toISOString().split('T')[0] + 'T00:00'),
+              endDate: toLocalDatetimeInput(ex.endDate) || (new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().split('T')[0] + 'T23:59'),
+              totalMarks: ex.totalMarks !== undefined ? Number(ex.totalMarks) : 100,
+              passingMarks: ex.passingMarks !== undefined ? Number(ex.passingMarks) : 40,
+              difficulty: ex.difficulty || 'INTERMEDIATE',
+              maxViolations: ex.maxViolations !== undefined ? Number(ex.maxViolations) : 5,
+              isPublished: ex.isPublished !== undefined ? Boolean(ex.isPublished) : true,
+              questions: Array.isArray(ex.questions)
+                ? ex.questions.map((q) => ({
+                    questionId: q._id || q.questionId,
+                    marks: Number(q.marks) || 20,
+                    title: q.title || 'Question',
+                  }))
+                : [],
+            });
+          }
         }
       } catch (err) {
         setError('Failed to load initial data');
@@ -402,7 +419,7 @@ export default function AdminExamWizardPage() {
                   No questions selected yet. Choose from the question bank below.
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
                   {formData.questions.map((q, idx) => (
                     <div
                       key={q.questionId}

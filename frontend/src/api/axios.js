@@ -23,6 +23,15 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // Handle concurrent session termination (login on another device)
+    if (error.response?.status === 401 && error.response?.data?.errorCode === 'SESSION_TERMINATED') {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      window.location.href = '/login?reason=concurrent_session';
+      return Promise.reject(error);
+    }
+
     // Handle token refresh on 401
     if (error.response?.status === 401 && error.response?.data?.errorCode === 'TOKEN_EXPIRED' && !originalRequest._retry) {
       originalRequest._retry = true;

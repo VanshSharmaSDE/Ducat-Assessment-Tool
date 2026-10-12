@@ -16,16 +16,19 @@ import {
   Download,
   FileSpreadsheet,
   ShieldAlert,
-  AlertTriangle
+  AlertTriangle,
+  Trash2,
 } from 'lucide-react';
 
 export default function AdminResultsPage() {
   const { user } = useAuth();
-  const { showAlert } = useModal();
+  const { showAlert, showConfirm } = useModal();
   const isAdmin = user?.role === 'ADMIN';
 
   const { socket } = useSocket();
   const [results, setResults] = useState([]);
+  const [selectedResults, setSelectedResults] = useState([]);
+  const [actionLoading, setActionLoading] = useState(false);
   const [resultStatusFilter, setResultStatusFilter] = useState('');
   const [examFilter, setExamFilter] = useState('');
   const [batchFilter, setBatchFilter] = useState('');
@@ -115,13 +118,98 @@ export default function AdminResultsPage() {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Export error:', err);
+      let errMsg = 'Failed to download Excel report.';
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const parsed = JSON.parse(text);
+          if (parsed.message) errMsg = parsed.message;
+        } catch (_) {}
+      } else if (err.response?.data?.message) {
+        errMsg = err.response.data.message;
+      }
       showAlert({
         title: 'Export Failed',
-        message: 'Failed to download Excel report.',
+        message: errMsg,
         type: 'error',
       });
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedResults(results.map((r) => r._id));
+    } else {
+      setSelectedResults([]);
+    }
+  };
+
+  const handleToggleSelect = (id) => {
+    setSelectedResults((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleDeleteSingleResult = async (attemptId) => {
+    const confirmed = await showConfirm({
+      title: 'Delete Result Attempt',
+      message: 'Are you sure you want to permanently delete this candidate attempt and its submission record?',
+      confirmText: 'Delete Result',
+      isDanger: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      setActionLoading(true);
+      await api.delete(`/admin/results/${attemptId}`);
+      await showAlert({
+        title: 'Result Deleted',
+        message: 'Exam result deleted successfully.',
+        type: 'success',
+      });
+      setSelectedResults((prev) => prev.filter((id) => id !== attemptId));
+      await loadResults();
+    } catch (err) {
+      await showAlert({
+        title: 'Delete Failed',
+        message: err.response?.data?.message || 'Failed to delete result record.',
+        type: 'error',
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedResults.length === 0) return;
+    const confirmed = await showConfirm({
+      title: 'Bulk Delete Results',
+      message: `Are you sure you want to delete ${selectedResults.length} selected exam attempt(s)? All submitted code and evaluation records will be permanently removed.`,
+      confirmText: `Delete ${selectedResults.length} Results`,
+      isDanger: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      setActionLoading(true);
+      const res = await api.post('/admin/results/bulk-delete', { ids: selectedResults });
+      await showAlert({
+        title: 'Results Deleted',
+        message: res.data.message || `Successfully deleted ${selectedResults.length} results.`,
+        type: 'success',
+      });
+      setSelectedResults([]);
+      await loadResults();
+    } catch (err) {
+      await showAlert({
+        title: 'Bulk Delete Failed',
+        message: err.response?.data?.message || 'Failed to delete selected results.',
+        type: 'error',
+      });
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -153,10 +241,21 @@ export default function AdminResultsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          {selectedResults.length > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              disabled={actionLoading}
+              className="flex items-center gap-2 px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Delete Selected ({selectedResults.length})</span>
+            </button>
+          )}
+
           <button
             onClick={handleExportExcel}
             disabled={exporting}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-lg shadow-emerald-600/20 transition-all shrink-0"
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-lg shadow-emerald-600/20 transition-all shrink-0 cursor-pointer"
           >
             <Download className="w-4 h-4" />
             {exporting ? 'Exporting...' : examFilter ? 'Export This Exam (Excel)' : 'Export All Results (Excel)'}
@@ -246,6 +345,14 @@ export default function AdminResultsPage() {
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
+                  <th className="py-3.5 px-4 w-10">
+                    <input
+                      type="checkbox"
+                      checked={results.length > 0 && selectedResults.length === results.length}
+                      onChange={handleSelectAll}
+                      className="w-4 h-4 rounded cursor-pointer"
+                    />
+                  </th>
                   <th className="py-3.5 px-4 font-semibold">Candidate</th>
                   {isAdmin && <th className="py-3.5 px-4 font-semibold">Faculty / Added By</th>}
                   <th className="py-3.5 px-4 font-semibold">Examination</th>
@@ -257,12 +364,20 @@ export default function AdminResultsPage() {
                   <th className="py-3.5 px-4 font-semibold">Percentage</th>
                   <th className="py-3.5 px-4 font-semibold">Status</th>
                   <th className="py-3.5 px-4 font-semibold">Submitted Date</th>
-                  <th className="py-3.5 px-4 font-semibold text-right">Report</th>
+                  <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
                 {results.map((att) => (
                   <tr key={att._id} className="text-slate-300 hover:bg-slate-800/40">
+                    <td className="py-3.5 px-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedResults.includes(att._id)}
+                        onChange={() => handleToggleSelect(att._id)}
+                        className="w-4 h-4 rounded cursor-pointer"
+                      />
+                    </td>
                     <td className="py-3.5 px-4">
                       <p className="font-bold text-white text-sm">{att.userId?.name || 'Anonymous'}</p>
                       <p className="text-[11px] text-slate-400 font-mono">{att.userId?.email}</p>
@@ -334,13 +449,24 @@ export default function AdminResultsPage() {
                       {new Date(att.submittedAt || att.startedAt).toLocaleString()}
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <Link
-                        to={`/admin/results/${att._id}`}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors"
-                      >
-                        <span>Inspect</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </Link>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Link
+                          to={`/admin/results/${att._id}`}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors"
+                          title="Inspect Attempt Details"
+                        >
+                          <span>Inspect</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </Link>
+                        <button
+                          onClick={() => handleDeleteSingleResult(att._id)}
+                          disabled={actionLoading}
+                          className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                          title="Delete Result"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

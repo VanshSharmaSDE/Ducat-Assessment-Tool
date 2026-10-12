@@ -25,6 +25,7 @@ export default function AdminBatchesPage() {
   const isAdmin = user?.role === 'ADMIN';
 
   const [batches, setBatches] = useState([]);
+  const [selectedBatches, setSelectedBatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
@@ -129,6 +130,43 @@ export default function AdminBatchesPage() {
       await loadBatches();
     } catch (err) {
       showBanner(err.response?.data?.message || 'Failed to delete batch', true);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedBatches(batches.map((b) => b._id));
+    } else {
+      setSelectedBatches([]);
+    }
+  };
+
+  const handleToggleSelect = (id) => {
+    setSelectedBatches((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDeleteBatches = async () => {
+    if (selectedBatches.length === 0) return;
+    const confirmed = await showConfirm({
+      title: 'Bulk Delete Batches',
+      message: `Are you sure you want to delete ${selectedBatches.length} batch(es)? Students enrolled in these batches will have their batch affiliation reset.`,
+      confirmText: `Delete ${selectedBatches.length} Batches`,
+      isDanger: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      setActionLoading(true);
+      const res = await api.post('/admin/batches/bulk-delete', { ids: selectedBatches });
+      showBanner(res.data?.message || `Successfully deleted ${selectedBatches.length} batch(es)!`);
+      setSelectedBatches([]);
+      await loadBatches();
+    } catch (err) {
+      showBanner(err.response?.data?.message || 'Failed to delete selected batches', true);
     } finally {
       setActionLoading(false);
     }
@@ -305,8 +343,8 @@ export default function AdminBatchesPage() {
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="flex items-center gap-3">
+      {/* Search & Actions Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="relative w-full max-w-md">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
@@ -317,6 +355,17 @@ export default function AdminBatchesPage() {
             className="w-full pl-9 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
           />
         </div>
+
+        {selectedBatches.length > 0 && (
+          <button
+            onClick={handleBulkDeleteBatches}
+            disabled={actionLoading}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Delete Selected ({selectedBatches.length})</span>
+          </button>
+        )}
       </div>
 
       {/* Batches Table */}
@@ -334,6 +383,15 @@ export default function AdminBatchesPage() {
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
+                  <th className="py-3.5 px-4 w-10">
+                    <input
+                      type="checkbox"
+                      checked={batches.length > 0 && selectedBatches.length === batches.length}
+                      onChange={handleSelectAll}
+                      className="w-4 h-4 rounded cursor-pointer"
+                      title="Select All Batches"
+                    />
+                  </th>
                   <th className="py-3.5 px-4 font-semibold">Batch Name</th>
                   <th className="py-3.5 px-4 font-semibold">Department</th>
                   <th className="py-3.5 px-4 font-semibold">Description</th>
@@ -344,8 +402,18 @@ export default function AdminBatchesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
-                {batches.map((b) => (
-                  <tr key={b._id} className="text-slate-300 hover:bg-slate-800/40">
+                {batches.map((b) => {
+                  const isSelected = selectedBatches.includes(b._id);
+                  return (
+                  <tr key={b._id} className={`text-slate-300 hover:bg-slate-800/40 transition-colors ${isSelected ? 'bg-amber-500/5' : ''}`}>
+                    <td className="py-3.5 px-4">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSelect(b._id)}
+                        className="w-4 h-4 rounded cursor-pointer"
+                      />
+                    </td>
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-white text-sm bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700">
@@ -422,7 +490,8 @@ export default function AdminBatchesPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

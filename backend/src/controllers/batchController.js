@@ -288,4 +288,33 @@ export class BatchController {
       next(err);
     }
   }
+
+  /**
+   * Bulk delete batches
+   */
+  static async bulkDeleteBatches(req, res, next) {
+    try {
+      const { batchIds, ids } = req.body;
+      const targetIds = batchIds || ids || [];
+      if (!Array.isArray(targetIds) || !targetIds.length) {
+        return res.status(400).json({ success: false, message: 'Please provide batch IDs to delete.' });
+      }
+
+      const isSuperAdmin = req.user?.role === 'ADMIN';
+      const filter = { _id: { $in: targetIds } };
+      if (!isSuperAdmin) {
+        filter.createdBy = req.user._id;
+      }
+
+      const result = await Batch.deleteMany(filter);
+
+      res.status(200).json({
+        success: true,
+        message: `Successfully deleted ${result.deletedCount} batch(es).`,
+        data: { deletedCount: result.deletedCount },
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
