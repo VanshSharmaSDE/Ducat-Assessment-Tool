@@ -188,6 +188,136 @@ export class DockerExecutionService {
     }
   }
 
+  async executeCustomCode({
+    language = 'java',
+    sourceCode = '',
+    customInput = '',
+    questionTimeLimit = 2,
+    questionMemoryLimit = 256,
+    container,
+  }) {
+    const lang = (language || '').toLowerCase();
+    if (!SUPPORTED.includes(lang)) {
+      return {
+        status: 'SYSTEM_ERROR',
+        stdout: '',
+        stderr: `Unsupported language: ${language}. Allowed: Java, Python, JavaScript.`,
+        compileOutput: '',
+        executionTime: 0,
+      };
+    }
+
+    const sourceBytes = Buffer.byteLength(sourceCode, 'utf-8');
+    if (sourceBytes > this.maxSourceBytes) {
+      return {
+        status: 'COMPILE_ERROR',
+        stdout: '',
+        stderr: `Source code (${sourceBytes} bytes) exceeds maximum allowed size of ${this.maxSourceBytes} bytes`,
+        compileOutput: '',
+        executionTime: 0,
+      };
+    }
+    if (!container) {
+      return {
+        status: 'SYSTEM_ERROR',
+        stdout: '',
+        stderr: 'No sandbox container assigned to this execution',
+        compileOutput: '',
+        executionTime: 0,
+      };
+    }
+
+    const timeLimitSec = Math.min(Math.max(Math.ceil(Number(questionTimeLimit) || 2), 1), 10);
+    const memoryMb = Math.min(Math.max(Number(questionMemoryLimit) || 256, 64), 512);
+    const dir = `/sandbox/${randomUUID()}`;
+    const plan = this.#plan(lang, sourceCode, dir, timeLimitSec, memoryMb);
+
+    try {
+      // 1. Write the source file into the container
+      let write = await this.#writeSource(container, dir, plan.file, sourceCode);
+      if (write.daemonError && (await restartContainer(container))) {
+        write = await this.#writeSource(container, dir, plan.file, sourceCode);
+      }
+      if (write.code !== 0) {
+        return {
+          status: 'SYSTEM_ERROR',
+          stdout: '',
+          stderr: `Sandbox unavailable: ${write.stderr.trim() || 'unknown error'}`,
+          compileOutput: '',
+          executionTime: 0,
+        };
+      }
+
+      // 2. Compile / syntax check
+      const compile = await this.#exec(container, dir, plan.compile, { timeoutMs: this.compileTimeoutSec * 1000 });
+      if (compile.daemonError) {
+        return {
+          status: 'SYSTEM_ERROR',
+          stdout: '',
+          stderr: compile.stderr.trim(),
+          compileOutput: '',
+          executionTime: 0,
+        };
+      }
+      if (compile.code !== 0) {
+        const msg = compile.timedOut ? 'Compilation timed out' : (compile.stderr || compile.stdout).trim();
+        return {
+          status: 'COMPILE_ERROR',
+          stdout: '',
+          stderr: msg.replaceAll(`${dir}/`, ''),
+          compileOutput: msg.replaceAll(`${dir}/`, ''),
+          executionTime: 0,
+        };
+      }
+      const compileOutput = (compile.stderr || '').trim();
+
+      // 3. Run with custom input
+      const run = await this.#exec(container, dir, plan.run, {
+        input: customInput || '',
+        timeoutMs: (timeLimitSec + 5) * 1000,
+      });
+
+      let status = 'SUCCESS';
+      let errorMessage = '';
+
+      if (run.daemonError) {
+        status = 'SYSTEM_ERROR';
+        errorMessage = run.stderr.trim();
+      } else if (run.outputExceeded) {
+        status = 'RUNTIME_ERROR';
+        errorMessage = `Output exceeded ${this.maxOutputBytes} bytes`;
+      } else if (OOM_RE.test(run.stderr)) {
+        status = 'MEMORY_LIMIT_EXCEEDED';
+        errorMessage = `Memory limit exceeded (${memoryMb} MB)`;
+      } else if (run.timedOut || run.code === 137 || run.code === 124) {
+        status = run.elapsedSec < timeLimitSec * 0.9 ? 'MEMORY_LIMIT_EXCEEDED' : 'TIME_LIMIT_EXCEEDED';
+        errorMessage = status === 'TIME_LIMIT_EXCEEDED' ? `Time limit exceeded (${timeLimitSec}s)` : 'Memory limit exceeded';
+      } else if (run.code !== 0) {
+        status = 'RUNTIME_ERROR';
+        errorMessage = run.stderr.replaceAll(`${dir}/`, '').trim().slice(0, 2000) || `Process exited with code ${run.code}`;
+      }
+
+      return {
+        status,
+        stdout: run.stdout.slice(0, 50000),
+        stderr: errorMessage,
+        compileOutput,
+        executionTime: Number(run.elapsedSec.toFixed(3)),
+      };
+    } catch (err) {
+      logger.error(`Custom code execution error in ${container}: ${err.message}`);
+      return {
+        status: 'SYSTEM_ERROR',
+        stdout: '',
+        stderr: err.message,
+        compileOutput: '',
+        executionTime: 0,
+      };
+    } finally {
+      this.#spawn(['exec', container, 'sh', '-c', `pkill -9 -f '${dir}' ; rm -rf '${dir}'`]).on('error', () => {});
+    }
+  }
+
   // ---------------------------------------------------------------------------
 
   #writeSource(container, dir, file, sourceCode) {

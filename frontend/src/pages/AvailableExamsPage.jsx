@@ -212,7 +212,7 @@ export default function AvailableExamsPage() {
                 <div className="mt-6 pt-4 border-t border-slate-800/80">
                   {isCompleted ? (
                     <Link
-                      to={`/results/${exam.attemptId}`}
+                      to={exam.attemptId ? `/results/${exam.attemptId}` : '/results'}
                       className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-slate-800 text-slate-200 text-xs font-semibold hover:bg-slate-700 transition-colors"
                     >
                       <CheckCircle2 className="w-4 h-4 text-emerald-400" />

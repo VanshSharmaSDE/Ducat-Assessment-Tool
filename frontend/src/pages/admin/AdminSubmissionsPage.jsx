@@ -417,24 +417,24 @@ export default function AdminSubmissionsPage() {
               ) : (
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
+                    <table className="w-full min-w-[1100px] text-left text-xs whitespace-nowrap">
                       <thead>
                         <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
-                          <th className="py-3.5 px-4 w-10">
+                          <th className="py-3 px-4 w-10">
                             <input
                               type="checkbox"
                               checked={exams.length > 0 && selectedExams.length === exams.length}
                               onChange={handleSelectAllExams}
-                              className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 focus:ring-0 cursor-pointer"
+                              className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
                             />
                           </th>
-                          <th className="py-3.5 px-4 font-semibold">Exam Title</th>
-                          <th className="py-3.5 px-4 font-semibold">Duration</th>
-                          <th className="py-3.5 px-4 font-semibold">Total Marks</th>
-                          <th className="py-3.5 px-4 font-semibold">Passing</th>
-                          <th className="py-3.5 px-4 font-semibold">Attempts</th>
-                          <th className="py-3.5 px-4 font-semibold">Status</th>
-                          <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
+                          <th className="py-3 px-4 font-semibold">Exam Title</th>
+                          <th className="py-3 px-4 font-semibold">Duration</th>
+                          <th className="py-3 px-4 font-semibold">Total Marks</th>
+                          <th className="py-3 px-4 font-semibold">Passing</th>
+                          <th className="py-3 px-4 font-semibold">Attempts</th>
+                          <th className="py-3 px-4 font-semibold">Status</th>
+                          <th className="py-3 px-4 font-semibold text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800/60">
@@ -446,23 +446,22 @@ export default function AdminSubmissionsPage() {
                             const isSelected = selectedExams.includes(exam._id);
                             return (
                             <tr key={exam._id} className={`text-slate-300 hover:bg-slate-800/40 transition-colors ${isSelected ? 'bg-amber-500/5' : ''}`}>
-                              <td className="py-3.5 px-4">
+                              <td className="py-3 px-4">
                                 <input
                                   type="checkbox"
                                   checked={isSelected}
                                   onChange={() => handleToggleSelectExam(exam._id)}
-                                  className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 focus:ring-0 cursor-pointer"
+                                  className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
                                 />
                               </td>
-                              <td className="py-3.5 px-4">
-                                <p className="font-bold text-white text-sm">{exam.title}</p>
-                                <p className="text-[11px] text-slate-500">ID: {exam._id}</p>
+                              <td className="py-3 px-4 font-bold text-white text-xs whitespace-nowrap max-w-xs truncate" title={exam.title}>
+                                {exam.title}
                               </td>
-                              <td className="py-3.5 px-4 font-mono">{exam.duration} mins</td>
-                              <td className="py-3.5 px-4 font-mono font-bold text-amber-400">{exam.totalMarks}</td>
-                              <td className="py-3.5 px-4 font-mono text-slate-400">{exam.passingMarks}</td>
-                              <td className="py-3.5 px-4">
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800 text-slate-200 font-mono text-[11px]">
+                              <td className="py-3 px-4 font-mono whitespace-nowrap">{exam.duration} mins</td>
+                              <td className="py-3 px-4 font-mono font-bold text-amber-400 whitespace-nowrap">{exam.totalMarks}</td>
+                              <td className="py-3 px-4 font-mono text-slate-400 whitespace-nowrap">{exam.passingMarks}</td>
+                              <td className="py-3 px-4 whitespace-nowrap">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-slate-800 text-slate-200 font-mono text-[11px]">
                                   <strong>{exam.completedCount || 0}</strong> completed / {exam.attemptCount || 0} started
                                 </span>
                               </td>
@@ -560,25 +559,27 @@ export default function AdminSubmissionsPage() {
               ) : (
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
+                    <table className="w-full min-w-[1300px] text-left text-xs whitespace-nowrap">
                       <thead>
                         <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
-                          <th className="py-3.5 px-4 w-10">
+                          <th className="py-3 px-4 w-10">
                             <input
                               type="checkbox"
                               checked={students.length > 0 && selectedSubmissions.length === students.length}
                               onChange={handleSelectAllSubmissions}
-                              className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 focus:ring-0 cursor-pointer"
+                              className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
                             />
                           </th>
-                          <th className="py-3.5 px-4 font-semibold">Candidate</th>
-                          <th className="py-3.5 px-4 font-semibold">Roll No & Batch</th>
-                          <th className="py-3.5 px-4 font-semibold">Status</th>
-                          <th className="py-3.5 px-4 font-semibold">Score</th>
-                          <th className="py-3.5 px-4 font-semibold">Percentage</th>
-                          <th className="py-3.5 px-4 font-semibold">Violations</th>
-                          <th className="py-3.5 px-4 font-semibold">Submitted At</th>
-                          <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
+                          <th className="py-3 px-4 font-semibold">Candidate</th>
+                          <th className="py-3 px-4 font-semibold">Email</th>
+                          <th className="py-3 px-4 font-semibold">Roll Number</th>
+                          <th className="py-3 px-4 font-semibold">Batch</th>
+                          <th className="py-3 px-4 font-semibold">Status</th>
+                          <th className="py-3 px-4 font-semibold">Score</th>
+                          <th className="py-3 px-4 font-semibold">Percentage</th>
+                          <th className="py-3 px-4 font-semibold">Violations</th>
+                          <th className="py-3 px-4 font-semibold">Submitted At</th>
+                          <th className="py-3 px-4 font-semibold text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800/60">
@@ -597,23 +598,32 @@ export default function AdminSubmissionsPage() {
                             const isSelected = selectedSubmissions.includes(item.attemptId);
                             return (
                             <tr key={item.attemptId} className={`text-slate-300 hover:bg-slate-800/40 transition-colors ${isSelected ? 'bg-amber-500/5' : ''}`}>
-                              <td className="py-3.5 px-4">
+                              <td className="py-3 px-4">
                                 <input
                                   type="checkbox"
                                   checked={isSelected}
                                   onChange={() => handleToggleSelectSubmission(item.attemptId)}
-                                  className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 focus:ring-0 cursor-pointer"
+                                  className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
                                 />
                               </td>
-                              <td className="py-3.5 px-4">
-                                <p className="font-bold text-white text-sm">{item.user?.name || 'Candidate'}</p>
-                                <p className="text-[11px] text-slate-400">{item.user?.email}</p>
+                              <td className="py-3 px-4 font-semibold text-white whitespace-nowrap">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-6 h-6 rounded-lg bg-sky-500/20 text-sky-400 font-bold flex items-center justify-center shrink-0 text-xs">
+                                    {item.user?.name?.charAt(0) || 'C'}
+                                  </div>
+                                  <span className="font-bold">{item.user?.name || 'Candidate'}</span>
+                                </div>
                               </td>
-                              <td className="py-3.5 px-4">
-                                <p className="font-mono text-slate-200">{item.user?.rollNumber || '-'}</p>
-                                <p className="text-[11px] text-slate-500">{item.user?.batch || 'General'}</p>
+                              <td className="py-3 px-4 font-mono text-slate-400 whitespace-nowrap">
+                                {item.user?.email || '—'}
                               </td>
-                              <td className="py-3.5 px-4">
+                              <td className="py-3 px-4 font-mono text-slate-200 whitespace-nowrap">
+                                {item.user?.rollNumber || '—'}
+                              </td>
+                              <td className="py-3 px-4 font-medium text-indigo-300 whitespace-nowrap">
+                                {item.user?.batch || 'General'}
+                              </td>
+                              <td className="py-3 px-4 whitespace-nowrap">
                                 <span
                                   className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                     item.status === 'COMPLETED' || item.status === 'EVALUATED'
@@ -624,10 +634,10 @@ export default function AdminSubmissionsPage() {
                                   {item.status}
                                 </span>
                               </td>
-                              <td className="py-3.5 px-4 font-mono font-bold text-white">
+                              <td className="py-3 px-4 font-mono font-bold text-white whitespace-nowrap">
                                 {item.totalScore} / {selectedExam.totalMarks}
                               </td>
-                              <td className="py-3.5 px-4">
+                              <td className="py-3 px-4 whitespace-nowrap">
                                 <span
                                   className={`font-mono font-bold ${
                                     item.passed ? 'text-emerald-400' : 'text-rose-400'
@@ -636,7 +646,7 @@ export default function AdminSubmissionsPage() {
                                   {(item.percentage || 0).toFixed(1)}%
                                 </span>
                               </td>
-                              <td className="py-3.5 px-4">
+                              <td className="py-3 px-4 whitespace-nowrap">
                                 {item.violationCount > 0 ? (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 font-mono text-[11px]">
                                     <ShieldAlert className="w-3 h-3" />
@@ -646,8 +656,8 @@ export default function AdminSubmissionsPage() {
                                   <span className="text-emerald-400 text-xs">0</span>
                                 )}
                               </td>
-                              <td className="py-3.5 px-4 text-slate-500">
-                                {item.submittedAt ? new Date(item.submittedAt).toLocaleString() : '-'}
+                              <td className="py-3 px-4 font-mono text-slate-400 whitespace-nowrap">
+                                {item.submittedAt ? new Date(item.submittedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
                               </td>
                               <td className="py-3.5 px-4 text-right">
                                 <div className="flex items-center justify-end gap-2">

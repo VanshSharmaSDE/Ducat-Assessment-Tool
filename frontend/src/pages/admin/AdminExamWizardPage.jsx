@@ -54,6 +54,7 @@ export default function AdminExamWizardPage() {
     passingMarks: 40,
     difficulty: 'INTERMEDIATE',
     maxViolations: 5,
+    allowCodeRun: false,
     isPublished: true,
     questions: [], // [{ questionId, marks, order, title }]
   });
@@ -80,6 +81,7 @@ export default function AdminExamWizardPage() {
               passingMarks: ex.passingMarks !== undefined ? Number(ex.passingMarks) : 40,
               difficulty: ex.difficulty || 'INTERMEDIATE',
               maxViolations: ex.maxViolations !== undefined ? Number(ex.maxViolations) : 5,
+              allowCodeRun: ex.allowCodeRun !== undefined ? Boolean(ex.allowCodeRun) : false,
               isPublished: ex.isPublished !== undefined ? Boolean(ex.isPublished) : true,
               questions: Array.isArray(ex.questions)
                 ? ex.questions.map((q) => ({
@@ -169,6 +171,7 @@ export default function AdminExamWizardPage() {
         passingMarks: Number(formData.passingMarks),
         difficulty: formData.difficulty,
         maxViolations: Number(formData.maxViolations),
+        allowCodeRun: Boolean(formData.allowCodeRun),
         isPublished: formData.isPublished,
         status: formData.isPublished ? 'ACTIVE' : 'DRAFT',
         questions: formData.questions.map((q, idx) => ({
@@ -394,6 +397,35 @@ export default function AdminExamWizardPage() {
                   className="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
+
+              <div className="sm:col-span-2 p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-white uppercase tracking-wider">Candidate Code Testing</span>
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                        formData.allowCodeRun
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                          : 'bg-slate-800 text-slate-400'
+                      }`}
+                    >
+                      {formData.allowCodeRun ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    Allow students to test-run their programs with custom input in the IDE during this examination. Hidden test suites remain private and final assessment scoring is not affected.
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(formData.allowCodeRun)}
+                    onChange={(e) => setFormData({ ...formData, allowCodeRun: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                </label>
+              </div>
             </div>
           </div>
         )}
@@ -518,6 +550,12 @@ export default function AdminExamWizardPage() {
                 <span className="text-slate-400">Scheduled:</span>
                 <span className="text-slate-300">
                   {new Date(formData.startDate).toLocaleString()} to {new Date(formData.endDate).toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-800/80">
+                <span className="text-slate-400">Candidate Code Testing:</span>
+                <span className={`font-semibold ${formData.allowCodeRun ? 'text-emerald-400' : 'text-slate-400'}`}>
+                  {formData.allowCodeRun ? 'Enabled (Run with custom input)' : 'Disabled'}
                 </span>
               </div>
             </div>

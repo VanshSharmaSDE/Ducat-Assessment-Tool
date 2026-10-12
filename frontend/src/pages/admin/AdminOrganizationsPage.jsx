@@ -197,9 +197,6 @@ export default function AdminOrganizationsPage() {
     }
   };
 
-  const totalFacultyAcross = organizations.reduce((acc, o) => acc + (o.facultyCount || 0), 0);
-  const totalStudentsAcross = organizations.reduce((acc, o) => acc + (o.studentCount || 0), 0);
-
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
@@ -256,42 +253,6 @@ export default function AdminOrganizationsPage() {
         </div>
       )}
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Organizations</span>
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
-              <Building2 className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3 text-2xl font-bold text-white">{organizations.length}</div>
-          <p className="text-[11px] text-slate-500 mt-1">Registered university / campus hubs</p>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Enrolled Faculty</span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-              <GraduationCap className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3 text-2xl font-bold text-emerald-400">{totalFacultyAcross}</div>
-          <p className="text-[11px] text-slate-500 mt-1">Faculty members linked across orgs</p>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 sm:col-span-2 lg:col-span-1">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Enrolled Students</span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
-              <Users className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3 text-2xl font-bold text-indigo-400">{totalStudentsAcross}</div>
-          <p className="text-[11px] text-slate-500 mt-1">Candidates attributed to organizations</p>
-        </div>
-      </div>
-
       {/* Search & Actions Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="relative w-full max-w-md">
@@ -331,27 +292,28 @@ export default function AdminOrganizationsPage() {
       ) : (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full min-w-[1200px] text-left text-xs whitespace-nowrap">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
                   {isAdmin && (
-                    <th className="py-3.5 px-4 w-10">
+                    <th className="py-3 px-4 w-10">
                       <input
                         type="checkbox"
                         checked={organizations.length > 0 && selectedOrgs.length === organizations.length}
                         onChange={handleSelectAll}
-                        className="w-4 h-4 rounded cursor-pointer"
+                        className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
                         title="Select All Organizations"
                       />
                     </th>
                   )}
-                  <th className="py-3.5 px-4 font-semibold">Organization Name</th>
-                  <th className="py-3.5 px-4 font-semibold">Code</th>
-                  <th className="py-3.5 px-4 font-semibold">Faculty Count</th>
-                  <th className="py-3.5 px-4 font-semibold">Students Count</th>
-                  <th className="py-3.5 px-4 font-semibold">Batches</th>
-                  <th className="py-3.5 px-4 font-semibold">Created Date</th>
-                  <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
+                  <th className="py-3 px-4 font-semibold">Organization Name</th>
+                  <th className="py-3 px-4 font-semibold">Description</th>
+                  <th className="py-3 px-4 font-semibold">Code</th>
+                  <th className="py-3 px-4 font-semibold">Faculty Count</th>
+                  <th className="py-3 px-4 font-semibold">Students Count</th>
+                  <th className="py-3 px-4 font-semibold">Batches</th>
+                  <th className="py-3 px-4 font-semibold">Created Date</th>
+                  <th className="py-3 px-4 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
@@ -365,18 +327,18 @@ export default function AdminOrganizationsPage() {
                       }`}
                     >
                       {isAdmin && (
-                        <td className="py-3.5 px-4">
+                        <td className="py-3 px-4">
                           <input
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => handleToggleSelect(org._id)}
-                            className="w-4 h-4 rounded cursor-pointer"
+                            className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
                           />
                         </td>
                       )}
-                      <td className="py-3.5 px-4">
+                      <td className="py-3 px-4 font-bold text-white whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-white text-sm bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700">
+                          <span className="bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700">
                             {org.name}
                           </span>
                           {org.website && (
@@ -391,20 +353,20 @@ export default function AdminOrganizationsPage() {
                             </a>
                           )}
                         </div>
-                        {org.description && (
-                          <p className="text-[11px] text-slate-400 mt-1 max-w-xs truncate">{org.description}</p>
-                        )}
                       </td>
-                      <td className="py-3.5 px-4">
+                      <td className="py-3 px-4 text-slate-400 max-w-xs truncate whitespace-nowrap" title={org.description || ''}>
+                        {org.description || '—'}
+                      </td>
+                      <td className="py-3 px-4 whitespace-nowrap">
                         {org.code ? (
                           <span className="px-2 py-0.5 rounded font-mono text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold uppercase">
                             {org.code}
                           </span>
                         ) : (
-                          <span className="text-slate-600">-</span>
+                          <span className="text-slate-600">—</span>
                         )}
                       </td>
-                      <td className="py-3.5 px-4">
+                      <td className="py-3 px-4 whitespace-nowrap">
                         <button
                           onClick={() => {
                             handleViewMembers(org);
@@ -416,7 +378,7 @@ export default function AdminOrganizationsPage() {
                           <span>{org.facultyCount || 0} Faculty</span>
                         </button>
                       </td>
-                      <td className="py-3.5 px-4">
+                      <td className="py-3 px-4 whitespace-nowrap">
                         <button
                           onClick={() => {
                             handleViewMembers(org);
@@ -428,8 +390,8 @@ export default function AdminOrganizationsPage() {
                           <span>{org.studentCount || 0} Students</span>
                         </button>
                       </td>
-                      <td className="py-3.5 px-4">
-                        <div className="flex flex-wrap gap-1 max-w-[200px]">
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <div className="flex items-center gap-1 max-w-[200px]">
                           {(org.batches || []).length > 0 ? (
                             org.batches.slice(0, 3).map((b) => (
                               <span
@@ -440,17 +402,17 @@ export default function AdminOrganizationsPage() {
                               </span>
                             ))
                           ) : (
-                            <span className="text-slate-600 text-[11px]">-</span>
+                            <span className="text-slate-600 text-[11px]">—</span>
                           )}
                           {(org.batches || []).length > 3 && (
                             <span className="text-[10px] text-slate-500">+{org.batches.length - 3}</span>
                           )}
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 text-slate-500">
+                      <td className="py-3 px-4 font-mono text-slate-400 whitespace-nowrap">
                         {new Date(org.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="py-3.5 px-4 text-right">
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => handleViewMembers(org)}

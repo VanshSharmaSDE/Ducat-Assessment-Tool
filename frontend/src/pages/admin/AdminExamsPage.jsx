@@ -238,130 +238,143 @@ export default function AdminExamsPage() {
       ) : (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full min-w-[1300px] text-left text-xs whitespace-nowrap">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
-                  <th className="py-3.5 px-4 w-10">
+                  <th className="py-3 px-4 w-10">
                     <input
                       type="checkbox"
                       checked={exams.length > 0 && selectedExams.length === exams.length}
                       onChange={handleSelectAll}
-                      className="w-4 h-4 rounded cursor-pointer"
+                      className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
                     />
                   </th>
-                  <th className="py-3.5 px-4 font-semibold">Title</th>
-                  {isAdmin && <th className="py-3.5 px-4 font-semibold">Created By (Faculty)</th>}
-                  <th className="py-3.5 px-4 font-semibold">Questions</th>
-                  <th className="py-3.5 px-4 font-semibold">Duration</th>
-                  <th className="py-3.5 px-4 font-semibold">Marks</th>
-                  <th className="py-3.5 px-4 font-semibold">Start & Expire Time</th>
-                  <th className="py-3.5 px-4 font-semibold">Status</th>
-                  <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
+                  <th className="py-3 px-4 font-semibold">Examination</th>
+                  <th className="py-3 px-4 font-semibold">Description</th>
+                  {isAdmin && <th className="py-3 px-4 font-semibold">Created By</th>}
+                  <th className="py-3 px-4 font-semibold">Questions</th>
+                  <th className="py-3 px-4 font-semibold">Duration</th>
+                  <th className="py-3 px-4 font-semibold">Total Marks</th>
+                  <th className="py-3 px-4 font-semibold">Pass Marks</th>
+                  <th className="py-3 px-4 font-semibold">Start Time</th>
+                  <th className="py-3 px-4 font-semibold">Expire Time</th>
+                  <th className="py-3 px-4 font-semibold">Status</th>
+                  <th className="py-3 px-4 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
-                {exams.map((exam) => (
-                  <tr key={exam._id} className="text-slate-300 hover:bg-slate-800/40">
-                    <td className="py-3.5 px-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedExams.includes(exam._id)}
-                        onChange={() => handleToggleSelect(exam._id)}
-                        className="w-4 h-4 rounded cursor-pointer"
-                      />
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <p className="font-bold text-white text-sm">{exam.title}</p>
-                      <p className="text-[11px] text-slate-400 line-clamp-1">{exam.description || 'No description provided'}</p>
-                    </td>
+                {exams.map((exam) => {
+                  const isSelected = selectedExams.includes(exam._id);
+                  return (
+                    <tr
+                      key={exam._id}
+                      className={`text-slate-300 hover:bg-slate-800/40 transition-colors ${
+                        isSelected ? 'bg-amber-500/5' : ''
+                      }`}
+                    >
+                      <td className="py-3 px-4">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleSelect(exam._id)}
+                          className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
+                        />
+                      </td>
+                      <td className="py-3 px-4 font-bold text-white text-xs whitespace-nowrap max-w-xs truncate" title={exam.title}>
+                        {exam.title}
+                      </td>
+                      <td className="py-3 px-4 text-slate-400 text-xs whitespace-nowrap max-w-[220px] truncate" title={exam.description || ''}>
+                        {exam.description || '—'}
+                      </td>
 
-                    {isAdmin && (
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-6 h-6 rounded-md flex items-center justify-center font-bold text-[10px] ${
-                            exam.createdBy?.role === 'FACULTY' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
-                          }`}>
-                            {exam.createdBy?.name?.charAt(0) || 'A'}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-slate-200">{exam.createdBy?.name || 'Administrator'}</p>
-                            <span className={`inline-block text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider ${
-                              exam.createdBy?.role === 'FACULTY' 
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' 
-                                : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                            }`}>
+                      {isAdmin && (
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold text-slate-200">
+                              {exam.createdBy?.name || 'Administrator'}
+                            </span>
+                            <span
+                              className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                                exam.createdBy?.role === 'FACULTY'
+                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                              }`}
+                            >
                               {exam.createdBy?.role || 'ADMIN'}
                             </span>
                           </div>
+                        </td>
+                      )}
+
+                      <td className="py-3 px-4 font-mono font-medium text-slate-300">
+                        {exam.questionCount || exam.questions?.length || 0} Qs
+                      </td>
+                      <td className="py-3 px-4 font-mono text-slate-300">
+                        {exam.duration}m
+                      </td>
+                      <td className="py-3 px-4 font-mono font-bold text-white">
+                        {exam.totalMarks}
+                      </td>
+                      <td className="py-3 px-4 font-mono font-bold text-emerald-400">
+                        {exam.passingMarks}
+                      </td>
+                      <td className="py-3 px-4 font-mono text-emerald-400 text-[11px] whitespace-nowrap">
+                        {exam.startDate ? new Date(exam.startDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                      </td>
+                      <td className="py-3 px-4 font-mono text-rose-400 text-[11px] whitespace-nowrap">
+                        {exam.endDate ? new Date(exam.endDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                      </td>
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <button
+                          onClick={() => handleTogglePublish(exam)}
+                          disabled={actionLoading}
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-colors cursor-pointer ${
+                            exam.isPublished
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-rose-500/10 hover:text-rose-400'
+                              : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-emerald-500/10 hover:text-emerald-400'
+                          }`}
+                        >
+                          {exam.isPublished ? '● PUBLISHED' : '○ DRAFT'}
+                        </button>
+                      </td>
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleExportExamExcel(exam)}
+                            disabled={actionLoading}
+                            className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors cursor-pointer"
+                            title="Export Exam Results (.xlsx)"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </button>
+                          <Link
+                            to={`/admin/exams/${exam._id}/edit`}
+                            className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
+                            title="Edit Exam"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </Link>
+                          <button
+                            onClick={() => handleDuplicate(exam._id)}
+                            disabled={actionLoading}
+                            className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-amber-400 hover:bg-slate-700 transition-colors cursor-pointer"
+                            title="Duplicate Exam"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(exam._id)}
+                            disabled={actionLoading}
+                            className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                            title="Delete Exam"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </td>
-                    )}
-
-                    <td className="py-3.5 px-4 font-mono font-medium">{exam.questionCount || exam.questions?.length || 0} Qs</td>
-                    <td className="py-3.5 px-4 font-mono">{exam.duration}m</td>
-                    <td className="py-3.5 px-4 font-mono">{exam.totalMarks} (Pass: {exam.passingMarks})</td>
-                    <td className="py-3.5 px-4 text-[11px]">
-                      <div className="space-y-0.5 font-mono">
-                        <div className="text-emerald-400 flex items-center gap-1">
-                          <span className="text-[10px] text-slate-500 font-sans">Start:</span>
-                          <span>{new Date(exam.startDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
-                        </div>
-                        <div className="text-rose-400 flex items-center gap-1">
-                          <span className="text-[10px] text-slate-500 font-sans">End:</span>
-                          <span>{new Date(exam.endDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <button
-                        onClick={() => handleTogglePublish(exam)}
-                        disabled={actionLoading}
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-colors cursor-pointer ${
-                          exam.isPublished
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-rose-500/10 hover:text-rose-400'
-                            : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-emerald-500/10 hover:text-emerald-400'
-                        }`}
-                      >
-                        {exam.isPublished ? '● PUBLISHED' : '○ DRAFT'}
-                      </button>
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => handleExportExamExcel(exam)}
-                          disabled={actionLoading}
-                          className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors cursor-pointer"
-                          title="Export Exam Results (.xlsx)"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                        </button>
-                        <Link
-                          to={`/admin/exams/${exam._id}/edit`}
-                          className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
-                          title="Edit Exam"
-                        >
-                          <Edit className="w-3.5 h-3.5" />
-                        </Link>
-                        <button
-                          onClick={() => handleDuplicate(exam._id)}
-                          disabled={actionLoading}
-                          className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-amber-400 hover:bg-slate-700 transition-colors cursor-pointer"
-                          title="Duplicate Exam"
-                        >
-                          <Copy className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(exam._id)}
-                          disabled={actionLoading}
-                          className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                          title="Delete Exam"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

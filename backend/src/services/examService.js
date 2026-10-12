@@ -4,11 +4,24 @@ import { ExamAttempt } from '../models/ExamAttempt.js';
 import { Question } from '../models/Question.js';
 import { Submission } from '../models/Submission.js';
 import { ExecutionJob } from '../models/ExecutionJob.js';
-import { addSubmissionJob } from '../queues/queueManager.js';
+import { addSubmissionJob, runCustomCodeInPool } from '../queues/queueManager.js';
 import { User } from '../models/User.js';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../utils/logger.js';
 import { emitToAdmin, emitToAttempt } from '../socket.js';
+
+const userLastRunTime = new Map();
+if (typeof setInterval !== 'undefined') {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [userId, timestamp] of userLastRunTime.entries()) {
+      if (now - timestamp > 60000) {
+        userLastRunTime.delete(userId);
+      }
+    }
+  }, 60000).unref?.();
+}
+
 
 export class ExamService {
   static async canStudentAccessExam(exam, studentUser) {
@@ -78,11 +91,14 @@ export class ExamService {
     const exams = await Exam.find(filter).sort({ startDate: 1 });
     const now = new Date();
 
-    // Fetch user attempts to map attempt status
-    const attempts = await ExamAttempt.find({ userId });
+    // Fetch user attempts to map attempt status (sorted latest first)
+    const attempts = await ExamAttempt.find({ userId }).sort({ createdAt: -1 });
     const attemptMap = new Map();
     attempts.forEach((att) => {
-      attemptMap.set(att.examId.toString(), att);
+      const examKey = att.examId.toString();
+      if (!attemptMap.has(examKey)) {
+        attemptMap.set(examKey, att);
+      }
     });
 
     const result = exams.map((exam) => {
@@ -91,7 +107,7 @@ export class ExamService {
 
       let userStatus = 'NOT_ATTEMPTED';
       if (attempt) {
-        if (attempt.status === 'EVALUATED' || attempt.status === 'SUBMITTED') {
+        if (['EVALUATED', 'SUBMITTED', 'EVALUATING', 'TERMINATED'].includes(attempt.status)) {
           userStatus = 'COMPLETED';
         } else if (attempt.status === 'IN_PROGRESS') {
           if (now > attempt.endTime) {
@@ -192,6 +208,7 @@ export class ExamService {
     return {
       exam: {
         ...exam.toObject(),
+        allowCodeRun: Boolean(exam.allowCodeRun),
         questions: orderedQuestions,
         computedStatus,
       },
@@ -480,4 +497,79 @@ export class ExamService {
       message: 'Exam submitted successfully. Evaluation in progress.',
     };
   }
+
+  static async runCustomCode({ examId, userId, currentUser, questionId, language, sourceCode, customInput }) {
+    const exam = await Exam.findById(examId);
+    if (!exam) {
+      const error = new Error('Exam not found');
+      error.statusCode = 404;
+      error.errorCode = 'EXAM_NOT_FOUND';
+      throw error;
+    }
+
+    const isPrivileged = currentUser && ['ADMIN', 'FACULTY'].includes(currentUser.role);
+
+    // If candidate, check if exam allows code run
+    if (!exam.allowCodeRun && !isPrivileged) {
+      const error = new Error('Code testing is disabled for this examination.');
+      error.statusCode = 403;
+      error.errorCode = 'CODE_RUN_DISABLED';
+      throw error;
+    }
+
+    // Rate-limiting check per user (1 second debounce)
+    if (userId) {
+      const uId = String(userId);
+      const now = Date.now();
+      const lastRun = userLastRunTime.get(uId) || 0;
+      if (now - lastRun < 1000) {
+        const error = new Error('Please wait a moment before running code again.');
+        error.statusCode = 429;
+        error.errorCode = 'TOO_MANY_REQUESTS';
+        throw error;
+      }
+      userLastRunTime.set(uId, now);
+    }
+
+    // If candidate, verify active attempt
+    if (!isPrivileged) {
+      const attempt = await ExamAttempt.findOne({ examId, userId, status: 'IN_PROGRESS' });
+      if (!attempt) {
+        const error = new Error('Active exam attempt not found or already completed.');
+        error.statusCode = 403;
+        error.errorCode = 'NO_ACTIVE_ATTEMPT';
+        throw error;
+      }
+      const now = new Date();
+      if (now > attempt.endTime) {
+        const error = new Error('Your examination time has expired.');
+        error.statusCode = 400;
+        error.errorCode = 'EXAM_TIME_EXPIRED';
+        throw error;
+      }
+    }
+
+    // Determine limits
+    let timeLimit = 2;
+    let memoryLimit = 256;
+    if (questionId) {
+      const question = await Question.findById(questionId);
+      if (question) {
+        timeLimit = question.timeLimit || 2;
+        memoryLimit = question.memoryLimit || 256;
+      }
+    }
+
+    // Run in the warm container pool with concurrency limits
+    const result = await runCustomCodeInPool({
+      language: (language || 'javascript').toLowerCase(),
+      sourceCode: sourceCode || '',
+      customInput: customInput || '',
+      questionTimeLimit: timeLimit,
+      questionMemoryLimit: memoryLimit,
+    });
+
+    return result;
+  }
 }
+

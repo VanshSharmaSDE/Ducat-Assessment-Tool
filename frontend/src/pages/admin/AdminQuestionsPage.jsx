@@ -290,23 +290,24 @@ export default function AdminQuestionsPage() {
       ) : (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full min-w-[1150px] text-left text-xs whitespace-nowrap">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
-                  <th className="py-3.5 px-4 w-10">
+                  <th className="py-3 px-4 w-10">
                     <input
                       type="checkbox"
                       checked={questions.length > 0 && selectedQuestions.length === questions.length}
                       onChange={handleSelectAll}
-                      className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 focus:ring-0 cursor-pointer"
+                      className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
                     />
                   </th>
-                  <th className="py-3.5 px-4 font-semibold">Title</th>
-                  <th className="py-3.5 px-4 font-semibold">Difficulty</th>
-                  <th className="py-3.5 px-4 font-semibold">Marks</th>
-                  <th className="py-3.5 px-4 font-semibold">Test Cases</th>
-                  <th className="py-3.5 px-4 font-semibold">Languages</th>
-                  <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
+                  <th className="py-3 px-4 font-semibold">Title</th>
+                  <th className="py-3 px-4 font-semibold">Description</th>
+                  <th className="py-3 px-4 font-semibold">Difficulty</th>
+                  <th className="py-3 px-4 font-semibold">Marks</th>
+                  <th className="py-3 px-4 font-semibold">Test Cases</th>
+                  <th className="py-3 px-4 font-semibold">Languages</th>
+                  <th className="py-3 px-4 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
@@ -314,19 +315,21 @@ export default function AdminQuestionsPage() {
                   const isSelected = selectedQuestions.includes(q._id);
                   return (
                   <tr key={q._id} className={`text-slate-300 hover:bg-slate-800/40 transition-colors ${isSelected ? 'bg-amber-500/5' : ''}`}>
-                    <td className="py-3.5 px-4">
+                    <td className="py-3 px-4">
                       <input
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => handleToggleSelect(q._id)}
-                        className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 focus:ring-0 cursor-pointer"
+                        className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
                       />
                     </td>
-                    <td className="py-3.5 px-4">
-                      <p className="font-bold text-white text-sm">{q.title}</p>
-                      <p className="text-[11px] text-slate-400 line-clamp-1">{q.description}</p>
+                    <td className="py-3 px-4 font-bold text-white text-xs whitespace-nowrap max-w-xs truncate" title={q.title}>
+                      {q.title}
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td className="py-3 px-4 text-slate-400 text-xs whitespace-nowrap max-w-[240px] truncate" title={q.description || ''}>
+                      {q.description || '—'}
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
                       <span
                         className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           q.difficulty === 'EASY'
@@ -339,10 +342,10 @@ export default function AdminQuestionsPage() {
                         {q.difficulty}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 font-mono font-bold">{q.marks}</td>
-                    <td className="py-3.5 px-4 font-mono">{q.testCaseCount || 0} Cases</td>
-                    <td className="py-3.5 px-4">
-                      <div className="flex flex-wrap gap-1 max-w-[200px]">
+                    <td className="py-3 px-4 font-mono font-bold whitespace-nowrap">{q.marks}</td>
+                    <td className="py-3 px-4 font-mono whitespace-nowrap">{q.testCaseCount || 0} Cases</td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      <div className="flex items-center gap-1">
                         {(q.allowedLanguages || []).slice(0, 4).map((lang) => (
                           <span key={lang} className="px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-mono text-slate-300 uppercase">
                             {lang}
@@ -353,7 +356,7 @@ export default function AdminQuestionsPage() {
                         )}
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 text-right">
+                    <td className="py-3 px-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
                         <Link
                           to={`/admin/questions/${q._id}/edit`}

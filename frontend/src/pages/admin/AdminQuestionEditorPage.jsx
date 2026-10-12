@@ -509,7 +509,7 @@ export default function AdminQuestionEditorPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+                <table className="w-full min-w-[700px] text-left text-xs">
                   <thead>
                     <tr className="border-b border-slate-800 text-slate-400 bg-slate-950">
                       <th className="py-2.5 px-3">#</th>

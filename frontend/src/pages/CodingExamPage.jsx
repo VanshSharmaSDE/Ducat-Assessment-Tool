@@ -20,6 +20,11 @@ import {
   AlertCircle,
   Monitor,
   Eye,
+  Play,
+  Terminal,
+  X,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 
 const DEFAULT_TEMPLATES = {
@@ -58,6 +63,11 @@ export default function CodingExamPage() {
   const [error, setError] = useState("");
   const [toastMessage, setToastMessage] = useState("");
   const [visitedQuestions, setVisitedQuestions] = useState(new Set([0]));
+  const [customInputs, setCustomInputs] = useState({}); // { [qId]: string }
+  const [runOutputs, setRunOutputs] = useState({}); // { [qId]: { status, stdout, stderr, compileOutput, executionTime } }
+  const [isRunningCode, setIsRunningCode] = useState(false);
+  const [showConsoleDrawer, setShowConsoleDrawer] = useState(false);
+  const [activeConsoleTab, setActiveConsoleTab] = useState("input"); // "input" | "output"
   const [windowSize, setWindowSize] = useState({
     width: typeof window !== "undefined" ? window.innerWidth : 1280,
     height: typeof window !== "undefined" ? window.innerHeight : 800,
@@ -591,6 +601,74 @@ export default function CodingExamPage() {
     code: currentQ.starterCode?.java || DEFAULT_TEMPLATES.java,
   };
 
+  const currentCustomInput =
+    currentQ && customInputs[currentQ._id] !== undefined
+      ? customInputs[currentQ._id]
+      : (currentQ?.examples?.[0]?.input || "");
+
+  const currentRunOutput = currentQ ? runOutputs[currentQ._id] : null;
+
+  const handleCustomInputChange = (val) => {
+    if (!currentQ) return;
+    setCustomInputs((prev) => ({
+      ...prev,
+      [currentQ._id]: val,
+    }));
+  };
+
+  const handleRunCode = async () => {
+    if (isRunningCode || !currentQ) return;
+
+    const qId = currentQ._id;
+    const inputVal = currentCustomInput;
+
+    setIsRunningCode(true);
+    setShowConsoleDrawer(true);
+    setActiveConsoleTab("output");
+
+    try {
+      const res = await api.post(`/exams/${id}/run-code`, {
+        questionId: qId,
+        language: currentAnswer.language,
+        sourceCode: currentAnswer.code,
+        customInput: inputVal,
+      });
+
+      if (res.data?.success && res.data?.data) {
+        setRunOutputs((prev) => ({
+          ...prev,
+          [qId]: res.data.data,
+        }));
+      } else {
+        setRunOutputs((prev) => ({
+          ...prev,
+          [qId]: {
+            status: "SYSTEM_ERROR",
+            stdout: "",
+            stderr: "Execution returned empty response.",
+            compileOutput: "",
+            executionTime: 0,
+          },
+        }));
+      }
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || "Failed to execute code";
+      setRunOutputs((prev) => ({
+        ...prev,
+        [qId]: {
+          status: "SYSTEM_ERROR",
+          stdout: "",
+          stderr: errMsg,
+          compileOutput: "",
+          executionTime: 0,
+        },
+      }));
+    } finally {
+      setIsRunningCode(false);
+    }
+  };
+
+
   // Accurate counting of attempted, visited, and unvisited questions
   const attemptedCount = exam.questions.filter((q) =>
     isCodeAttempted(q, answers[q._id]),
@@ -925,34 +1003,186 @@ export default function CodingExamPage() {
           </div>
 
           {/* Monaco Editor Container */}
-          <div className="flex-1 relative overflow-hidden">
-            <Editor
-              height="100%"
-              theme="vs-dark"
-              language={
-                currentAnswer.language === "javascript"
-                  ? "javascript"
-                  : currentAnswer.language === "python"
-                    ? "python"
-                    : "java"
-              }
-              value={currentAnswer.code}
-              onChange={handleCodeChange}
-              options={{
-                fontSize: 13,
-                fontFamily:
-                  "'Fira Code', 'JetBrains Mono', Consolas, monospace",
-                minimap: { enabled: false },
-                scrollBeyondLastLine: false,
-                wordWrap: "on",
-                automaticLayout: true,
-                tabSize: 4,
-                suggestOnTriggerCharacters: true,
-              }}
-            />
+          <div className="flex-1 relative overflow-hidden flex flex-col">
+            <div className="flex-1 relative overflow-hidden min-h-[160px]">
+              <Editor
+                height="100%"
+                theme="vs-dark"
+                language={
+                  currentAnswer.language === "javascript"
+                    ? "javascript"
+                    : currentAnswer.language === "python"
+                      ? "python"
+                      : "java"
+                }
+                value={currentAnswer.code}
+                onChange={handleCodeChange}
+                options={{
+                  fontSize: 13,
+                  fontFamily:
+                    "'Fira Code', 'JetBrains Mono', Consolas, monospace",
+                  minimap: { enabled: false },
+                  scrollBeyondLastLine: false,
+                  wordWrap: "on",
+                  automaticLayout: true,
+                  tabSize: 4,
+                  suggestOnTriggerCharacters: true,
+                }}
+              />
+            </div>
+
+            {/* Collapsible Console Drawer (when allowCodeRun is enabled) */}
+            {exam?.allowCodeRun && showConsoleDrawer && (
+              <div className="h-52 border-t border-slate-800 bg-slate-950 flex flex-col shrink-0 animate-in slide-in-from-bottom-2 duration-150 shadow-2xl">
+                {/* Console Drawer Header with Tabs */}
+                <div className="h-8 bg-slate-900 border-b border-slate-800 px-3 flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setActiveConsoleTab("input")}
+                      className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors flex items-center gap-1.5 ${
+                        activeConsoleTab === "input"
+                          ? "bg-slate-800 text-amber-400"
+                          : "text-slate-400 hover:text-slate-200"
+                      }`}
+                    >
+                      <Terminal className="w-3 h-3" />
+                      Custom Input (stdin)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveConsoleTab("output")}
+                      className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors flex items-center gap-1.5 ${
+                        activeConsoleTab === "output"
+                          ? "bg-slate-800 text-sky-400"
+                          : "text-slate-400 hover:text-slate-200"
+                      }`}
+                    >
+                      <Code2 className="w-3 h-3" />
+                      Console Output
+                      {currentRunOutput && (
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            currentRunOutput.status === "SUCCESS"
+                              ? "bg-emerald-400"
+                              : "bg-rose-400"
+                          }`}
+                        />
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {activeConsoleTab === "output" && currentRunOutput && (
+                      <div className="flex items-center gap-2 text-[10px]">
+                        <span
+                          className={`px-1.5 py-0.5 rounded font-bold font-mono ${
+                            currentRunOutput.status === "SUCCESS"
+                              ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                              : "bg-rose-500/20 text-rose-400 border border-rose-500/30"
+                          }`}
+                        >
+                          {currentRunOutput.status}
+                        </span>
+                        {currentRunOutput.executionTime !== undefined && (
+                          <span className="text-slate-400 font-mono">
+                            {currentRunOutput.executionTime}s
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowConsoleDrawer(false)}
+                      className="p-1 text-slate-500 hover:text-slate-300 rounded transition-colors"
+                      title="Close Console"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Console Drawer Body */}
+                <div className="flex-1 p-2.5 overflow-auto bg-slate-950 font-mono text-xs">
+                  {activeConsoleTab === "input" ? (
+                    <div className="h-full flex flex-col">
+                      <div className="text-[10px] text-slate-500 mb-1 font-sans flex items-center justify-between">
+                        <span>Standard input (stdin) provided to your program:</span>
+                        {currentQ?.examples?.[0]?.input && (
+                          <button
+                            type="button"
+                            onClick={() => handleCustomInputChange(currentQ.examples[0].input)}
+                            className="text-amber-400 hover:underline font-mono text-[10px]"
+                          >
+                            Paste Example 1 Input
+                          </button>
+                        )}
+                      </div>
+                      <textarea
+                        value={currentCustomInput}
+                        onChange={(e) => handleCustomInputChange(e.target.value)}
+                        placeholder="Enter custom input (stdin) here..."
+                        className="flex-1 w-full bg-slate-900/60 border border-slate-800/80 rounded-lg p-2 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-500/50 resize-none font-mono text-xs leading-relaxed"
+                      />
+                    </div>
+                  ) : (
+                    <div className="h-full space-y-2">
+                      {isRunningCode ? (
+                        <div className="flex flex-col items-center justify-center h-full text-amber-400 py-6 gap-2">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <span className="text-xs font-sans text-slate-300">
+                            Compiling and executing your code in secure sandbox...
+                          </span>
+                        </div>
+                      ) : !currentRunOutput ? (
+                        <div className="flex flex-col items-center justify-center h-full text-slate-500 py-6 text-center font-sans gap-1">
+                          <Terminal className="w-5 h-5 text-slate-600 mb-1" />
+                          <span className="text-xs">No execution output yet.</span>
+                          <span className="text-[11px] text-slate-600">
+                            Click "Run Code" below to test your solution with custom input.
+                          </span>
+                        </div>
+                      ) : (
+                        <>
+                          {currentRunOutput.compileOutput && (
+                            <div className="p-2.5 bg-rose-950/40 border border-rose-900/50 rounded-lg text-rose-300 text-[11px] whitespace-pre-wrap font-mono">
+                              <div className="font-bold text-rose-400 mb-1 font-sans">
+                                Compilation / Syntax Error:
+                              </div>
+                              {currentRunOutput.compileOutput}
+                            </div>
+                          )}
+                          {currentRunOutput.stdout && (
+                            <div className="p-2.5 bg-slate-900/60 border border-slate-800/80 rounded-lg text-slate-200 whitespace-pre-wrap leading-relaxed font-mono">
+                              <div className="text-[10px] text-slate-400 font-sans mb-1 font-semibold">
+                                Output:
+                              </div>
+                              {currentRunOutput.stdout}
+                            </div>
+                          )}
+                          {currentRunOutput.stderr && !currentRunOutput.compileOutput && (
+                            <div className="p-2.5 bg-rose-950/30 border border-rose-900/40 rounded-lg text-rose-300 text-[11px] whitespace-pre-wrap font-mono">
+                              <div className="font-bold text-rose-400 mb-1 font-sans">
+                                Error / Traceback:
+                              </div>
+                              {currentRunOutput.stderr}
+                            </div>
+                          )}
+                          {!currentRunOutput.stdout && !currentRunOutput.stderr && !currentRunOutput.compileOutput && (
+                            <div className="text-slate-500 italic text-center py-4 font-sans text-xs">
+                              Program finished with status {currentRunOutput.status} and produced no output.
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Bottom Editor Bar (Strictly NO Run Code button!) */}
+          {/* Bottom Editor Bar */}
           <div className="h-12 bg-slate-900 border-t border-slate-800 px-4 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
               <button
@@ -996,9 +1226,51 @@ export default function CodingExamPage() {
               )}
             </div>
 
-            <div className="text-xs text-slate-400 italic">
-              Notice: Code is compiled & tested upon final exam submission.
-            </div>
+            {exam?.allowCodeRun ? (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowConsoleDrawer(!showConsoleDrawer);
+                    if (!showConsoleDrawer && !currentRunOutput) {
+                      setActiveConsoleTab("input");
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
+                    showConsoleDrawer
+                      ? "bg-slate-800 text-amber-400 border-amber-500/30"
+                      : "bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800"
+                  }`}
+                >
+                  <Terminal className="w-3.5 h-3.5" />
+                  <span>Console & Input</span>
+                  {showConsoleDrawer ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleRunCode}
+                  disabled={isRunningCode}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition-all shadow-sm shadow-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isRunningCode ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Running...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      <span>Run Code</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : (
+              <div className="text-xs text-slate-400 italic">
+                Notice: Code is compiled & tested upon final exam submission.
+              </div>
+            )}
           </div>
         </section>
       </div>

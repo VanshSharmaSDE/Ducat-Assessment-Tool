@@ -4,46 +4,63 @@ import { Question } from '../models/Question.js';
 import { ExamAttempt } from '../models/ExamAttempt.js';
 import { Submission } from '../models/Submission.js';
 import { SubmissionResult } from '../models/SubmissionResult.js';
+import { Batch } from '../models/Batch.js';
+import { Organization } from '../models/Organization.js';
 
 export class AdminService {
   static async getDashboardAnalytics(currentUser = null) {
     const now = new Date();
     const isFaculty = currentUser && currentUser.role === 'FACULTY';
+    const isAdmin = !currentUser || currentUser.role === 'ADMIN';
 
     let userFilter = { role: 'USER' };
+    let facultyFilter = { role: 'FACULTY' };
     let examFilter = {};
     let examActiveFilter = { isPublished: true, startDate: { $lte: now }, endDate: { $gte: now } };
     let subFilter = {};
     let attemptFilter = {};
     let questionFilter = {};
+    let batchFilter = {};
+    let orgFilter = {};
 
     if (isFaculty) {
-      userFilter.createdBy = currentUser._id;
+      userFilter.$or = [
+        { createdBy: currentUser._id },
+        { assignedFaculties: currentUser._id },
+      ];
       examFilter.createdBy = currentUser._id;
       examActiveFilter.createdBy = currentUser._id;
       questionFilter.createdBy = currentUser._id;
+      batchFilter.createdBy = currentUser._id;
 
-      const myStudentIds = await User.find({ role: 'USER', createdBy: currentUser._id }).distinct('_id');
+      const myStudentIds = await User.find(userFilter).distinct('_id');
       subFilter.userId = { $in: myStudentIds };
       attemptFilter.userId = { $in: myStudentIds };
     }
 
     const [
       totalUsers,
+      totalFaculty,
+      totalBatches,
+      totalOrganizations,
       totalExams,
       activeExams,
       totalSubmissions,
+      allAttemptsCount,
       completedAttempts,
-      allAttempts,
       submissionsByLang,
       questionsByDiff,
+      batchStats,
     ] = await Promise.all([
       User.countDocuments(userFilter),
+      isAdmin ? User.countDocuments(facultyFilter) : 0,
+      Batch.countDocuments(batchFilter),
+      Organization.countDocuments(orgFilter),
       Exam.countDocuments(examFilter),
       Exam.countDocuments(examActiveFilter),
       Submission.countDocuments(subFilter),
-      ExamAttempt.find({ ...attemptFilter, status: { $in: ['EVALUATED', 'SUBMITTED'] } }),
       ExamAttempt.countDocuments(attemptFilter),
+      ExamAttempt.find(attemptFilter).populate('examId', 'title totalMarks passingMarks'),
       Submission.aggregate([
         ...(isFaculty ? [{ $match: subFilter }] : []),
         { $group: { _id: '$language', count: { $sum: 1 } } },
@@ -53,46 +70,120 @@ export class AdminService {
         ...(isFaculty ? [{ $match: questionFilter }] : []),
         { $group: { _id: '$difficulty', count: { $sum: 1 } } },
       ]),
+      User.aggregate([
+        { $match: { ...userFilter, batch: { $exists: true, $ne: '' } } },
+        { $group: { _id: '$batch', studentCount: { $sum: 1 } } },
+        { $sort: { studentCount: -1 } },
+        { $limit: 6 },
+      ]),
     ]);
 
-    // Calculate Average Score and Pass Rate
+    // Calculate Average Score, Pass/Fail, and Violations
     let totalScoreSum = 0;
     let passedCount = 0;
+    let failedCount = 0;
+    let pendingCount = 0;
+    let totalViolations = 0;
+    let evaluatedCount = 0;
+
+    const examMap = {};
 
     completedAttempts.forEach((att) => {
-      totalScoreSum += att.percentage || 0;
-      if (att.resultStatus === 'PASS') {
-        passedCount += 1;
+      totalViolations += att.violationCount || 0;
+
+      if (['EVALUATED', 'SUBMITTED'].includes(att.status)) {
+        evaluatedCount += 1;
+        totalScoreSum += att.percentage || 0;
+
+        if (att.resultStatus === 'PASS') {
+          passedCount += 1;
+        } else if (att.resultStatus === 'FAIL') {
+          failedCount += 1;
+        } else {
+          pendingCount += 1;
+        }
+
+        const exId = att.examId?._id?.toString() || att.examId?.toString();
+        const exTitle = att.examId?.title || 'Examination';
+        if (exId) {
+          if (!examMap[exId]) {
+            examMap[exId] = {
+              examId: exId,
+              title: exTitle,
+              attempts: 0,
+              passed: 0,
+              failed: 0,
+              scoreSum: 0,
+            };
+          }
+          examMap[exId].attempts += 1;
+          examMap[exId].scoreSum += att.percentage || 0;
+          if (att.resultStatus === 'PASS') examMap[exId].passed += 1;
+          if (att.resultStatus === 'FAIL') examMap[exId].failed += 1;
+        }
       }
     });
 
-    const averageScore = completedAttempts.length > 0
-      ? +(totalScoreSum / completedAttempts.length).toFixed(1)
+    const averageScore = evaluatedCount > 0
+      ? +(totalScoreSum / evaluatedCount).toFixed(1)
       : 0;
 
-    const passRate = completedAttempts.length > 0
-      ? +((passedCount / completedAttempts.length) * 100).toFixed(1)
+    const passRate = evaluatedCount > 0
+      ? +((passedCount / evaluatedCount) * 100).toFixed(1)
       : 0;
 
-    // Recent 5 submissions
+    const topExams = Object.values(examMap)
+      .map((ex) => ({
+        examId: ex.examId,
+        title: ex.title,
+        attempts: ex.attempts,
+        avgScore: +(ex.scoreSum / ex.attempts).toFixed(1),
+        passRate: +((ex.passed / ex.attempts) * 100).toFixed(1),
+        passed: ex.passed,
+        failed: ex.failed,
+      }))
+      .sort((a, b) => b.attempts - a.attempts)
+      .slice(0, 5);
+
+    // Recent 6 submissions with full context
     const recentSubmissions = await Submission.find(subFilter)
-      .populate('userId', 'name email')
+      .populate('userId', 'name email rollNumber')
       .populate('examId', 'title')
       .populate('questionId', 'title')
       .sort({ createdAt: -1 })
-      .limit(5);
+      .limit(6);
+
+    const outcomeDistribution = [
+      { name: 'Passed', count: passedCount, color: '#10b981' },
+      { name: 'Failed', count: failedCount, color: '#f43f5e' },
+      { name: 'Pending / In Progress', count: pendingCount + Math.max(0, allAttemptsCount - evaluatedCount), color: '#f59e0b' },
+    ];
+
+    const batchPerformance = batchStats.map((b) => ({
+      batch: b._id,
+      students: b.studentCount,
+    }));
 
     return {
       stats: {
         totalUsers,
+        totalFaculty,
+        totalBatches,
+        totalOrganizations,
         totalExams,
         activeExams,
-        completedExams: completedAttempts.length,
+        completedExams: evaluatedCount,
         totalSubmissions,
-        totalAttempts: allAttempts,
+        totalAttempts: allAttemptsCount,
         averageScore,
         passRate,
+        passedCount,
+        failedCount,
+        totalViolations,
       },
+      outcomeDistribution,
+      topExams,
+      batchPerformance,
       languageDistribution: submissionsByLang.map((l) => ({ language: l._id, count: l.count })),
       difficultyDistribution: questionsByDiff.map((d) => ({ difficulty: d._id, count: d.count })),
       recentSubmissions,

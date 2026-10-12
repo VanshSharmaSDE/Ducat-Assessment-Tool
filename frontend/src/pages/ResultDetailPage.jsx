@@ -25,14 +25,17 @@ export default function ResultDetailPage() {
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState(null);
   const [activeCodeModal, setActiveCodeModal] = useState(null);
 
   const fetchResult = async () => {
     try {
+      setErrorMsg(null);
       const res = await api.get(`/results/${id}`);
       setData(res.data.data);
     } catch (err) {
       console.error('Failed to load result', err);
+      setErrorMsg(err.response?.data?.message || 'Result not found or access unauthorized.');
     } finally {
       setLoading(false);
     }
@@ -91,9 +94,13 @@ export default function ResultDetailPage() {
 
   if (!data?.attempt) {
     return (
-      <div className="p-8 text-center text-slate-400">
-        <p>Result not found.</p>
-        <Link to="/results" className="text-sky-400 mt-2 inline-block">Return to Results</Link>
+      <div className="p-8 text-center text-slate-400 max-w-md mx-auto my-16 bg-slate-900 border border-slate-800 rounded-2xl shadow-xl">
+        <AlertTriangle className="w-12 h-12 text-amber-400 mx-auto mb-3" />
+        <h3 className="text-base font-bold text-white mb-1">Result Not Available</h3>
+        <p className="text-xs text-slate-400 mb-6">{errorMsg || 'Result not found or access unauthorized.'}</p>
+        <Link to="/results" className="px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-semibold inline-block transition-colors">
+          Return to Results
+        </Link>
       </div>
     );
   }
@@ -191,6 +198,7 @@ export default function ResultDetailPage() {
               TIME_LIMIT_EXCEEDED: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
               RUNTIME_ERROR: 'bg-red-500/10 text-red-400 border-red-500/20',
               PENDING: 'bg-slate-800 text-slate-400 border-slate-700',
+              NOT_SUBMITTED: 'bg-slate-800 text-slate-400 border-slate-700',
             };
 
             return (
@@ -205,7 +213,7 @@ export default function ResultDetailPage() {
                     </span>
                     <h3 className="font-bold text-base text-white">{item.questionTitle}</h3>
                     <span className="text-[11px] font-semibold text-slate-400 px-2 py-0.5 rounded bg-slate-800">
-                      {item.language.toUpperCase()}
+                      {(item.language || 'code').toUpperCase()}
                     </span>
                   </div>
 

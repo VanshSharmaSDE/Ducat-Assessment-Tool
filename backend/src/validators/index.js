@@ -57,6 +57,7 @@ export const examSchema = z.object({
   ).optional(),
   randomizeQuestions: z.boolean().optional(),
   maxViolations: z.number().int().min(1).max(20).optional(),
+  allowCodeRun: z.boolean().optional(),
 });
 
 export const questionSchema = z.object({
@@ -107,4 +108,11 @@ export const submitExamSchema = z.object({
 export const examEventSchema = z.object({
   type: z.enum(['tab_switch', 'fullscreen_exit', 'page_refresh', 'exam_exit', 'blur', 'copy_paste']),
   details: z.string().optional(),
+});
+
+export const runCustomCodeSchema = z.object({
+  questionId: z.string().optional(),
+  language: z.enum(SUPPORTED_LANGUAGES),
+  sourceCode: z.string().max(65536, 'Code exceeds 64KB maximum size'),
+  customInput: z.string().max(65536, 'Input exceeds 64KB maximum size').optional().default(''),
 });

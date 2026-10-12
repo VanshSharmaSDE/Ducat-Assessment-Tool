@@ -70,4 +70,28 @@ export class ExamController {
       next(err);
     }
   }
+
+  static async runCustomCode(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { questionId, language, sourceCode, customInput } = req.body;
+      const result = await ExamService.runCustomCode({
+        examId: id,
+        userId: req.user?._id,
+        currentUser: req.user,
+        questionId,
+        language,
+        sourceCode,
+        customInput,
+      });
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
+

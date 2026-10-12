@@ -85,6 +85,10 @@ const examSchema = new mongoose.Schema(
       type: Number,
       default: 5, // Auto-submit/terminate after 5 violations (tab-switches, fullscreen exits)
     },
+    allowCodeRun: {
+      type: Boolean,
+      default: false,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

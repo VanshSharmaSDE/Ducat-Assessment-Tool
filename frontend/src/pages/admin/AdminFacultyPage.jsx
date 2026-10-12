@@ -406,10 +406,10 @@ export default function AdminFacultyPage() {
       ) : (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full min-w-[1250px] text-left text-xs whitespace-nowrap">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
-                  <th className="py-3.5 px-4 w-10">
+                  <th className="py-3 px-4 w-10">
                     <input
                       type="checkbox"
                       checked={faculty.length > 0 && selectedFaculty.length === faculty.length}
@@ -420,16 +420,17 @@ export default function AdminFacultyPage() {
                           setSelectedFaculty([]);
                         }
                       }}
-                      className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 focus:ring-0 cursor-pointer"
+                      className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
                     />
                   </th>
-                  <th className="py-3.5 px-4 font-semibold">Faculty Member</th>
-                  <th className="py-3.5 px-4 font-semibold">Organization</th>
-                  <th className="py-3.5 px-4 font-semibold">Department</th>
-                  <th className="py-3.5 px-4 font-semibold">Phone</th>
-                  <th className="py-3.5 px-4 font-semibold">Status</th>
-                  <th className="py-3.5 px-4 font-semibold">Created Date</th>
-                  <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
+                  <th className="py-3 px-4 font-semibold">Faculty Member</th>
+                  <th className="py-3 px-4 font-semibold">Email</th>
+                  <th className="py-3 px-4 font-semibold">Organization</th>
+                  <th className="py-3 px-4 font-semibold">Department</th>
+                  <th className="py-3 px-4 font-semibold">Phone</th>
+                  <th className="py-3 px-4 font-semibold">Status</th>
+                  <th className="py-3 px-4 font-semibold">Created Date</th>
+                  <th className="py-3 px-4 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
@@ -437,7 +438,7 @@ export default function AdminFacultyPage() {
                   const isSelected = selectedFaculty.includes(f._id);
                   return (
                   <tr key={f._id} className={`text-slate-300 hover:bg-slate-800/40 transition-colors ${isSelected ? 'bg-amber-500/5' : ''}`}>
-                    <td className="py-3.5 px-4">
+                    <td className="py-3 px-4">
                       <input
                         type="checkbox"
                         checked={isSelected}
@@ -448,14 +449,21 @@ export default function AdminFacultyPage() {
                             setSelectedFaculty((prev) => prev.filter((id) => id !== f._id));
                           }
                         }}
-                        className="w-4 h-4 rounded cursor-pointer"
+                        className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
                       />
                     </td>
-                    <td className="py-3.5 px-4">
-                      <p className="font-bold text-white text-sm">{f.name}</p>
-                      <p className="text-[11px] text-slate-400">{f.email}</p>
+                    <td className="py-3 px-4 font-semibold text-white whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center shrink-0 text-xs">
+                          {f.name?.charAt(0) || 'F'}
+                        </div>
+                        <span className="font-bold">{f.name}</span>
+                      </div>
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td className="py-3 px-4 font-mono text-slate-400 whitespace-nowrap">
+                      {f.email}
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
                       {f.organization ? (
                         <span className="px-2 py-0.5 rounded-md text-[10px] bg-slate-800 text-amber-300 font-semibold border border-slate-700">
                           {f.organization}
@@ -464,13 +472,13 @@ export default function AdminFacultyPage() {
                         <span className="text-slate-500 italic text-[11px]">Unassigned</span>
                       )}
                     </td>
-                    <td className="py-3.5 px-4">
-                      <span className="font-mono text-slate-200 font-semibold">{f.department || 'General Faculty'}</span>
+                    <td className="py-3 px-4 font-mono text-slate-200 font-semibold whitespace-nowrap">
+                      {f.department || 'General Faculty'}
                     </td>
-                    <td className="py-3.5 px-4 font-mono text-slate-400">
-                      {f.phone || '-'}
+                    <td className="py-3 px-4 font-mono text-slate-400 whitespace-nowrap">
+                      {f.phone || '—'}
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td className="py-3 px-4 whitespace-nowrap">
                       <span
                         className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           f.isActive
@@ -481,10 +489,10 @@ export default function AdminFacultyPage() {
                         {f.isActive ? 'ACTIVE' : 'INACTIVE'}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-slate-500">
-                      {f.createdAt ? new Date(f.createdAt).toLocaleDateString() : '-'}
+                    <td className="py-3 px-4 text-slate-400 font-mono whitespace-nowrap">
+                      {f.createdAt ? new Date(f.createdAt).toLocaleDateString() : '—'}
                     </td>
-                    <td className="py-3.5 px-4 text-right">
+                    <td className="py-3 px-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => handleToggleStatus(f)}

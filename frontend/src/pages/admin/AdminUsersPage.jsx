@@ -37,8 +37,8 @@ export default function AdminUsersPage() {
   const { showAlert, showConfirm } = useModal();
   const isAdmin = user?.role === 'ADMIN';
 
-  // Navigation state: null = Organization Directory view (for Admin), string/ID = organization student table
-  const [selectedOrg, setSelectedOrg] = useState(isAdmin ? null : '__ALL__');
+  // Navigation state: null = Organization Directory view, string/ID = organization student table
+  const [selectedOrg, setSelectedOrg] = useState(null);
   const [organizationsSummary, setOrganizationsSummary] = useState([]);
   const [availableOrganizations, setAvailableOrganizations] = useState([]);
 
@@ -54,10 +54,27 @@ export default function AdminUsersPage() {
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, pages: 1 });
   const [loading, setLoading] = useState(true);
+  const [tableLoading, setTableLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
   // Bulk Selection State
   const [selectedUsers, setSelectedUsers] = useState([]);
+
+  const handleSelectOrg = (orgId) => {
+    setUsers([]); // Clear previous candidates immediately to prevent flashing stale data
+    setSelectedUsers([]);
+    setTableLoading(true);
+    setSelectedOrg(orgId);
+    setPage(1);
+  };
+
+  const handleBackToOrgDirectory = () => {
+    setUsers([]);
+    setSelectedUsers([]);
+    setTableLoading(false);
+    setSelectedOrg(null);
+    setPage(1);
+  };
 
   // Modals state
   const [showManualModal, setShowManualModal] = useState(false);
@@ -117,6 +134,7 @@ export default function AdminUsersPage() {
 
   const loadUsers = async () => {
     try {
+      setTableLoading(true);
       let query = `?page=${page}&limit=15`;
       if (searchTerm) query += `&search=${encodeURIComponent(searchTerm)}`;
       if (statusFilter) query += `&status=${statusFilter}`;
@@ -147,21 +165,49 @@ export default function AdminUsersPage() {
       console.error('Failed to load users', err);
     } finally {
       setLoading(false);
+      setTableLoading(false);
     }
   };
 
-  const loadBatches = async () => {
+  const [definedOrganizations, setDefinedOrganizations] = useState([]);
+
+  const loadBatchesAndOrgs = async () => {
     try {
-      const res = await api.get('/admin/batches');
-      setDefinedBatches(res.data.data.batches || []);
+      const [batchRes, orgRes] = await Promise.allSettled([
+        api.get('/admin/batches'),
+        api.get('/admin/organizations'),
+      ]);
+      if (batchRes.status === 'fulfilled') {
+        setDefinedBatches(batchRes.value.data?.data?.batches || []);
+      }
+      if (orgRes.status === 'fulfilled') {
+        setDefinedOrganizations(orgRes.value.data?.data?.organizations || []);
+      }
     } catch (err) {
-      console.error('Failed to load batches', err);
+      console.error('Failed to load batches or organizations', err);
     }
   };
 
   useEffect(() => {
-    loadBatches();
+    loadBatchesAndOrgs();
   }, []);
+
+  const allOrganizationsList = Array.from(
+    new Set([
+      ...definedOrganizations.map((o) => o.name),
+      ...organizationsSummary.map((o) => o.name),
+      ...availableOrganizations,
+      editingUser?.organization,
+    ].filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b));
+
+  const allBatchesList = Array.from(
+    new Set([
+      ...definedBatches.map((b) => b.name),
+      ...availableBatches,
+      editingUser?.batch,
+    ].filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b));
 
   useEffect(() => {
     loadUsers();
@@ -296,7 +342,7 @@ export default function AdminUsersPage() {
   const handleOpenManualModal = () => {
     const defaultOrg = (selectedOrg && selectedOrg !== '__ALL__' && selectedOrg !== 'unassigned')
       ? selectedOrg
-      : '';
+      : (user?.organization || '');
     setFormData({
       name: '',
       email: '',
@@ -424,7 +470,7 @@ export default function AdminUsersPage() {
   const handleOpenShare = () => {
     const defaultOrg = (selectedOrg && selectedOrg !== '__ALL__' && selectedOrg !== 'unassigned')
       ? selectedOrg
-      : (availableOrganizations[0] || '');
+      : (user?.organization || allOrganizationsList[0] || '');
     setShareOrg(defaultOrg);
     setShareBatches([]);
     setShareTokenResult(null);
@@ -450,7 +496,19 @@ export default function AdminUsersPage() {
         organization: shareOrg,
         batches: shareBatches,
       });
-      setShareTokenResult(res.data.data);
+      const result = res.data?.data || res.data || {};
+      const token = result.shareToken || result.token || '';
+      const fallbackLink = `${window.location.origin}/admin/students?importToken=${encodeURIComponent(token)}`;
+      const shareLink = (result.shareLink && result.shareLink.startsWith('http'))
+        ? result.shareLink
+        : fallbackLink;
+
+      setShareTokenResult({
+        ...result,
+        shareToken: token,
+        shareLink,
+        studentCount: result.studentCount ?? 0,
+      });
     } catch (err) {
       await showAlert({
         title: 'Share Generation Failed',
@@ -517,8 +575,8 @@ export default function AdminUsersPage() {
     );
   }
 
-  // Admin Organization Directory View (When Admin has not chosen a specific organization)
-  const isViewingOrgDirectory = isAdmin && selectedOrg === null;
+  // Organization Directory View (When user has not chosen a specific organization)
+  const isViewingOrgDirectory = selectedOrg === null;
 
   return (
     <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
@@ -526,9 +584,9 @@ export default function AdminUsersPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            {!isViewingOrgDirectory && isAdmin && (
+            {!isViewingOrgDirectory && (
               <button
-                onClick={() => setSelectedOrg(null)}
+                onClick={handleBackToOrgDirectory}
                 className="p-1.5 -ml-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
                 title="Back to Organizations"
               >
@@ -539,17 +597,13 @@ export default function AdminUsersPage() {
               <Users className="w-6 h-6 text-sky-400" />
               {isViewingOrgDirectory
                 ? 'Candidate Organizations'
-                : isAdmin
-                ? getSelectedOrgDisplayName()
-                : 'My Candidates'}
+                : getSelectedOrgDisplayName()}
             </h1>
           </div>
           <p className="text-sm text-slate-400 mt-1">
             {isViewingOrgDirectory
               ? 'Select an organization to inspect its students, batches, and candidate cohorts'
-              : isAdmin
-              ? `Managing candidate accounts and batches under ${getSelectedOrgDisplayName()}`
-              : 'Manage your students, share with fellow faculty, or import candidates'}
+              : `Managing candidate accounts and batches under ${getSelectedOrgDisplayName()}`}
           </p>
         </div>
 
@@ -611,7 +665,7 @@ export default function AdminUsersPage() {
               <span>Institutions & Organizations ({organizationsSummary.length})</span>
             </h2>
             <button
-              onClick={() => setSelectedOrg('__ALL__')}
+              onClick={() => handleSelectOrg('__ALL__')}
               className="text-xs text-sky-400 hover:text-sky-300 font-semibold flex items-center gap-1 cursor-pointer"
             >
               <span>View All Candidates (Flat List)</span>
@@ -623,10 +677,7 @@ export default function AdminUsersPage() {
             {organizationsSummary.map((org) => (
               <div
                 key={org.id}
-                onClick={() => {
-                  setSelectedOrg(org.id);
-                  setPage(1);
-                }}
+                onClick={() => handleSelectOrg(org.id)}
                 className="group p-5 bg-slate-900 border border-slate-800 hover:border-sky-500/50 rounded-2xl cursor-pointer transition-all hover:shadow-xl hover:shadow-sky-500/5 flex flex-col justify-between space-y-4"
               >
                 <div>
@@ -682,10 +733,7 @@ export default function AdminUsersPage() {
 
             {/* Quick Card: View All */}
             <div
-              onClick={() => {
-                setSelectedOrg('__ALL__');
-                setPage(1);
-              }}
+              onClick={() => handleSelectOrg('__ALL__')}
               className="p-5 bg-slate-950/40 border border-dashed border-slate-800 hover:border-slate-700 rounded-2xl cursor-pointer transition-all flex flex-col justify-center items-center text-center space-y-2 group"
             >
               <Users className="w-8 h-8 text-slate-600 group-hover:text-sky-400 transition-colors" />
@@ -700,26 +748,24 @@ export default function AdminUsersPage() {
         /* CANDIDATE TABLE VIEW */
         <div className="space-y-4">
           {/* Organization Breadcrumb & Switcher */}
-          {isAdmin && (
-            <div className="flex items-center justify-between bg-slate-950/60 border border-slate-800 px-4 py-2.5 rounded-xl text-xs">
-              <div className="flex items-center gap-2 text-slate-400">
-                <button
-                  onClick={() => setSelectedOrg(null)}
-                  className="hover:text-white underline cursor-pointer"
-                >
-                  Organizations
-                </button>
-                <span>/</span>
-                <span className="font-bold text-white">{getSelectedOrgDisplayName()}</span>
-              </div>
+          <div className="flex items-center justify-between bg-slate-950/60 border border-slate-800 px-4 py-2.5 rounded-xl text-xs">
+            <div className="flex items-center gap-2 text-slate-400">
               <button
-                onClick={() => setSelectedOrg(null)}
-                className="text-xs text-sky-400 hover:text-sky-300 font-semibold cursor-pointer"
+                onClick={handleBackToOrgDirectory}
+                className="hover:text-white underline cursor-pointer"
               >
-                ← Back to Organizations Directory
+                Organizations
               </button>
+              <span>/</span>
+              <span className="font-bold text-white">{getSelectedOrgDisplayName()}</span>
             </div>
-          )}
+            <button
+              onClick={handleBackToOrgDirectory}
+              className="text-xs text-sky-400 hover:text-sky-300 font-semibold cursor-pointer"
+            >
+              ← Back to Organizations Directory
+            </button>
+          </div>
 
           {/* Filter Toolbar */}
           <div className="flex flex-wrap items-center gap-3">
@@ -736,6 +782,23 @@ export default function AdminUsersPage() {
                 className="pl-9 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
+
+            <select
+              value={selectedOrg === '__ALL__' ? '__ALL__' : selectedOrg || ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                handleSelectOrg(val || '__ALL__');
+              }}
+              className="px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              <option value="__ALL__">All Organizations</option>
+              {allOrganizationsList.map((orgName) => (
+                <option key={orgName} value={orgName}>
+                  {orgName}
+                </option>
+              ))}
+              <option value="unassigned">Direct / Unassigned</option>
+            </select>
 
             <select
               value={statusFilter}
@@ -790,7 +853,14 @@ export default function AdminUsersPage() {
           </div>
 
           {/* Students Table */}
-          {users.length === 0 ? (
+          {tableLoading ? (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-16 flex flex-col items-center justify-center space-y-3 shadow-xl">
+              <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs text-slate-400 font-medium">
+                Loading candidates for {getSelectedOrgDisplayName()}...
+              </p>
+            </div>
+          ) : users.length === 0 ? (
             <div className="p-12 text-center rounded-2xl bg-slate-900/40 border border-slate-800 text-slate-400">
               <Users className="w-12 h-12 mx-auto text-slate-600 mb-3" />
               <h3 className="text-base font-semibold text-white">No candidates found</h3>
@@ -801,10 +871,10 @@ export default function AdminUsersPage() {
           ) : (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+                <table className="w-full min-w-[1450px] text-left text-xs whitespace-nowrap">
                   <thead>
                     <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
-                      <th className="py-3.5 px-4 w-10">
+                      <th className="py-3 px-4 w-10">
                         <input
                           type="checkbox"
                           checked={users.length > 0 && selectedUsers.length === users.length}
@@ -815,21 +885,22 @@ export default function AdminUsersPage() {
                               setSelectedUsers([]);
                             }
                           }}
-                          className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 focus:ring-0 cursor-pointer"
+                          className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
                         />
                       </th>
-                      <th className="py-3.5 px-4 font-semibold">Candidate</th>
-                      <th className="py-3.5 px-4 font-semibold">Email</th>
-                      <th className="py-3.5 px-4 font-semibold">Organization</th>
-                      {isAdmin && <th className="py-3.5 px-4 font-semibold">Created By</th>}
-                      <th className="py-3.5 px-4 font-semibold">Roll Number</th>
-                      <th className="py-3.5 px-4 font-semibold">Batch</th>
-                      <th className="py-3.5 px-4 font-semibold">Gender</th>
-                      <th className="py-3.5 px-4 font-semibold">Age</th>
-                      <th className="py-3.5 px-4 font-semibold">Exams Taken</th>
-                      <th className="py-3.5 px-4 font-semibold">Avg Score</th>
-                      <th className="py-3.5 px-4 font-semibold">Status</th>
-                      <th className="py-3.5 px-4 font-semibold text-right">Action</th>
+                      <th className="py-3 px-4 font-semibold">Candidate</th>
+                      <th className="py-3 px-4 font-semibold">Email</th>
+                      <th className="py-3 px-4 font-semibold">Phone</th>
+                      <th className="py-3 px-4 font-semibold">Organization</th>
+                      {isAdmin && <th className="py-3 px-4 font-semibold">Created By</th>}
+                      <th className="py-3 px-4 font-semibold">Roll Number</th>
+                      <th className="py-3 px-4 font-semibold">Batch</th>
+                      <th className="py-3 px-4 font-semibold">Gender</th>
+                      <th className="py-3 px-4 font-semibold">Age</th>
+                      <th className="py-3 px-4 font-semibold">Exams Taken</th>
+                      <th className="py-3 px-4 font-semibold">Avg Score</th>
+                      <th className="py-3 px-4 font-semibold">Status</th>
+                      <th className="py-3 px-4 font-semibold text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
@@ -842,7 +913,7 @@ export default function AdminUsersPage() {
                             isSelected ? 'bg-amber-500/5' : ''
                           }`}
                         >
-                          <td className="py-3.5 px-4">
+                          <td className="py-3 px-4">
                             <input
                               type="checkbox"
                               checked={isSelected}
@@ -853,41 +924,40 @@ export default function AdminUsersPage() {
                                   setSelectedUsers((prev) => prev.filter((id) => id !== u._id));
                                 }
                               }}
-                              className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 focus:ring-0 cursor-pointer"
+                              className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
                             />
                           </td>
-                          <td className="py-3.5 px-4 font-semibold text-white">
+                          <td className="py-3 px-4 font-semibold text-white whitespace-nowrap">
                             <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 font-bold flex items-center justify-center shrink-0">
-                                {u.name?.charAt(0)}
+                              <div className="w-6 h-6 rounded-lg bg-sky-500/20 text-sky-400 font-bold flex items-center justify-center shrink-0 text-xs">
+                                {u.name?.charAt(0) || 'U'}
                               </div>
-                              <div>
-                                <p className="font-bold">{u.name}</p>
-                                {u.assignedFaculties?.length > 1 && (
-                                  <span className="text-[10px] text-indigo-400 font-normal">
-                                    Shared ({u.assignedFaculties.length} faculty)
-                                  </span>
-                                )}
-                              </div>
+                              <span className="font-bold">{u.name}</span>
+                              {u.assignedFaculties?.length > 1 && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-medium">
+                                  Shared ({u.assignedFaculties.length})
+                                </span>
+                              )}
                             </div>
                           </td>
-                          <td className="py-3.5 px-4 font-mono text-slate-400">{u.email}</td>
+                          <td className="py-3 px-4 font-mono text-slate-400 whitespace-nowrap">{u.email}</td>
+                          <td className="py-3 px-4 font-mono text-slate-300 whitespace-nowrap">{u.phone || '—'}</td>
 
-                          <td className="py-3.5 px-4">
+                          <td className="py-3 px-4 whitespace-nowrap">
                             <span className="font-semibold text-slate-300">
                               {u.organization || 'Direct / None'}
                             </span>
                           </td>
 
                           {isAdmin && (
-                            <td className="py-3.5 px-4">
+                            <td className="py-3 px-4 whitespace-nowrap">
                               <div className="flex items-center gap-1.5">
                                 <span className="font-medium text-slate-300">
                                   {u.createdBy?.name || 'Admin'}
                                 </span>
                                 {u.createdBy?.role && (
                                   <span
-                                    className={`text-[9px] px-1.5 py-0.2 rounded font-bold uppercase ${
+                                    className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
                                       u.createdBy.role === 'FACULTY'
                                         ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
                                         : 'bg-slate-800 text-slate-400 border border-slate-700'
@@ -900,17 +970,17 @@ export default function AdminUsersPage() {
                             </td>
                           )}
 
-                          <td className="py-3.5 px-4 font-mono text-slate-300">{u.rollNumber || '-'}</td>
-                          <td className="py-3.5 px-4 font-medium text-indigo-300">{u.batch || '-'}</td>
-                          <td className="py-3.5 px-4 text-slate-400">{u.gender || '-'}</td>
-                          <td className="py-3.5 px-4 font-mono text-slate-300">{u.age || '-'}</td>
+                          <td className="py-3 px-4 font-mono text-slate-300 whitespace-nowrap">{u.rollNumber || '—'}</td>
+                          <td className="py-3 px-4 font-medium text-indigo-300 whitespace-nowrap">{u.batch || '—'}</td>
+                          <td className="py-3 px-4 text-slate-400 whitespace-nowrap">{u.gender || '—'}</td>
+                          <td className="py-3 px-4 font-mono text-slate-300 whitespace-nowrap">{u.age || '—'}</td>
 
-                          <td className="py-3.5 px-4 font-mono">{u.examsAttempted || 0} Exams</td>
-                          <td className="py-3.5 px-4 font-mono font-bold text-amber-400">
+                          <td className="py-3 px-4 font-mono text-slate-300 whitespace-nowrap">{u.examsAttempted || 0}</td>
+                          <td className="py-3 px-4 font-mono font-bold text-amber-400 whitespace-nowrap">
                             {u.averageScore || 0}%
                           </td>
 
-                          <td className="py-3.5 px-4">
+                          <td className="py-3 px-4 whitespace-nowrap">
                             <span
                               className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                                 u.isActive
@@ -922,7 +992,7 @@ export default function AdminUsersPage() {
                             </span>
                           </td>
 
-                          <td className="py-3.5 px-4 text-right">
+                          <td className="py-3 px-4 text-right whitespace-nowrap">
                             <div className="flex items-center justify-end gap-1.5">
                               <button
                                 onClick={() => handleOpenEdit(u)}
@@ -1018,14 +1088,19 @@ export default function AdminUsersPage() {
                 <label className="block text-slate-300 font-semibold mb-1">
                   Target Organization *
                 </label>
-                <input
-                  type="text"
+                <select
                   required
                   value={shareOrg}
                   onChange={(e) => setShareOrg(e.target.value)}
-                  placeholder="e.g. Tech University"
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                >
+                  <option value="">-- Select Organization to Share --</option>
+                  {allOrganizationsList.map((org) => (
+                    <option key={org} value={org}>
+                      {org}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -1272,13 +1347,18 @@ export default function AdminUsersPage() {
 
               <div>
                 <label className="block font-medium text-slate-300 mb-1">Organization / Institution</label>
-                <input
-                  type="text"
+                <select
                   value={formData.organization}
                   onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
-                  placeholder="e.g. Tech University"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                >
+                  <option value="">-- No Organization (Unassigned) --</option>
+                  {allOrganizationsList.map((org) => (
+                    <option key={org} value={org}>
+                      {org}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1307,13 +1387,18 @@ export default function AdminUsersPage() {
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block font-medium text-slate-300 mb-1">Batch</label>
-                  <input
-                    type="text"
+                  <select
                     value={formData.batch}
                     onChange={(e) => setFormData({ ...formData, batch: e.target.value })}
-                    placeholder="e.g. Batch-2026-A"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                  >
+                    <option value="">-- No Batch (Unassigned) --</option>
+                    {allBatchesList.map((b) => (
+                      <option key={b} value={b}>
+                        {b}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block font-medium text-slate-300 mb-1">Gender</label>
@@ -1404,13 +1489,18 @@ export default function AdminUsersPage() {
 
               <div>
                 <label className="block font-medium text-slate-300 mb-1">Organization / Institution</label>
-                <input
-                  type="text"
+                <select
                   value={editFormData.organization}
                   onChange={(e) => setEditFormData({ ...editFormData, organization: e.target.value })}
-                  placeholder="e.g. Tech University"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                />
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                >
+                  <option value="">-- No Organization (Unassigned) --</option>
+                  {allOrganizationsList.map((org) => (
+                    <option key={org} value={org}>
+                      {org}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1437,12 +1527,18 @@ export default function AdminUsersPage() {
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block font-medium text-slate-300 mb-1">Batch</label>
-                  <input
-                    type="text"
+                  <select
                     value={editFormData.batch}
                     onChange={(e) => setEditFormData({ ...editFormData, batch: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  />
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                  >
+                    <option value="">-- No Batch (Unassigned) --</option>
+                    {allBatchesList.map((b) => (
+                      <option key={b} value={b}>
+                        {b}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block font-medium text-slate-300 mb-1">Gender</label>

@@ -206,7 +206,7 @@ export default function UserDashboard() {
                     <div className="shrink-0 flex items-center">
                       {exam.userStatus === 'COMPLETED' ? (
                         <Link
-                          to={`/results/${exam.attemptId}`}
+                          to={exam.attemptId ? `/results/${exam.attemptId}` : '/results'}
                           className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700 transition-colors"
                         >
                           View Result

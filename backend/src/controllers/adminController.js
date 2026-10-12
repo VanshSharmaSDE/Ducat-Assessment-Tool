@@ -227,7 +227,7 @@ export const generateStudentShareToken = async (req, res) => {
 
     // Role check: Faculty can ONLY share students from their own assigned organization
     if (req.user.role === 'FACULTY') {
-      if (req.user.organization && req.user.organization.toLowerCase() !== organization.trim().toLowerCase()) {
+      if (req.user.organization && req.user.organization.trim().toLowerCase() !== organization.trim().toLowerCase()) {
         return res.status(403).json({
           success: false,
           message: `Access denied. You can only share students from your assigned organization ("${req.user.organization}").`,
@@ -235,7 +235,10 @@ export const generateStudentShareToken = async (req, res) => {
       }
     }
 
-    const filter = { role: 'USER', organization: organization.trim() };
+    const filter = {
+      role: 'USER',
+      organization: { $regex: new RegExp(`^${organization.trim()}$`, 'i') },
+    };
     if (req.user.role === 'FACULTY') {
       filter.$or = [
         { createdBy: req.user._id },
@@ -266,11 +269,29 @@ export const generateStudentShareToken = async (req, res) => {
       { expiresIn: '30d' }
     );
 
+    const origin = req.headers.origin || req.headers.referer || '';
+    const cleanOrigin = origin ? origin.replace(/\/$/, '') : '';
+    const shareLink = cleanOrigin
+      ? `${cleanOrigin}/admin/students?importToken=${encodeURIComponent(token)}`
+      : `/admin/students?importToken=${encodeURIComponent(token)}`;
+
+    const responseData = {
+      token,
+      shareToken: token,
+      shareLink,
+      studentCount: count,
+      organization: organization.trim(),
+      batches: batches || [],
+    };
+
     return res.status(200).json({
       success: true,
+      data: responseData,
       token,
+      shareToken: token,
+      shareLink,
       studentCount: count,
-      message: `Share token generated for ${count} student(s). Share this token/link with another faculty member.`,
+      message: `Share token and link generated for ${count} student(s).`,
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -300,7 +321,7 @@ export const importSharedStudents = async (req, res) => {
 
     // Role check: Faculty can ONLY import students belonging to their own organization
     if (req.user.role === 'FACULTY') {
-      if (req.user.organization && decoded.organization && req.user.organization.toLowerCase() !== decoded.organization.toLowerCase()) {
+      if (req.user.organization && decoded.organization && req.user.organization.trim().toLowerCase() !== decoded.organization.trim().toLowerCase()) {
         return res.status(403).json({
           success: false,
           message: `Access denied. You can only import students from your own organization ("${req.user.organization}"). This shared token is for "${decoded.organization}".`,
@@ -308,7 +329,10 @@ export const importSharedStudents = async (req, res) => {
       }
     }
 
-    const filter = { role: 'USER', organization: decoded.organization };
+    const filter = {
+      role: 'USER',
+      organization: { $regex: new RegExp(`^${decoded.organization.trim()}$`, 'i') },
+    };
     if (decoded.batches && Array.isArray(decoded.batches) && decoded.batches.length > 0) {
       filter.batch = { $in: decoded.batches };
     }
@@ -330,12 +354,21 @@ export const importSharedStudents = async (req, res) => {
       }
     }
 
-    return res.status(200).json({
-      success: true,
+    const responseData = {
       linkedCount,
       totalOrganizationStudents: students.length,
       organization: decoded.organization,
-      message: `Successfully imported and linked ${linkedCount} student(s) from organization "${decoded.organization}" to your dashboard.`,
+    };
+
+    return res.status(200).json({
+      success: true,
+      data: responseData,
+      linkedCount,
+      totalOrganizationStudents: students.length,
+      organization: decoded.organization,
+      message: linkedCount > 0
+        ? `Successfully imported and linked ${linkedCount} student(s) from organization "${decoded.organization}" to your dashboard.`
+        : `All ${students.length} student(s) from "${decoded.organization}" are already linked to your account!`,
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

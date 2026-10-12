@@ -247,8 +247,6 @@ export default function AdminBatchesPage() {
     return match;
   });
 
-  const totalStudentsEnrolled = batches.reduce((acc, b) => acc + (b.studentCount || 0), 0);
-
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
@@ -303,46 +301,6 @@ export default function AdminBatchesPage() {
         </div>
       )}
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Batches</span>
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
-              <Layers className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3 text-2xl font-bold text-white">{batches.length}</div>
-          <p className="text-[11px] text-slate-500 mt-1">Active student sections / cohorts</p>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Enrolled Students</span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
-              <Users className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3 text-2xl font-bold text-indigo-400">{totalStudentsEnrolled}</div>
-          <p className="text-[11px] text-slate-500 mt-1">Assigned to your batches</p>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 sm:col-span-2 lg:col-span-1">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Role Scope</span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-              <GraduationCap className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3 text-lg font-bold text-emerald-400">
-            {isAdmin ? 'System Administrator' : 'Faculty Instructor'}
-          </div>
-          <p className="text-[11px] text-slate-500 mt-1">
-            {isAdmin ? 'Full system visibility across all faculties' : 'Private cohorts isolated to your students'}
-          </p>
-        </div>
-      </div>
-
       {/* Search & Actions Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="relative w-full max-w-md">
@@ -380,25 +338,25 @@ export default function AdminBatchesPage() {
       ) : (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full min-w-[1150px] text-left text-xs whitespace-nowrap">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
-                  <th className="py-3.5 px-4 w-10">
+                  <th className="py-3 px-4 w-10">
                     <input
                       type="checkbox"
                       checked={batches.length > 0 && selectedBatches.length === batches.length}
                       onChange={handleSelectAll}
-                      className="w-4 h-4 rounded cursor-pointer"
+                      className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
                       title="Select All Batches"
                     />
                   </th>
-                  <th className="py-3.5 px-4 font-semibold">Batch Name</th>
-                  <th className="py-3.5 px-4 font-semibold">Department</th>
-                  <th className="py-3.5 px-4 font-semibold">Description</th>
-                  <th className="py-3.5 px-4 font-semibold">Students Enrolled</th>
-                  {isAdmin && <th className="py-3.5 px-4 font-semibold">Created By (Faculty)</th>}
-                  <th className="py-3.5 px-4 font-semibold">Created Date</th>
-                  <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
+                  <th className="py-3 px-4 font-semibold">Batch Name</th>
+                  <th className="py-3 px-4 font-semibold">Department</th>
+                  <th className="py-3 px-4 font-semibold">Description</th>
+                  <th className="py-3 px-4 font-semibold">Students Enrolled</th>
+                  {isAdmin && <th className="py-3 px-4 font-semibold">Created By</th>}
+                  <th className="py-3 px-4 font-semibold">Created Date</th>
+                  <th className="py-3 px-4 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
@@ -406,28 +364,26 @@ export default function AdminBatchesPage() {
                   const isSelected = selectedBatches.includes(b._id);
                   return (
                   <tr key={b._id} className={`text-slate-300 hover:bg-slate-800/40 transition-colors ${isSelected ? 'bg-amber-500/5' : ''}`}>
-                    <td className="py-3.5 px-4">
+                    <td className="py-3 px-4">
                       <input
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => handleToggleSelect(b._id)}
-                        className="w-4 h-4 rounded cursor-pointer"
+                        className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
                       />
                     </td>
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-white text-sm bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700">
-                          {b.name}
-                        </span>
-                      </div>
+                    <td className="py-3 px-4 font-bold text-white whitespace-nowrap">
+                      <span className="bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700">
+                        {b.name}
+                      </span>
                     </td>
-                    <td className="py-3.5 px-4 font-medium text-slate-300">
+                    <td className="py-3 px-4 font-medium text-slate-300 whitespace-nowrap">
                       {b.department || <span className="text-slate-500 italic">General</span>}
                     </td>
-                    <td className="py-3.5 px-4 text-slate-400 max-w-xs truncate">
-                      {b.description || '-'}
+                    <td className="py-3 px-4 text-slate-400 max-w-xs truncate whitespace-nowrap" title={b.description || ''}>
+                      {b.description || '—'}
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td className="py-3 px-4 whitespace-nowrap">
                       <button
                         onClick={() => openManageStudents(b)}
                         className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 hover:bg-indigo-500/20 transition-colors font-semibold cursor-pointer"
@@ -438,30 +394,25 @@ export default function AdminBatchesPage() {
                     </td>
 
                     {isAdmin && (
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-6 h-6 rounded-md flex items-center justify-center font-bold text-[10px] ${
-                            b.createdBy?.role === 'FACULTY' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-slate-200">{b.createdBy?.name || 'Administrator'}</span>
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                            b.createdBy?.role === 'FACULTY'
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              : 'bg-slate-800 text-slate-400 border border-slate-700'
                           }`}>
-                            {b.createdBy?.name?.charAt(0) || 'A'}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-slate-200">{b.createdBy?.name || 'Administrator'}</p>
-                            <span className={`inline-block text-[9px] px-1.5 py-0.2 rounded font-bold uppercase ${
-                              b.createdBy?.role === 'FACULTY' ? 'text-emerald-400' : 'text-amber-400'
-                            }`}>
-                              {b.createdBy?.role || 'ADMIN'}
-                            </span>
-                          </div>
+                            {b.createdBy?.role || 'ADMIN'}
+                          </span>
                         </div>
                       </td>
                     )}
 
-                    <td className="py-3.5 px-4 text-slate-500">
+                    <td className="py-3 px-4 font-mono text-slate-400 whitespace-nowrap">
                       {new Date(b.createdAt).toLocaleDateString()}
                     </td>
 
-                    <td className="py-3.5 px-4 text-right">
+                    <td className="py-3 px-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => openManageStudents(b)}
@@ -723,7 +674,7 @@ export default function AdminBatchesPage() {
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs">
+                      <table className="w-full min-w-[650px] text-left text-xs">
                         <thead>
                           <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
                             <th className="py-2.5 px-3 font-semibold">Student Name</th>

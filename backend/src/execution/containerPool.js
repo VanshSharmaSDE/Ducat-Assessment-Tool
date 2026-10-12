@@ -1,6 +1,7 @@
 import { spawn } from 'child_process';
 import { config } from '../config/index.js';
 import { logger } from '../utils/logger.js';
+import { dockerExecutionService } from './DockerExecutionService.js';
 
 /**
  * Warm per-language container pool.
@@ -139,9 +140,11 @@ function pickContainer(language) {
 }
 
 function drain(language) {
-  if (!handler) return;
   const queue = queues[language];
   while (queue.length > 0) {
+    const peekJob = queue[0];
+    if (!peekJob.run && !handler) break;
+
     const container = pickContainer(language);
     if (!container) break; // all containers for this language are at capacity
 
@@ -150,9 +153,17 @@ function drain(language) {
     job.container = container.name;
     logger.info(`[Pool] ${job.id} -> ${container.name} (active ${container.active}, ${language} queue ${queue.length})`);
 
+    const runner = job.run ? job.run(job) : handler(job);
+
     Promise.resolve()
-      .then(() => handler(job))
-      .catch((err) => logger.error(`[Pool] Job ${job.id} failed: ${err.message}`, err))
+      .then(() => runner)
+      .then((res) => {
+        if (job.resolve) job.resolve(res);
+      })
+      .catch((err) => {
+        logger.error(`[Pool] Job ${job.id} failed: ${err.message}`, err);
+        if (job.reject) job.reject(err);
+      })
       .finally(() => {
         container.active -= 1;
         drain(language);
@@ -176,6 +187,82 @@ export async function addSubmissionJob(data) {
   setImmediate(() => drain(language));
   return job;
 }
+
+export async function runCustomCodeInPool(data) {
+  const language = queues[data.language] ? data.language : 'java';
+
+  // High load protection: if queue for this language is excessively large, reject early
+  if (queues[language].length > 100) {
+    const error = new Error('Execution sandbox is currently under high load. Please try again in a few seconds.');
+    error.statusCode = 503;
+    throw error;
+  }
+
+  // Check if containers are available
+  const healthyContainers = [...containers.values()].filter(
+    (c) => c.language === language && c.healthy
+  );
+
+  if (healthyContainers.length === 0) {
+    return {
+      status: 'SYSTEM_ERROR',
+      stdout: '',
+      stderr: `Execution sandbox container for ${language} is not currently running.`,
+      compileOutput: '',
+      executionTime: 0,
+    };
+  }
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+
+    // Safety timeout in case job is stuck waiting in queue or execution takes too long
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      const idx = queues[language].indexOf(job);
+      if (idx !== -1) queues[language].splice(idx, 1);
+      resolve({
+        status: 'TIME_LIMIT_EXCEEDED',
+        stdout: '',
+        stderr: 'Execution request timed out.',
+        compileOutput: '',
+        executionTime: 0,
+      });
+    }, 35000);
+
+    const job = {
+      id: `run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      data,
+      run: async (activeJob) => {
+        return dockerExecutionService.executeCustomCode({
+          language: activeJob.data.language,
+          sourceCode: activeJob.data.sourceCode,
+          customInput: activeJob.data.customInput,
+          questionTimeLimit: activeJob.data.questionTimeLimit,
+          questionMemoryLimit: activeJob.data.questionMemoryLimit,
+          container: activeJob.container,
+        });
+      },
+      resolve: (res) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        resolve(res);
+      },
+      reject: (err) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        reject(err);
+      },
+    };
+
+    queues[language].push(job);
+    setImmediate(() => drain(language));
+  });
+}
+
 
 export function getQueueStats() {
   return {

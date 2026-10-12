@@ -36,6 +36,21 @@ export async function processSubmissionJob(job) {
       logger.warn(`No test cases configured for question ${questionId}`);
     }
 
+    // Determine marks assigned to this question in the specific exam
+    const attempt = await ExamAttempt.findById(attemptId);
+    let assignedMarks = question.marks || 20;
+    if (attempt && attempt.examId) {
+      const exam = await Exam.findById(attempt.examId);
+      if (exam && Array.isArray(exam.questions)) {
+        const examQ = exam.questions.find(
+          (eq) => eq.questionId.toString() === questionId.toString()
+        );
+        if (examQ && examQ.marks !== undefined) {
+          assignedMarks = Number(examQ.marks);
+        }
+      }
+    }
+
     // 3. Run inside the warm container of this language assigned by the pool
     const evalResult = await dockerExecutionService.evaluateSubmission({
       language,
@@ -47,6 +62,32 @@ export async function processSubmissionJob(job) {
       container: job.container,
     });
 
+    // Compute scaled score based on assigned marks in this exam
+    const totalTests = evalResult.totalTests !== undefined ? evalResult.totalTests : (testCases ? testCases.length : 0);
+    const passedTests = evalResult.passedTests || 0;
+
+    let earnedScore = 0;
+    let finalStatus = evalResult.overallStatus || 'PENDING';
+
+    if (totalTests === 0) {
+      earnedScore = evalResult.overallStatus === 'PASSED' ? assignedMarks : 0;
+      finalStatus = evalResult.overallStatus === 'PASSED' ? 'PASSED' : 'WRONG_ANSWER';
+    } else if (passedTests === totalTests) {
+      earnedScore = assignedMarks;
+      finalStatus = 'PASSED';
+    } else if (passedTests === 0) {
+      earnedScore = 0;
+      finalStatus = evalResult.overallStatus || 'WRONG_ANSWER';
+    } else {
+      const totalTcMarks = (testCases || []).reduce((sum, tc) => sum + (Number(tc.marks) || 0), 0);
+      let ratio = passedTests / totalTests;
+      if (totalTcMarks > 0 && typeof evalResult.score === 'number') {
+        ratio = Math.min(1, Math.max(0, evalResult.score / totalTcMarks));
+      }
+      earnedScore = Number((ratio * assignedMarks).toFixed(2));
+      finalStatus = 'PARTIAL';
+    }
+
     // 4. Save SubmissionResult
     const submissionResult = await SubmissionResult.findOneAndUpdate(
       { submissionId },
@@ -54,13 +95,13 @@ export async function processSubmissionJob(job) {
         submissionId,
         attemptId,
         questionId,
-        passedTests: evalResult.passedTests || 0,
-        totalTests: evalResult.totalTests || 0,
-        score: evalResult.score || 0,
-        maxScore: question.marks || 0,
+        passedTests,
+        totalTests,
+        score: earnedScore,
+        maxScore: assignedMarks,
         executionTime: evalResult.executionTime || 0,
         memoryUsed: evalResult.memoryUsed || 0,
-        status: evalResult.overallStatus || 'SYSTEM_ERROR',
+        status: finalStatus,
         compileOutput: evalResult.compileOutput || '',
         testResults: evalResult.testResults || [],
       },
