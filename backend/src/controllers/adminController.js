@@ -20,6 +20,18 @@ export const createStudent = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
     }
 
+    // Role check: Faculty must belong to an organization and can only create students in their organization
+    let studentOrg = organization ? String(organization).trim() : '';
+    if (req.user?.role === 'FACULTY') {
+      if (!req.user.organization || !req.user.organization.trim()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. You must be assigned to an organization by an administrator before adding candidates.',
+        });
+      }
+      studentOrg = req.user.organization.trim();
+    }
+
     const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
     if (existingUser) {
       return res.status(409).json({ success: false, message: 'A user with this email already exists' });
@@ -34,7 +46,7 @@ export const createStudent = async (req, res) => {
       rollNumber: rollNumber ? String(rollNumber).trim() : '',
       phone: phone ? String(phone).trim() : '',
       batch: batch ? String(batch).trim() : '',
-      organization: organization ? String(organization).trim() : '',
+      organization: studentOrg,
       gender: gender ? String(gender).trim() : '',
       age: age ? Number(age) : null,
       createdBy: req.user._id,
@@ -70,6 +82,16 @@ export const uploadStudentsExcel = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please upload an Excel (.xlsx or .xls) file' });
     }
 
+    // Role check: Faculty must be assigned to an organization before uploading
+    if (req.user?.role === 'FACULTY') {
+      if (!req.user.organization || !req.user.organization.trim()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. You must be assigned to an organization by an administrator before uploading candidates.',
+        });
+      }
+    }
+
     // Parse Excel file from buffer
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
@@ -93,7 +115,7 @@ export const uploadStudentsExcel = async (req, res) => {
       const rollNumber = String(row['Roll Number'] || row['rollNumber'] || row['Roll'] || '');
       const phone = String(row['Phone'] || row['phone'] || '');
       const batch = String(row['Batch'] || row['batch'] || '');
-      const organization = String(row['Organization'] || row['organization'] || row['Organisation'] || row['organisation'] || '');
+      const rawOrg = String(row['Organization'] || row['organization'] || row['Organisation'] || row['organisation'] || '');
       const gender = String(row['Gender'] || row['gender'] || '');
       const rawAge = row['Age'] || row['age'];
       const age = rawAge ? Number(rawAge) : null;
@@ -103,6 +125,12 @@ export const uploadStudentsExcel = async (req, res) => {
         continue;
       }
 
+      // Enforce organization attribution
+      let effectiveOrg = rawOrg.trim();
+      if (req.user?.role === 'FACULTY') {
+        effectiveOrg = req.user.organization.trim();
+      }
+
       const existing = await User.findOne({ email: String(email).toLowerCase().trim() });
       if (existing) {
         if (existing.role !== 'USER') {
@@ -110,12 +138,25 @@ export const uploadStudentsExcel = async (req, res) => {
           continue;
         }
 
+        // If uploaded by faculty: cannot import or take over students belonging to a different organization
+        if (req.user?.role === 'FACULTY') {
+          if (
+            existing.organization &&
+            existing.organization.trim().toLowerCase() !== req.user.organization.trim().toLowerCase()
+          ) {
+            errors.push(
+              `Row ${rowNumber}: Student "${email}" belongs to organization "${existing.organization}". You can only import students for your current active organization ("${req.user.organization}").`
+            );
+            continue;
+          }
+        }
+
         // Update existing student profile information
         if (name) existing.name = String(name).trim();
         if (rollNumber) existing.rollNumber = rollNumber.trim();
         if (phone) existing.phone = phone.trim();
         if (batch) existing.batch = batch.trim();
-        if (organization) existing.organization = organization.trim();
+        if (effectiveOrg) existing.organization = effectiveOrg;
         if (gender) existing.gender = gender.trim();
         if (age !== null && !isNaN(age)) existing.age = age;
         if (row['Password'] || row['password']) {
@@ -144,7 +185,7 @@ export const uploadStudentsExcel = async (req, res) => {
         rollNumber: rollNumber.trim(),
         phone: phone.trim(),
         batch: batch.trim(),
-        organization: organization.trim(),
+        organization: effectiveOrg,
         gender: gender.trim(),
         age: age,
         createdBy: req.user._id,
@@ -227,7 +268,13 @@ export const generateStudentShareToken = async (req, res) => {
 
     // Role check: Faculty can ONLY share students from their own assigned organization
     if (req.user.role === 'FACULTY') {
-      if (req.user.organization && req.user.organization.trim().toLowerCase() !== organization.trim().toLowerCase()) {
+      if (!req.user.organization || !req.user.organization.trim()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. You are not currently assigned to an organization by an administrator.',
+        });
+      }
+      if (req.user.organization.trim().toLowerCase() !== organization.trim().toLowerCase()) {
         return res.status(403).json({
           success: false,
           message: `Access denied. You can only share students from your assigned organization ("${req.user.organization}").`,
@@ -321,10 +368,16 @@ export const importSharedStudents = async (req, res) => {
 
     // Role check: Faculty can ONLY import students belonging to their own organization
     if (req.user.role === 'FACULTY') {
-      if (req.user.organization && decoded.organization && req.user.organization.trim().toLowerCase() !== decoded.organization.trim().toLowerCase()) {
+      if (!req.user.organization || !req.user.organization.trim()) {
         return res.status(403).json({
           success: false,
-          message: `Access denied. You can only import students from your own organization ("${req.user.organization}"). This shared token is for "${decoded.organization}".`,
+          message: 'Access denied. You are not currently assigned to any organization, so you cannot import shared students.',
+        });
+      }
+      if (req.user.organization.trim().toLowerCase() !== decoded.organization.trim().toLowerCase()) {
+        return res.status(403).json({
+          success: false,
+          message: `Access denied. You can only import students from your active organization ("${req.user.organization}"). This shared token is for "${decoded.organization}".`,
         });
       }
     }
@@ -391,8 +444,9 @@ export const exportResultsExcel = async (req, res) => {
       filter.examId = examId;
     }
 
-    // Role check: Faculty can export results for their students (created, assigned, or institutional)
+    // Role check: Faculty can export results for their students (created, assigned, or institutional) or their exams
     if (req.user?.role === 'FACULTY') {
+      const myExamIds = await Exam.find({ createdBy: req.user._id }).distinct('_id');
       const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
       const allowedStudentIds = await User.find({
         role: 'USER',
@@ -405,11 +459,33 @@ export const exportResultsExcel = async (req, res) => {
           { createdBy: { $exists: false } },
         ],
       }).distinct('_id');
-      filter.userId = { $in: allowedStudentIds };
+
+      if (examId) {
+        const isMyExam = myExamIds.map(String).includes(String(examId));
+        if (!isMyExam) {
+          filter.userId = { $in: allowedStudentIds };
+        }
+      } else {
+        filter.$or = [
+          { examId: { $in: myExamIds } },
+          { userId: { $in: allowedStudentIds } },
+        ];
+      }
     }
 
     // Filter by student batch or gender
     const userFilter = {};
+    if (req.user?.role === 'FACULTY') {
+      const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
+      userFilter.$or = [
+        { createdBy: req.user._id },
+        { assignedFaculties: req.user._id },
+        { organization: req.user.organization || '__NONE__' },
+        { createdBy: { $in: adminIds } },
+        { createdBy: null },
+        { createdBy: { $exists: false } },
+      ];
+    }
     if (batch) userFilter.batch = batch;
     if (gender) userFilter.gender = gender;
 
@@ -731,8 +807,19 @@ export class AdminController {
 
       let filter = {};
       if (req.user?.role === 'FACULTY') {
-        const myStudentIds = await User.find({ createdBy: req.user._id }).distinct('_id');
-        filter.userId = { $in: myStudentIds };
+        const myExamIds = await Exam.find({ createdBy: req.user._id }).distinct('_id');
+        const myStudentIds = await User.find({
+          role: 'USER',
+          $or: [
+            { createdBy: req.user._id },
+            { assignedFaculties: req.user._id },
+            { organization: req.user.organization || '__NONE__' },
+          ],
+        }).distinct('_id');
+        filter.$or = [
+          { examId: { $in: myExamIds } },
+          { userId: { $in: myStudentIds } },
+        ];
       }
 
       const [submissions, total] = await Promise.all([
@@ -800,7 +887,13 @@ export const updateStudent = async (req, res) => {
     if (rollNumber !== undefined) user.rollNumber = String(rollNumber).trim();
     if (phone !== undefined) user.phone = String(phone).trim();
     if (batch !== undefined) user.batch = String(batch).trim();
-    if (organization !== undefined) user.organization = String(organization).trim();
+    if (organization !== undefined) {
+      if (req.user?.role === 'FACULTY') {
+        user.organization = req.user.organization ? req.user.organization.trim() : '';
+      } else {
+        user.organization = String(organization).trim();
+      }
+    }
     if (gender !== undefined) user.gender = String(gender).trim();
     if (age !== undefined) user.age = age === '' || age === null ? null : Number(age);
 
@@ -1127,7 +1220,7 @@ export const updateFaculty = async (req, res) => {
     if (name) faculty.name = name.trim();
     if (phone !== undefined) faculty.phone = String(phone).trim();
     if (department !== undefined) faculty.batch = String(department).trim();
-    if (organization !== undefined) faculty.organization = String(organization).trim();
+    if (organization !== undefined) faculty.organization = organization ? String(organization).trim() : '';
 
     if (password && password.trim().length >= 6) {
       faculty.passwordHash = await bcrypt.hash(password.trim(), 10);

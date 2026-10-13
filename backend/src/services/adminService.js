@@ -34,8 +34,15 @@ export class AdminService {
       batchFilter.createdBy = currentUser._id;
 
       const myStudentIds = await User.find(userFilter).distinct('_id');
-      subFilter.userId = { $in: myStudentIds };
-      attemptFilter.userId = { $in: myStudentIds };
+      const myExamIds = await Exam.find(examFilter).distinct('_id');
+      subFilter.$or = [
+        { examId: { $in: myExamIds } },
+        { userId: { $in: myStudentIds } },
+      ];
+      attemptFilter.$or = [
+        { examId: { $in: myExamIds } },
+        { userId: { $in: myStudentIds } },
+      ];
     }
 
     const [
@@ -230,7 +237,8 @@ export class AdminService {
           ],
         });
       } else {
-        conditions.push({ organization: query.organization });
+        const cleanOrg = query.organization.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        conditions.push({ organization: { $regex: new RegExp(`^${cleanOrg}$`, 'i') } });
       }
     }
 
@@ -248,15 +256,60 @@ export class AdminService {
       ];
     }
 
-    const [users, total, availableBatches, availableGenders, availableOrganizations, orgAggregate] =
-      await Promise.all([
-        User.find(filter)
-          .populate('createdBy', 'name email role')
-          .populate('assignedFaculties', 'name email role')
-          .sort({ createdAt: -1 })
-          .skip(skip)
-          .limit(limit),
-        User.countDocuments(filter),
+    let availableBatches = [];
+    let availableGenders = [];
+    let availableOrganizations = [];
+    let organizationsSummary = [];
+
+    const [users, total] = await Promise.all([
+      User.find(filter)
+        .populate('createdBy', 'name email role')
+        .populate('assignedFaculties', 'name email role')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      User.countDocuments(filter),
+    ]);
+
+    if (currentUser && currentUser.role === 'FACULTY') {
+      const isFacultyAssigned = Boolean(currentUser.organization && currentUser.organization.trim());
+      const facultyOrgName = isFacultyAssigned ? currentUser.organization.trim() : '';
+
+      if (isFacultyAssigned) {
+        const orgRegex = new RegExp(`^${facultyOrgName.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i');
+        const [batches, genders, orgStudentCount, orgActiveCount, orgBatches] = await Promise.all([
+          User.distinct('batch', { ...baseFacultyFilter, batch: { $ne: '' } }),
+          User.distinct('gender', { ...baseFacultyFilter, gender: { $ne: '' } }),
+          User.countDocuments({ ...baseFacultyFilter, organization: orgRegex }),
+          User.countDocuments({ ...baseFacultyFilter, organization: orgRegex, isActive: true }),
+          User.distinct('batch', { ...baseFacultyFilter, organization: orgRegex, batch: { $ne: '' } }),
+        ]);
+
+        availableBatches = batches;
+        availableGenders = genders;
+        availableOrganizations = [facultyOrgName];
+        organizationsSummary = [
+          {
+            name: facultyOrgName,
+            id: facultyOrgName,
+            studentCount: orgStudentCount,
+            activeCount: orgActiveCount,
+            batches: orgBatches.filter(Boolean),
+          },
+        ];
+      } else {
+        const [batches, genders] = await Promise.all([
+          User.distinct('batch', { ...baseFacultyFilter, batch: { $ne: '' } }),
+          User.distinct('gender', { ...baseFacultyFilter, gender: { $ne: '' } }),
+        ]);
+
+        availableBatches = batches;
+        availableGenders = genders;
+        availableOrganizations = [];
+        organizationsSummary = [];
+      }
+    } else {
+      const [batches, genders, orgs, orgAggregate] = await Promise.all([
         User.distinct('batch', { ...baseFacultyFilter, batch: { $ne: '' } }),
         User.distinct('gender', { ...baseFacultyFilter, gender: { $ne: '' } }),
         User.distinct('organization', { ...baseFacultyFilter, organization: { $ne: '' } }),
@@ -273,6 +326,18 @@ export class AdminService {
           { $sort: { _id: 1 } },
         ]),
       ]);
+
+      availableBatches = batches;
+      availableGenders = genders;
+      availableOrganizations = orgs;
+      organizationsSummary = orgAggregate.map((item) => ({
+        name: item._id || 'Unassigned / Direct',
+        id: item._id || 'unassigned',
+        studentCount: item.studentCount,
+        activeCount: item.activeCount,
+        batches: (item.batches || []).filter(Boolean),
+      }));
+    }
 
     // Attach attempts count and avg score for each user
     const usersWithStats = await Promise.all(
@@ -295,14 +360,6 @@ export class AdminService {
         };
       })
     );
-
-    const organizationsSummary = orgAggregate.map((item) => ({
-      name: item._id || 'Unassigned / Direct',
-      id: item._id || 'unassigned',
-      studentCount: item.studentCount,
-      activeCount: item.activeCount,
-      batches: (item.batches || []).filter(Boolean),
-    }));
 
     return {
       users: usersWithStats,

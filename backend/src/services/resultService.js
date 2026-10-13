@@ -219,18 +219,35 @@ export class ResultService {
     const filter = {};
     const isFaculty = currentUser && currentUser.role === 'FACULTY';
 
+    let allowedStudentIds = null;
+    let myExamIds = [];
+
     if (isFaculty) {
+      myExamIds = await Exam.find({ createdBy: currentUser._id }).distinct('_id');
       const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
-      const allowedStudentIds = await User.find({
+      allowedStudentIds = await User.find({
         role: 'USER',
         $or: [
           { createdBy: currentUser._id },
+          { assignedFaculties: currentUser._id },
+          { organization: currentUser.organization || '__NONE__' },
           { createdBy: { $in: adminIds } },
           { createdBy: null },
-          { createdBy: { $exists: false } }
-        ]
+          { createdBy: { $exists: false } },
+        ],
       }).distinct('_id');
-      filter.userId = { $in: allowedStudentIds };
+
+      if (query.examId) {
+        const isMyExam = myExamIds.map(String).includes(String(query.examId));
+        if (!isMyExam) {
+          filter.userId = { $in: allowedStudentIds };
+        }
+      } else if (!query.userId) {
+        filter.$or = [
+          { examId: { $in: myExamIds } },
+          { userId: { $in: allowedStudentIds } },
+        ];
+      }
     }
 
     if (query.examId) {
@@ -238,18 +255,18 @@ export class ResultService {
     }
     if (query.userId) {
       if (isFaculty) {
-        const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
-        const isAllowedStudent = await User.exists({
-          _id: query.userId,
-          $or: [
-            { createdBy: currentUser._id },
-            { createdBy: { $in: adminIds } },
-            { createdBy: null },
-            { createdBy: { $exists: false } }
-          ]
-        });
+        const isAllowedStudent = allowedStudentIds?.map(String).includes(String(query.userId));
         if (!isAllowedStudent) {
-          filter.userId = { $in: [] };
+          const tookMyExam = await ExamAttempt.exists({
+            userId: query.userId,
+            examId: { $in: myExamIds },
+          });
+          if (tookMyExam) {
+            filter.userId = query.userId;
+            filter.examId = { $in: myExamIds };
+          } else {
+            filter.userId = { $in: [] };
+          }
         } else {
           filter.userId = query.userId;
         }
@@ -267,9 +284,11 @@ export class ResultService {
       const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
       userFilter.$or = [
         { createdBy: currentUser._id },
+        { assignedFaculties: currentUser._id },
+        { organization: currentUser.organization || '__NONE__' },
         { createdBy: { $in: adminIds } },
         { createdBy: null },
-        { createdBy: { $exists: false } }
+        { createdBy: { $exists: false } },
       ];
     }
     if (query.batch) userFilter.batch = query.batch;
@@ -299,13 +318,13 @@ export class ResultService {
       ExamAttempt.find(filter)
         .populate({
           path: 'userId',
-          select: 'name email phone rollNumber batch gender createdBy',
-          populate: { path: 'createdBy', select: 'name email role' }
+          select: 'name email phone rollNumber batch gender createdBy assignedFaculties',
+          populate: { path: 'createdBy', select: 'name email role' },
         })
         .populate({
           path: 'examId',
           select: 'title duration totalMarks passingMarks createdBy',
-          populate: { path: 'createdBy', select: 'name email role' }
+          populate: { path: 'createdBy', select: 'name email role' },
         })
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -314,12 +333,26 @@ export class ResultService {
       User.distinct('batch', {
         role: 'USER',
         batch: { $ne: '' },
-        ...(isFaculty ? { createdBy: currentUser._id } : {})
+        ...(isFaculty
+          ? {
+              $or: [
+                { createdBy: currentUser._id },
+                { assignedFaculties: currentUser._id },
+              ],
+            }
+          : {}),
       }),
       User.distinct('gender', {
         role: 'USER',
         gender: { $ne: '' },
-        ...(isFaculty ? { createdBy: currentUser._id } : {})
+        ...(isFaculty
+          ? {
+              $or: [
+                { createdBy: currentUser._id },
+                { assignedFaculties: currentUser._id },
+              ],
+            }
+          : {}),
       }),
       Exam.find(isFaculty ? { createdBy: currentUser._id } : {}).select('_id title').sort({ title: 1 }),
     ]);

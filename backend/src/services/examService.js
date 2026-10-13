@@ -47,16 +47,21 @@ export class ExamService {
     }
     const isExamByAdmin = examCreator?.role === 'ADMIN';
 
-    // If exam was created by Admin: only accessible to students created by Admin
+    // Check if the student is assigned to / imported by the faculty who created this exam
+    const isAssignedToExamCreator = (studentUser.assignedFaculties || []).some(
+      (fId) => String(fId?._id || fId) === examCreatorId
+    );
+    const studentFacultyId = String(studentCreator?._id || studentCreator || '');
+    const isCreatedByExamCreator = studentFacultyId === examCreatorId;
+
+    // If exam was created by Admin: accessible if student was created by Admin or unassigned
     if (isExamByAdmin) {
       return isStudentOfAdmin;
     }
 
-    // If exam was created by Faculty: accessible if student was created by that Faculty or assigned to that Faculty
-    if (!isStudentOfAdmin) {
-      const studentFacultyId = String(studentCreator?._id || studentCreator || '');
-      const isAssigned = studentUser.assignedFaculties?.some((fId) => String(fId?._id || fId) === examCreatorId);
-      return examCreatorId === studentFacultyId || isAssigned;
+    // If exam was created by Faculty: accessible if student was created by that Faculty OR assigned/imported by that Faculty
+    if (isCreatedByExamCreator || isAssignedToExamCreator) {
+      return true;
     }
 
     return false;
@@ -68,21 +73,27 @@ export class ExamService {
     const student = await User.findById(userId).populate('createdBy', 'role name email');
     if (student && student.role === 'USER') {
       const isStudentOfAdmin = !student.createdBy || student.createdBy.role === 'ADMIN';
+      const assignedIds = (student.assignedFaculties || []).map((f) => String(f._id || f));
+
+      const allowedCreatorIds = [];
 
       if (isStudentOfAdmin) {
-        // Admin-created students ONLY see exams created by Admins
         const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
-        filter.createdBy = { $in: adminIds };
+        allowedCreatorIds.push(...adminIds.map(String));
       } else if (student.createdBy && student.createdBy.role === 'FACULTY') {
-        // Faculty-created students ONLY see exams created by their own Faculty or assigned faculties
-        const studentFacultyId = student.createdBy._id || student.createdBy;
-        const assignedIds = (student.assignedFaculties || []).map((f) => f._id || f);
-        filter.createdBy = { $in: [studentFacultyId, ...assignedIds] };
+        allowedCreatorIds.push(String(student.createdBy._id || student.createdBy));
       } else {
-        // Fallback for unassigned/other: match admin exams
         const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
-        filter.createdBy = { $in: adminIds };
+        allowedCreatorIds.push(...adminIds.map(String));
       }
+
+      // Imported / Assigned faculties: student can see all published exams created by faculties who imported them
+      if (assignedIds.length > 0) {
+        allowedCreatorIds.push(...assignedIds);
+      }
+
+      const uniqueCreatorIds = Array.from(new Set(allowedCreatorIds.filter(Boolean)));
+      filter.createdBy = { $in: uniqueCreatorIds };
     } else if (student && student.role === 'FACULTY') {
       // Faculty previewing exams
       filter.createdBy = student._id;

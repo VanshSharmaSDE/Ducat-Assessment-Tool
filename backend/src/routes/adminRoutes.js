@@ -69,10 +69,13 @@ router.post('/batches/:id/remove-student', BatchController.removeStudentFromBatc
 // Dedicated Organization Management (Admin creates/manages; Faculty views)
 router.get('/organizations', OrganizationController.getAllOrganizations);
 router.get('/organizations/:id', OrganizationController.getOrganizationById);
+router.get('/organizations/:id/available-faculty', requireAdmin, OrganizationController.getAvailableFaculty);
 router.post('/organizations', requireAdmin, OrganizationController.createOrganization);
 router.post('/organizations/bulk-delete', requireAdmin, OrganizationController.bulkDeleteOrganizations);
 router.put('/organizations/:id', requireAdmin, OrganizationController.updateOrganization);
 router.delete('/organizations/:id', requireAdmin, OrganizationController.deleteOrganization);
+router.post('/organizations/:id/faculty', requireAdmin, OrganizationController.addFacultyToOrganization);
+router.post('/organizations/:id/remove-faculty', requireAdmin, OrganizationController.removeFacultyFromOrganization);
 
 // Dedicated Faculty Management (ADMIN ONLY)
 router.get('/faculty', requireAdmin, getFacultyList);

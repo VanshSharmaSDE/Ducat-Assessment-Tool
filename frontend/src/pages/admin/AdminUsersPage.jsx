@@ -340,9 +340,19 @@ export default function AdminUsersPage() {
 
   // Manual Student Creation
   const handleOpenManualModal = () => {
-    const defaultOrg = (selectedOrg && selectedOrg !== '__ALL__' && selectedOrg !== 'unassigned')
-      ? selectedOrg
-      : (user?.organization || '');
+    if (user?.role === 'FACULTY' && (!user.organization || !user.organization.trim())) {
+      showAlert({
+        title: 'Organization Required',
+        message: 'You must be assigned to an organization by an administrator before adding candidates.',
+        type: 'warning',
+      });
+      return;
+    }
+    const defaultOrg = user?.role === 'FACULTY'
+      ? (user.organization || '')
+      : ((selectedOrg && selectedOrg !== '__ALL__' && selectedOrg !== 'unassigned')
+          ? selectedOrg
+          : '');
     setFormData({
       name: '',
       email: '',
@@ -468,9 +478,19 @@ export default function AdminUsersPage() {
 
   // Open Share Students Modal
   const handleOpenShare = () => {
-    const defaultOrg = (selectedOrg && selectedOrg !== '__ALL__' && selectedOrg !== 'unassigned')
-      ? selectedOrg
-      : (user?.organization || allOrganizationsList[0] || '');
+    if (user?.role === 'FACULTY' && (!user.organization || !user.organization.trim())) {
+      showAlert({
+        title: 'Organization Required',
+        message: 'You are not assigned to an organization by an administrator, so you cannot share candidates.',
+        type: 'warning',
+      });
+      return;
+    }
+    const defaultOrg = user?.role === 'FACULTY'
+      ? (user.organization || '')
+      : ((selectedOrg && selectedOrg !== '__ALL__' && selectedOrg !== 'unassigned')
+          ? selectedOrg
+          : (allOrganizationsList[0] || ''));
     setShareOrg(defaultOrg);
     setShareBatches([]);
     setShareTokenResult(null);
@@ -1088,19 +1108,25 @@ export default function AdminUsersPage() {
                 <label className="block text-slate-300 font-semibold mb-1">
                   Target Organization *
                 </label>
-                <select
-                  required
-                  value={shareOrg}
-                  onChange={(e) => setShareOrg(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                >
-                  <option value="">-- Select Organization to Share --</option>
-                  {allOrganizationsList.map((org) => (
-                    <option key={org} value={org}>
-                      {org}
-                    </option>
-                  ))}
-                </select>
+                {user?.role === 'FACULTY' ? (
+                  <div className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-indigo-400 font-medium">
+                    {user?.organization || 'Unassigned'}
+                  </div>
+                ) : (
+                  <select
+                    required
+                    value={shareOrg}
+                    onChange={(e) => setShareOrg(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                  >
+                    <option value="">-- Select Organization to Share --</option>
+                    {allOrganizationsList.map((org) => (
+                      <option key={org} value={org}>
+                        {org}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div>
@@ -1347,18 +1373,24 @@ export default function AdminUsersPage() {
 
               <div>
                 <label className="block font-medium text-slate-300 mb-1">Organization / Institution</label>
-                <select
-                  value={formData.organization}
-                  onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                >
-                  <option value="">-- No Organization (Unassigned) --</option>
-                  {allOrganizationsList.map((org) => (
-                    <option key={org} value={org}>
-                      {org}
-                    </option>
-                  ))}
-                </select>
+                {user?.role === 'FACULTY' ? (
+                  <div className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-indigo-400 font-medium">
+                    {user?.organization || 'Unassigned'}
+                  </div>
+                ) : (
+                  <select
+                    value={formData.organization}
+                    onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                  >
+                    <option value="">-- No Organization (Unassigned) --</option>
+                    {allOrganizationsList.map((org) => (
+                      <option key={org} value={org}>
+                        {org}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1489,18 +1521,24 @@ export default function AdminUsersPage() {
 
               <div>
                 <label className="block font-medium text-slate-300 mb-1">Organization / Institution</label>
-                <select
-                  value={editFormData.organization}
-                  onChange={(e) => setEditFormData({ ...editFormData, organization: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
-                >
-                  <option value="">-- No Organization (Unassigned) --</option>
-                  {allOrganizationsList.map((org) => (
-                    <option key={org} value={org}>
-                      {org}
-                    </option>
-                  ))}
-                </select>
+                {user?.role === 'FACULTY' ? (
+                  <div className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-amber-400 font-medium">
+                    {editFormData.organization || user?.organization || 'Unassigned'}
+                  </div>
+                ) : (
+                  <select
+                    value={editFormData.organization}
+                    onChange={(e) => setEditFormData({ ...editFormData, organization: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                  >
+                    <option value="">-- No Organization (Unassigned) --</option>
+                    {allOrganizationsList.map((org) => (
+                      <option key={org} value={org}>
+                        {org}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">

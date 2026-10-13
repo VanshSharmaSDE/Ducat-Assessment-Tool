@@ -18,7 +18,9 @@ import {
   ExternalLink,
   ShieldCheck,
   Eye,
-  Hash
+  Hash,
+  UserPlus,
+  UserMinus,
 } from 'lucide-react';
 
 export default function AdminOrganizationsPage() {
@@ -41,6 +43,13 @@ export default function AdminOrganizationsPage() {
   const [orgDetails, setOrgDetails] = useState(null);
   const [membersTab, setMembersTab] = useState('faculty'); // 'faculty' or 'students'
   const [loadingMembers, setLoadingMembers] = useState(false);
+
+  // Organization Faculty Assignment State
+  const [facultyViewMode, setFacultyViewMode] = useState('enrolled'); // 'enrolled' or 'assign'
+  const [availableFaculty, setAvailableFaculty] = useState([]);
+  const [loadingAvailableFaculty, setLoadingAvailableFaculty] = useState(false);
+  const [selectedAssignFacultyIds, setSelectedAssignFacultyIds] = useState([]);
+  const [availableFacultySearch, setAvailableFacultySearch] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -187,6 +196,9 @@ export default function AdminOrganizationsPage() {
     setShowMembersModal(true);
     setLoadingMembers(true);
     setMembersTab('faculty');
+    setFacultyViewMode('enrolled');
+    setSelectedAssignFacultyIds([]);
+    setAvailableFacultySearch('');
     try {
       const res = await api.get(`/admin/organizations/${org._id}`);
       setOrgDetails(res.data.data.organization);
@@ -194,6 +206,77 @@ export default function AdminOrganizationsPage() {
       showBanner('Failed to load organization members', true);
     } finally {
       setLoadingMembers(false);
+    }
+  };
+
+  const handleOpenAssignFaculty = async () => {
+    if (!activeOrg) return;
+    setFacultyViewMode('assign');
+    setSelectedAssignFacultyIds([]);
+    setAvailableFacultySearch('');
+    setLoadingAvailableFaculty(true);
+    try {
+      const res = await api.get(`/admin/organizations/${activeOrg._id}/available-faculty`);
+      setAvailableFaculty(res.data.data?.faculty || []);
+    } catch (err) {
+      showBanner(err.response?.data?.message || 'Failed to load available faculty', true);
+    } finally {
+      setLoadingAvailableFaculty(false);
+    }
+  };
+
+  const handleToggleAssignSelect = (facultyId) => {
+    setSelectedAssignFacultyIds((prev) =>
+      prev.includes(facultyId) ? prev.filter((id) => id !== facultyId) : [...prev, facultyId]
+    );
+  };
+
+  const handleAssignFacultySubmit = async (singleId = null) => {
+    if (!activeOrg) return;
+    const targetIds = singleId ? [singleId] : selectedAssignFacultyIds;
+    if (targetIds.length === 0) return;
+
+    try {
+      setActionLoading(true);
+      const res = await api.post(`/admin/organizations/${activeOrg._id}/faculty`, {
+        facultyIds: targetIds,
+      });
+      showBanner(res.data?.message || `Assigned ${targetIds.length} faculty member(s) to "${activeOrg.name}"!`);
+      setSelectedAssignFacultyIds([]);
+      setFacultyViewMode('enrolled');
+      // Refresh organization details and main list
+      const updatedOrgRes = await api.get(`/admin/organizations/${activeOrg._id}`);
+      setOrgDetails(updatedOrgRes.data.data.organization);
+      await loadOrganizations();
+    } catch (err) {
+      showBanner(err.response?.data?.message || 'Failed to assign faculty member(s)', true);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRemoveFaculty = async (facultyId, facultyName) => {
+    if (!activeOrg) return;
+    const confirmed = await showConfirm({
+      title: 'Remove Faculty from Organization',
+      message: `Are you sure you want to remove "${facultyName}" from "${activeOrg.name}"? They will no longer belong to this organization.`,
+      confirmText: 'Remove Faculty',
+      isDanger: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      setActionLoading(true);
+      const res = await api.post(`/admin/organizations/${activeOrg._id}/remove-faculty`, { facultyId });
+      showBanner(res.data?.message || `Removed ${facultyName} from "${activeOrg.name}".`);
+      // Refresh modal details and main list
+      const updatedOrgRes = await api.get(`/admin/organizations/${activeOrg._id}`);
+      setOrgDetails(updatedOrgRes.data.data.organization);
+      await loadOrganizations();
+    } catch (err) {
+      showBanner(err.response?.data?.message || 'Failed to remove faculty member', true);
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -685,30 +768,188 @@ export default function AdminOrganizationsPage() {
                   <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : membersTab === 'faculty' ? (
-                (orgDetails?.faculties || []).length === 0 ? (
-                  <div className="py-8 text-center text-slate-500 text-xs">
-                    No faculty members currently assigned to this organization.
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {orgDetails.faculties.map((f) => (
-                      <div
-                        key={f._id}
-                        className="p-3 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between text-xs"
-                      >
-                        <div>
-                          <p className="font-semibold text-white">{f.name}</p>
-                          <p className="text-slate-400 text-[11px]">{f.email}</p>
-                        </div>
-                        <div className="text-right">
-                          <span className="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 font-mono">
-                            {f.department || 'General'}
-                          </span>
-                        </div>
+                <div>
+                  {isAdmin && (
+                    <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-slate-800">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setFacultyViewMode('enrolled')}
+                          className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                            facultyViewMode === 'enrolled'
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          Enrolled Faculty ({orgDetails?.faculties?.length || 0})
+                        </button>
+                        <button
+                          onClick={handleOpenAssignFaculty}
+                          className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                            facultyViewMode === 'assign'
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          <UserPlus className="w-3.5 h-3.5 text-amber-400" />
+                          <span>+ Assign Faculty</span>
+                        </button>
                       </div>
-                    ))}
-                  </div>
-                )
+                    </div>
+                  )}
+
+                  {facultyViewMode === 'assign' && isAdmin ? (
+                    /* ASSIGN FACULTY VIEW */
+                    <div className="space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                        <div className="relative flex-1">
+                          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                          <input
+                            type="text"
+                            value={availableFacultySearch}
+                            onChange={(e) => setAvailableFacultySearch(e.target.value)}
+                            placeholder="Filter available faculty by name, email, department..."
+                            className="w-full pl-8 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          />
+                        </div>
+
+                        {selectedAssignFacultyIds.length > 0 && (
+                          <button
+                            onClick={() => handleAssignFacultySubmit()}
+                            disabled={actionLoading}
+                            className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg shadow-md transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                          >
+                            <UserPlus className="w-3.5 h-3.5" />
+                            <span>Assign Selected ({selectedAssignFacultyIds.length})</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {loadingAvailableFaculty ? (
+                        <div className="py-10 flex justify-center">
+                          <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      ) : (
+                        (() => {
+                          const filtered = availableFaculty.filter((f) => {
+                            if (!availableFacultySearch.trim()) return true;
+                            const q = availableFacultySearch.toLowerCase();
+                            return (
+                              f.name.toLowerCase().includes(q) ||
+                              f.email.toLowerCase().includes(q) ||
+                              (f.department && f.department.toLowerCase().includes(q)) ||
+                              (f.currentOrganization && f.currentOrganization.toLowerCase().includes(q))
+                            );
+                          });
+
+                          if (filtered.length === 0) {
+                            return (
+                              <div className="py-8 text-center text-slate-500 text-xs">
+                                {availableFaculty.length === 0
+                                  ? 'All existing faculty members are already assigned to this organization.'
+                                  : 'No matching faculty found.'}
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                              {filtered.map((f) => (
+                                <div
+                                  key={f._id}
+                                  className={`p-3 rounded-xl border transition-all text-xs flex items-center justify-between ${
+                                    selectedAssignFacultyIds.includes(f._id)
+                                      ? 'bg-amber-500/10 border-amber-500/40'
+                                      : 'bg-slate-950 border-slate-800 hover:border-slate-700'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedAssignFacultyIds.includes(f._id)}
+                                      onChange={() => handleToggleAssignSelect(f._id)}
+                                      className="w-4 h-4 rounded cursor-pointer accent-amber-500"
+                                    />
+                                    <div>
+                                      <p className="font-semibold text-white flex items-center gap-2">
+                                        <span>{f.name}</span>
+                                        <span className="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 font-mono">
+                                          {f.department || 'General'}
+                                        </span>
+                                      </p>
+                                      <p className="text-slate-400 text-[11px] mt-0.5">
+                                        {f.email} • Current: <span className="text-slate-300">{f.currentOrganization}</span>
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <button
+                                    onClick={() => handleAssignFacultySubmit(f._id)}
+                                    disabled={actionLoading}
+                                    className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg font-semibold text-[11px] flex items-center gap-1 transition-all cursor-pointer"
+                                  >
+                                    <UserPlus className="w-3.5 h-3.5" />
+                                    <span>Assign</span>
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()
+                      )}
+                    </div>
+                  ) : (
+                    /* ENROLLED FACULTY VIEW */
+                    (orgDetails?.faculties || []).length === 0 ? (
+                      <div className="py-8 text-center text-slate-500 text-xs">
+                        <GraduationCap className="w-8 h-8 mx-auto text-slate-600 mb-2" />
+                        <p>No faculty members currently assigned to this organization.</p>
+                        {isAdmin && (
+                          <button
+                            onClick={handleOpenAssignFaculty}
+                            className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                          >
+                            <UserPlus className="w-3.5 h-3.5" />
+                            <span>Assign Faculty Now</span>
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {orgDetails.faculties.map((f) => (
+                          <div
+                            key={f._id}
+                            className="p-3 bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl flex items-center justify-between text-xs transition-all"
+                          >
+                            <div>
+                              <p className="font-semibold text-white flex items-center gap-2">
+                                <span>{f.name}</span>
+                                <span className="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 font-mono">
+                                  {f.department || 'General'}
+                                </span>
+                              </p>
+                              <p className="text-slate-400 text-[11px] mt-0.5">
+                                {f.email} {f.phone ? `• ${f.phone}` : ''}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {isAdmin && (
+                                <button
+                                  onClick={() => handleRemoveFaculty(f._id, f.name)}
+                                  disabled={actionLoading}
+                                  title="Remove faculty from this organization"
+                                  className="px-2.5 py-1 text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer"
+                                >
+                                  <UserMinus className="w-3.5 h-3.5" />
+                                  <span>Remove</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  )}
+                </div>
               ) : (
                 (orgDetails?.students || []).length === 0 ? (
                   <div className="py-8 text-center text-slate-500 text-xs">
@@ -739,7 +980,17 @@ export default function AdminOrganizationsPage() {
               )}
             </div>
 
-            <div className="p-4 border-t border-slate-800 bg-slate-950/40 flex justify-end">
+            <div className="p-4 border-t border-slate-800 bg-slate-950/40 flex justify-between items-center">
+              {facultyViewMode === 'assign' && membersTab === 'faculty' ? (
+                <button
+                  onClick={() => setFacultyViewMode('enrolled')}
+                  className="px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 text-xs font-semibold cursor-pointer"
+                >
+                  Back to Enrolled Faculty
+                </button>
+              ) : (
+                <div />
+              )}
               <button
                 onClick={() => setShowMembersModal(false)}
                 className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold cursor-pointer"

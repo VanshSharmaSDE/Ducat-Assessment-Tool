@@ -347,7 +347,7 @@ export default function AdminDashboardPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', color: '#f8fafc' }}
+                    contentStyle={{ backgroundColor: '#f5f6f9', borderColor: '#334155', borderRadius: '8px', color: '#f8fafc' }}
                   />
                   <Pie
                     data={outcomeData}
@@ -384,7 +384,7 @@ export default function AdminDashboardPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', color: '#f8fafc' }}
+                    contentStyle={{ backgroundColor: '#f5f6f9', borderColor: '#334155', borderRadius: '8px', color: '#f8fafc' }}
                   />
                   <Pie
                     data={difficultyData}
