@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-100 antialiased selection:bg-sky-500 selection:text-white;
+    @apply bg-[#f4f7fe] text-slate-800 antialiased selection:bg-[#4f6bf7] selection:text-white;
   }
 }
 
@@ -15,19 +15,19 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #090d16;
+  background: #f4f7fe;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #dbe2ef;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #b8c6e2;
 }
 
-/* Custom dark theme checkboxes */
+/* Custom light theme checkboxes */
 input[type="checkbox"] {
   -webkit-appearance: none;
   appearance: none;
@@ -35,8 +35,8 @@ input[type="checkbox"] {
   height: 1rem;
   min-width: 1rem;
   min-height: 1rem;
-  background-color: #0f172a;
-  border: 1.5px solid #334155;
+  background-color: #ffffff;
+  border: 1.5px solid #cbd5e1;
   border-radius: 4px;
   display: inline-grid;
   place-content: center;
@@ -48,8 +48,8 @@ input[type="checkbox"] {
 }
 
 input[type="checkbox"]:hover {
-  border-color: #f59e0b;
-  background-color: #1e293b;
+  border-color: #4f6bf7;
+  background-color: #f8fafc;
 }
 
 input[type="checkbox"]::before {
@@ -60,12 +60,12 @@ input[type="checkbox"]::before {
   transform: scale(0);
   transform-origin: center;
   transition: 100ms transform ease-in-out;
-  background-color: #090d16;
+  background-color: #ffffff;
 }
 
 input[type="checkbox"]:checked {
-  background-color: #f59e0b !important;
-  border-color: #f59e0b !important;
+  background-color: #4f6bf7 !important;
+  border-color: #4f6bf7 !important;
 }
 
 input[type="checkbox"]:checked::before {
@@ -73,8 +73,8 @@ input[type="checkbox"]:checked::before {
 }
 
 input[type="checkbox"]:indeterminate {
-  background-color: #f59e0b !important;
-  border-color: #f59e0b !important;
+  background-color: #4f6bf7 !important;
+  border-color: #4f6bf7 !important;
 }
 
 input[type="checkbox"]:indeterminate::before {
@@ -82,12 +82,11 @@ input[type="checkbox"]:indeterminate::before {
   width: 0.6em;
   height: 2px;
   clip-path: none;
-  background-color: #090d16;
+  background-color: #ffffff;
   transform: scale(1);
 }
 
 input[type="checkbox"]:focus-visible {
-  outline: 2px solid #f59e0b;
+  outline: 2px solid #4f6bf7;
   outline-offset: 1px;
 }
-

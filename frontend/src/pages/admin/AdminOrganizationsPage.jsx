@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { useModal } from '../../context/ModalContext';
@@ -23,8 +24,15 @@ import {
 
 export default function AdminOrganizationsPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { showConfirm, showAlert } = useModal();
   const isAdmin = user?.role === 'ADMIN';
+
+  useEffect(() => {
+    if (user && user.role === 'FACULTY') {
+      navigate('/admin', { replace: true });
+    }
+  }, [user, navigate]);
 
   const [organizations, setOrganizations] = useState([]);
   const [selectedOrgs, setSelectedOrgs] = useState([]);
@@ -338,7 +346,7 @@ export default function AdminOrganizationsPage() {
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -348,11 +356,11 @@ export default function AdminOrganizationsPage() {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
-            <Building2 className="w-6 h-6 text-amber-400" />
+          <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2.5">
+            <Building2 className="w-6 h-6 text-blue-600" />
             {isAdmin ? 'Organization Management' : 'My Organization'}
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-sm text-slate-500 mt-1">
             {isAdmin
               ? 'Define institutional organizations, govern cross-faculty student sharing rules, and inspect member allocations'
               : 'View institutional details and faculty-student collaboration boundaries'}
@@ -365,7 +373,7 @@ export default function AdminOrganizationsPage() {
               setFormData({ name: '', code: '', description: '', website: '', isActive: true });
               setShowCreateModal(true);
             }}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/15 transition-all shrink-0 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Create New Organization</span>
@@ -376,13 +384,13 @@ export default function AdminOrganizationsPage() {
       {/* Search & Actions Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="relative w-full max-w-md">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search organizations by name, code, or description..."
-            className="w-full pl-9 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
@@ -390,7 +398,7 @@ export default function AdminOrganizationsPage() {
           <button
             onClick={handleBulkDelete}
             disabled={actionLoading}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>Delete Selected ({selectedOrgs.length})</span>
@@ -400,28 +408,28 @@ export default function AdminOrganizationsPage() {
 
       {/* Organizations Table */}
       {organizations.length === 0 ? (
-        <div className="p-12 text-center rounded-2xl bg-slate-900/40 border border-slate-800 text-slate-400">
-          <Building2 className="w-12 h-12 mx-auto text-slate-600 mb-3" />
-          <h3 className="text-base font-semibold text-white">No organizations found</h3>
-          <p className="text-xs text-slate-400 mt-1">
+        <div className="p-12 text-center rounded-2xl bg-white border border-slate-200 text-slate-500 shadow-sm">
+          <Building2 className="w-12 h-12 mx-auto text-slate-400 mb-3" />
+          <h3 className="text-base font-semibold text-slate-800">No organizations found</h3>
+          <p className="text-xs text-slate-500 mt-1">
             {isAdmin
               ? 'Click "Create New Organization" to set up your first institutional hub.'
               : 'No organization records found for your account.'}
           </p>
         </div>
       ) : (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1200px] text-left text-xs whitespace-nowrap">
               <thead>
-                <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
+                <tr className="border-b border-slate-200 text-slate-600 bg-slate-50">
                   {isAdmin && (
                     <th className="py-3 px-4 w-10">
                       <input
                         type="checkbox"
                         checked={organizations.length > 0 && selectedOrgs.length === organizations.length}
                         onChange={handleSelectAll}
-                        className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
+                        className="w-4 h-4 rounded bg-white border-slate-300 text-blue-600 accent-blue-600 focus:ring-0 cursor-pointer"
                         title="Select All Organizations"
                       />
                     </th>
@@ -436,14 +444,14 @@ export default function AdminOrganizationsPage() {
                   <th className="py-3 px-4 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-slate-100">
                 {organizations.map((org) => {
                   const isSelected = selectedOrgs.includes(org._id);
                   return (
                     <tr
                       key={org._id}
-                      className={`text-slate-300 hover:bg-slate-800/40 transition-colors ${
-                        isSelected ? 'bg-amber-500/5' : ''
+                      className={`text-slate-600 hover:bg-slate-50 transition-colors ${
+                        isSelected ? 'bg-blue-50/50' : ''
                       }`}
                     >
                       {isAdmin && (
@@ -452,13 +460,13 @@ export default function AdminOrganizationsPage() {
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => handleToggleSelect(org._id)}
-                            className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
+                            className="w-4 h-4 rounded bg-white border-slate-300 text-blue-600 accent-blue-600 focus:ring-0 cursor-pointer"
                           />
                         </td>
                       )}
-                      <td className="py-3 px-4 font-bold text-white whitespace-nowrap">
+                      <td className="py-3 px-4 font-bold text-slate-800 whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          <span className="bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700">
+                          <span className="bg-slate-100 text-slate-800 px-2.5 py-1 rounded-lg border border-slate-200">
                             {org.name}
                           </span>
                           {org.website && (
@@ -466,7 +474,7 @@ export default function AdminOrganizationsPage() {
                               href={org.website.startsWith('http') ? org.website : `https://${org.website}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-slate-500 hover:text-amber-400 transition-colors"
+                              className="text-slate-400 hover:text-blue-600 transition-colors"
                               title={org.website}
                             >
                               <Globe className="w-3.5 h-3.5" />
@@ -474,16 +482,16 @@ export default function AdminOrganizationsPage() {
                           )}
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-slate-400 max-w-xs truncate whitespace-nowrap" title={org.description || ''}>
+                      <td className="py-3 px-4 text-slate-500 max-w-xs truncate whitespace-nowrap" title={org.description || ''}>
                         {org.description || '—'}
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap">
                         {org.code ? (
-                          <span className="px-2 py-0.5 rounded font-mono text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold uppercase">
+                          <span className="px-2 py-0.5 rounded font-mono text-[10px] bg-blue-50 text-blue-600 border border-blue-200 font-bold uppercase">
                             {org.code}
                           </span>
                         ) : (
-                          <span className="text-slate-600">—</span>
+                          <span className="text-slate-400">—</span>
                         )}
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap">
@@ -492,7 +500,7 @@ export default function AdminOrganizationsPage() {
                             handleViewMembers(org);
                             setMembersTab('faculty');
                           }}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors font-semibold cursor-pointer"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors font-semibold cursor-pointer"
                         >
                           <GraduationCap className="w-3.5 h-3.5" />
                           <span>{org.facultyCount || 0} Faculty</span>
@@ -504,7 +512,7 @@ export default function AdminOrganizationsPage() {
                             handleViewMembers(org);
                             setMembersTab('students');
                           }}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 hover:bg-indigo-500/20 transition-colors font-semibold cursor-pointer"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors font-semibold cursor-pointer"
                         >
                           <Users className="w-3.5 h-3.5" />
                           <span>{org.studentCount || 0} Students</span>
@@ -516,27 +524,27 @@ export default function AdminOrganizationsPage() {
                             org.batches.slice(0, 3).map((b) => (
                               <span
                                 key={b}
-                                className="px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-mono text-slate-300"
+                                className="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-mono text-slate-700 border border-slate-200"
                               >
                                 {b}
                               </span>
                             ))
                           ) : (
-                            <span className="text-slate-600 text-[11px]">—</span>
+                            <span className="text-slate-400 text-[11px]">—</span>
                           )}
                           {(org.batches || []).length > 3 && (
-                            <span className="text-[10px] text-slate-500">+{org.batches.length - 3}</span>
+                            <span className="text-[10px] text-slate-400">+{org.batches.length - 3}</span>
                           )}
                         </div>
                       </td>
-                      <td className="py-3 px-4 font-mono text-slate-400 whitespace-nowrap">
+                      <td className="py-3 px-4 font-mono text-slate-500 whitespace-nowrap">
                         {new Date(org.createdAt).toLocaleDateString()}
                       </td>
                       <td className="py-3 px-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => handleViewMembers(org)}
-                            className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:text-blue-600 hover:bg-slate-200 transition-colors cursor-pointer"
                             title="View Enrolled Members"
                           >
                             <Eye className="w-3.5 h-3.5" />
@@ -546,7 +554,7 @@ export default function AdminOrganizationsPage() {
                               <button
                                 onClick={() => handleOpenEdit(org)}
                                 disabled={actionLoading}
-                                className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-amber-400 hover:bg-slate-700 transition-colors cursor-pointer"
+                                className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:text-blue-600 hover:bg-slate-200 transition-colors cursor-pointer"
                                 title="Edit Organization"
                               >
                                 <Edit className="w-3.5 h-3.5" />
@@ -554,7 +562,7 @@ export default function AdminOrganizationsPage() {
                               <button
                                 onClick={() => handleDeleteOrg(org)}
                                 disabled={actionLoading}
-                                className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-rose-400 hover:bg-slate-700 transition-colors cursor-pointer"
+                                className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                                 title="Delete Organization"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -574,16 +582,16 @@ export default function AdminOrganizationsPage() {
 
       {/* CREATE ORGANIZATION MODAL */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md overflow-hidden shadow-xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
               <div className="flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-amber-400" />
-                <h3 className="font-bold text-white text-sm">Create New Organization</h3>
+                <Building2 className="w-5 h-5 text-blue-600" />
+                <h3 className="font-bold text-slate-800 text-sm">Create New Organization</h3>
               </div>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="text-slate-400 hover:text-white transition-colors"
+                className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -591,62 +599,62 @@ export default function AdminOrganizationsPage() {
 
             <form onSubmit={handleCreateSubmit} className="p-5 space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Organization Name *</label>
+                <label className="block text-slate-700 font-semibold mb-1">Organization Name *</label>
                 <input
                   type="text"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g. Stanford University / Tech Institute"
-                  className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Code / Abbreviation (Optional)</label>
+                <label className="block text-slate-700 font-semibold mb-1">Code / Abbreviation (Optional)</label>
                 <input
                   type="text"
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                   placeholder="e.g. STANFORD or TI-CAMPUS"
-                  className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 uppercase"
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 uppercase"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Official Website (Optional)</label>
+                <label className="block text-slate-700 font-semibold mb-1">Official Website (Optional)</label>
                 <input
                   type="text"
                   value={formData.website}
                   onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                   placeholder="e.g. https://university.edu"
-                  className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Description (Optional)</label>
+                <label className="block text-slate-700 font-semibold mb-1">Description (Optional)</label>
                 <textarea
                   rows={3}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Brief notes about this campus or institutional tenant..."
-                  className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-3.5 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition-colors font-medium text-xs cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors font-medium text-xs cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
+                  className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/15 transition-all cursor-pointer"
                 >
                   {actionLoading ? 'Creating...' : 'Create Organization'}
                 </button>
@@ -658,16 +666,16 @@ export default function AdminOrganizationsPage() {
 
       {/* EDIT ORGANIZATION MODAL */}
       {showEditModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md overflow-hidden shadow-xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
               <div className="flex items-center gap-2">
-                <Edit className="w-5 h-5 text-amber-400" />
-                <h3 className="font-bold text-white text-sm">Edit Organization</h3>
+                <Edit className="w-5 h-5 text-blue-600" />
+                <h3 className="font-bold text-slate-800 text-sm">Edit Organization</h3>
               </div>
               <button
                 onClick={() => setShowEditModal(false)}
-                className="text-slate-400 hover:text-white transition-colors"
+                className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -675,43 +683,43 @@ export default function AdminOrganizationsPage() {
 
             <form onSubmit={handleEditSubmit} className="p-5 space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Organization Name *</label>
+                <label className="block text-slate-700 font-semibold mb-1">Organization Name *</label>
                 <input
                   type="text"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Code / Abbreviation</label>
+                <label className="block text-slate-700 font-semibold mb-1">Code / Abbreviation</label>
                 <input
                   type="text"
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 uppercase"
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 uppercase"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Official Website</label>
+                <label className="block text-slate-700 font-semibold mb-1">Official Website</label>
                 <input
                   type="text"
                   value={formData.website}
                   onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                  className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Description</label>
+                <label className="block text-slate-700 font-semibold mb-1">Description</label>
                 <textarea
                   rows={3}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
 
@@ -721,25 +729,25 @@ export default function AdminOrganizationsPage() {
                   id="isActiveOrg"
                   checked={formData.isActive}
                   onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                  className="w-4 h-4 rounded cursor-pointer"
+                  className="w-4 h-4 rounded cursor-pointer accent-blue-600 text-blue-600 border-slate-300"
                 />
-                <label htmlFor="isActiveOrg" className="text-slate-300 text-xs cursor-pointer select-none">
+                <label htmlFor="isActiveOrg" className="text-slate-700 text-xs cursor-pointer select-none">
                   Active Status
                 </label>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => setShowEditModal(false)}
-                  className="px-3.5 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition-colors font-medium text-xs cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors font-medium text-xs cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
+                  className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/15 transition-all cursor-pointer"
                 >
                   {actionLoading ? 'Saving...' : 'Save Changes'}
                 </button>
@@ -751,34 +759,34 @@ export default function AdminOrganizationsPage() {
 
       {/* VIEW MEMBERS MODAL */}
       {showMembersModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl overflow-hidden shadow-xl flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
               <div className="flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-amber-400" />
+                <Building2 className="w-5 h-5 text-blue-600" />
                 <div>
-                  <h3 className="font-bold text-white text-sm">
+                  <h3 className="font-bold text-slate-800 text-sm">
                     {activeOrg?.name} - Members
                   </h3>
-                  <p className="text-[11px] text-slate-400">Institutional attribution roster</p>
+                  <p className="text-[11px] text-slate-500">Institutional attribution roster</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowMembersModal(false)}
-                className="text-slate-400 hover:text-white transition-colors"
+                className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-slate-800 bg-slate-950/50 px-5 pt-3 gap-4">
+            <div className="flex border-b border-slate-200 bg-slate-50 px-5 pt-3 gap-4">
               <button
                 onClick={() => setMembersTab('faculty')}
                 className={`pb-2.5 text-xs font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
                   membersTab === 'faculty'
-                    ? 'border-amber-400 text-amber-400'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
                 }`}
               >
                 <GraduationCap className="w-4 h-4" />
@@ -789,8 +797,8 @@ export default function AdminOrganizationsPage() {
                 onClick={() => setMembersTab('students')}
                 className={`pb-2.5 text-xs font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
                   membersTab === 'students'
-                    ? 'border-amber-400 text-amber-400'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
                 }`}
               >
                 <Users className="w-4 h-4" />
@@ -802,19 +810,19 @@ export default function AdminOrganizationsPage() {
             <div className="p-5 overflow-y-auto flex-1">
               {loadingMembers ? (
                 <div className="py-12 flex justify-center">
-                  <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : membersTab === 'faculty' ? (
                 <div>
                   {isAdmin && (
-                    <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-slate-800">
+                    <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-slate-200">
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => setFacultyViewMode('enrolled')}
                           className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                             facultyViewMode === 'enrolled'
-                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                              : 'text-slate-400 hover:text-slate-200'
+                              ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                              : 'text-slate-500 hover:text-slate-700'
                           }`}
                         >
                           Enrolled Faculty ({orgDetails?.faculties?.length || 0})
@@ -823,11 +831,11 @@ export default function AdminOrganizationsPage() {
                           onClick={handleOpenAssignFaculty}
                           className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                             facultyViewMode === 'assign'
-                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                              : 'text-slate-400 hover:text-slate-200'
+                              ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                              : 'text-slate-500 hover:text-slate-700'
                           }`}
                         >
-                          <UserPlus className="w-3.5 h-3.5 text-amber-400" />
+                          <UserPlus className="w-3.5 h-3.5 text-blue-600" />
                           <span>+ Assign Faculty</span>
                         </button>
                       </div>
@@ -839,13 +847,13 @@ export default function AdminOrganizationsPage() {
                     <div className="space-y-3">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                         <div className="relative flex-1">
-                          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                           <input
                             type="text"
                             value={availableFacultySearch}
                             onChange={(e) => setAvailableFacultySearch(e.target.value)}
                             placeholder="Filter available faculty by name, email, department..."
-                            className="w-full pl-8 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                            className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
                         </div>
 
@@ -853,7 +861,7 @@ export default function AdminOrganizationsPage() {
                           <button
                             onClick={() => handleAssignFacultySubmit()}
                             disabled={actionLoading}
-                            className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg shadow-md transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg shadow-md shadow-blue-600/15 transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
                           >
                             <UserPlus className="w-3.5 h-3.5" />
                             <span>Assign Selected ({selectedAssignFacultyIds.length})</span>
@@ -863,7 +871,7 @@ export default function AdminOrganizationsPage() {
 
                       {loadingAvailableFaculty ? (
                         <div className="py-10 flex justify-center">
-                          <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                          <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                         </div>
                       ) : (
                         (() => {
@@ -880,7 +888,7 @@ export default function AdminOrganizationsPage() {
 
                           if (filtered.length === 0) {
                             return (
-                              <div className="py-8 text-center text-slate-500 text-xs">
+                              <div className="py-8 text-center text-slate-400 text-xs">
                                 {availableFaculty.length === 0
                                   ? 'All existing faculty members are already assigned to this organization.'
                                   : 'No matching faculty found.'}
@@ -895,8 +903,8 @@ export default function AdminOrganizationsPage() {
                                   key={f._id}
                                   className={`p-3 rounded-xl border transition-all text-xs flex items-center justify-between ${
                                     selectedAssignFacultyIds.includes(f._id)
-                                      ? 'bg-amber-500/10 border-amber-500/40'
-                                      : 'bg-slate-950 border-slate-800 hover:border-slate-700'
+                                      ? 'bg-blue-50 border-blue-300'
+                                      : 'bg-slate-50 border-slate-200 hover:border-slate-300'
                                   }`}
                                 >
                                   <div className="flex items-center gap-3">
@@ -904,17 +912,17 @@ export default function AdminOrganizationsPage() {
                                       type="checkbox"
                                       checked={selectedAssignFacultyIds.includes(f._id)}
                                       onChange={() => handleToggleAssignSelect(f._id)}
-                                      className="w-4 h-4 rounded cursor-pointer accent-amber-500"
+                                      className="w-4 h-4 rounded cursor-pointer accent-blue-600 text-blue-600 border-slate-300"
                                     />
                                     <div>
-                                      <p className="font-semibold text-white flex items-center gap-2">
+                                      <p className="font-semibold text-slate-800 flex items-center gap-2">
                                         <span>{f.name}</span>
-                                        <span className="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 font-mono">
+                                        <span className="px-2 py-0.5 rounded text-[10px] bg-slate-200 text-slate-700 font-mono">
                                           {f.department || 'General'}
                                         </span>
                                       </p>
-                                      <p className="text-slate-400 text-[11px] mt-0.5">
-                                        {f.email} • Current: <span className="text-slate-300">{f.currentOrganization}</span>
+                                      <p className="text-slate-500 text-[11px] mt-0.5">
+                                        {f.email} • Current: <span className="text-slate-700">{f.currentOrganization}</span>
                                       </p>
                                     </div>
                                   </div>
@@ -922,7 +930,7 @@ export default function AdminOrganizationsPage() {
                                   <button
                                     onClick={() => handleAssignFacultySubmit(f._id)}
                                     disabled={actionLoading}
-                                    className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg font-semibold text-[11px] flex items-center gap-1 transition-all cursor-pointer"
+                                    className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 rounded-lg font-semibold text-[11px] flex items-center gap-1 transition-all cursor-pointer"
                                   >
                                     <UserPlus className="w-3.5 h-3.5" />
                                     <span>Assign</span>
@@ -938,12 +946,12 @@ export default function AdminOrganizationsPage() {
                     /* ENROLLED FACULTY VIEW */
                     (orgDetails?.faculties || []).length === 0 ? (
                       <div className="py-8 text-center text-slate-500 text-xs">
-                        <GraduationCap className="w-8 h-8 mx-auto text-slate-600 mb-2" />
+                        <GraduationCap className="w-8 h-8 mx-auto text-slate-400 mb-2" />
                         <p>No faculty members currently assigned to this organization.</p>
                         {isAdmin && (
                           <button
                             onClick={handleOpenAssignFaculty}
-                            className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                            className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 rounded-lg text-xs font-bold transition-all cursor-pointer"
                           >
                             <UserPlus className="w-3.5 h-3.5" />
                             <span>Assign Faculty Now</span>
@@ -955,16 +963,16 @@ export default function AdminOrganizationsPage() {
                         {orgDetails.faculties.map((f) => (
                           <div
                             key={f._id}
-                            className="p-3 bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl flex items-center justify-between text-xs transition-all"
+                            className="p-3 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl flex items-center justify-between text-xs transition-all"
                           >
                             <div>
-                              <p className="font-semibold text-white flex items-center gap-2">
+                              <p className="font-semibold text-slate-800 flex items-center gap-2">
                                 <span>{f.name}</span>
-                                <span className="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 font-mono">
+                                <span className="px-2 py-0.5 rounded text-[10px] bg-slate-200 text-slate-700 font-mono">
                                   {f.department || 'General'}
                                 </span>
                               </p>
-                              <p className="text-slate-400 text-[11px] mt-0.5">
+                              <p className="text-slate-500 text-[11px] mt-0.5">
                                 {f.email} {f.phone ? `• ${f.phone}` : ''}
                               </p>
                             </div>
@@ -974,7 +982,7 @@ export default function AdminOrganizationsPage() {
                                   onClick={() => handleRemoveFaculty(f._id, f.name)}
                                   disabled={actionLoading}
                                   title="Remove faculty from this organization"
-                                  className="px-2.5 py-1 text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer"
+                                  className="px-2.5 py-1 text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer"
                                 >
                                   <UserMinus className="w-3.5 h-3.5" />
                                   <span>Remove</span>
@@ -989,7 +997,7 @@ export default function AdminOrganizationsPage() {
                 </div>
               ) : (
                 (orgDetails?.students || []).length === 0 ? (
-                  <div className="py-8 text-center text-slate-500 text-xs">
+                  <div className="py-8 text-center text-slate-400 text-xs">
                     No students currently assigned to this organization.
                   </div>
                 ) : (
@@ -997,16 +1005,16 @@ export default function AdminOrganizationsPage() {
                     {orgDetails.students.map((s) => (
                       <div
                         key={s._id}
-                        className="p-3 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between text-xs"
+                        className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs"
                       >
                         <div>
-                          <p className="font-semibold text-white">{s.name}</p>
-                          <p className="text-slate-400 text-[11px]">
+                          <p className="font-semibold text-slate-800">{s.name}</p>
+                          <p className="text-slate-500 text-[11px]">
                             {s.email} {s.rollNumber ? `• Roll: ${s.rollNumber}` : ''}
                           </p>
                         </div>
                         <div className="text-right">
-                          <span className="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 font-mono">
+                          <span className="px-2 py-0.5 rounded text-[10px] bg-slate-200 text-slate-700 font-mono">
                             {s.batch || 'Unassigned Batch'}
                           </span>
                         </div>
@@ -1017,11 +1025,11 @@ export default function AdminOrganizationsPage() {
               )}
             </div>
 
-            <div className="p-4 border-t border-slate-800 bg-slate-950/40 flex justify-between items-center">
+            <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-between items-center">
               {facultyViewMode === 'assign' && membersTab === 'faculty' ? (
                 <button
                   onClick={() => setFacultyViewMode('enrolled')}
-                  className="px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 text-xs font-semibold cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold cursor-pointer transition-colors"
                 >
                   Back to Enrolled Faculty
                 </button>
@@ -1030,7 +1038,7 @@ export default function AdminOrganizationsPage() {
               )}
               <button
                 onClick={() => setShowMembersModal(false)}
-                className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold cursor-pointer"
+                className="px-4 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-semibold cursor-pointer transition-colors"
               >
                 Close
               </button>

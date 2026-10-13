@@ -18,8 +18,15 @@ export const registerSchema = z.object({
 });
 
 export const loginSchema = z.object({
-  email: z.string().email(),
+  identifier: z.string().min(1).optional(),
+  email: z.string().min(1).optional(),
+  loginId: z.string().min(1).optional(),
+  studentId: z.string().min(1).optional(),
+  facultyId: z.string().min(1).optional(),
   password: z.string().min(1),
+}).refine((data) => data.identifier || data.email || data.loginId || data.studentId || data.facultyId, {
+  message: "Student ID, Faculty ID, Admin ID, or Email is required",
+  path: ["identifier"],
 });
 
 export const changePasswordSchema = z.object({

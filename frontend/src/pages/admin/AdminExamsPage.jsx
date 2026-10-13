@@ -185,7 +185,7 @@ export default function AdminExamsPage() {
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -194,10 +194,10 @@ export default function AdminExamsPage() {
     <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight">
+          <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">
             {isAdmin ? 'Examinations Manager' : 'My Examinations'}
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-sm text-slate-500 mt-1">
             {isAdmin 
               ? 'View all assessments created by faculty & administrators with full attribution' 
               : 'Configure, schedule, publish, and duplicate your personal examinations'}
@@ -209,7 +209,7 @@ export default function AdminExamsPage() {
             <button
               onClick={handleBulkDelete}
               disabled={actionLoading}
-              className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-md shadow-rose-600/15 transition-all cursor-pointer"
             >
               <Trash2 className="w-4 h-4" />
               <span>Delete Selected ({selectedExams.length})</span>
@@ -218,7 +218,7 @@ export default function AdminExamsPage() {
 
           <Link
             to="/admin/exams/new"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-sm shadow-blue-600/15 transition-all shrink-0 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Create Examination</span>
@@ -227,30 +227,30 @@ export default function AdminExamsPage() {
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
       {exams.length === 0 ? (
-        <div className="p-12 text-center rounded-2xl bg-slate-900/40 border border-slate-800 text-slate-400">
-          <FileCheck2 className="w-12 h-12 mx-auto text-slate-600 mb-3" />
-          <h3 className="text-base font-semibold text-white">No examinations found</h3>
-          <p className="text-xs text-slate-400 mt-1">Click "Create Examination" to build your first assessment.</p>
+        <div className="p-12 text-center rounded-2xl bg-white border border-slate-200 text-slate-500 shadow-sm">
+          <FileCheck2 className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+          <h3 className="text-base font-semibold text-slate-800">No examinations found</h3>
+          <p className="text-xs text-slate-500 mt-1">Click "Create Examination" to build your first assessment.</p>
         </div>
       ) : (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1300px] text-left text-xs whitespace-nowrap">
               <thead>
-                <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
+                <tr className="border-b border-slate-200 text-slate-500 bg-slate-50">
                   <th className="py-3 px-4 w-10">
                     <input
                       type="checkbox"
                       checked={exams.length > 0 && selectedExams.length === exams.length}
                       onChange={handleSelectAll}
-                      className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
+                      className="w-4 h-4 rounded bg-white border-slate-300 text-blue-600 accent-blue-600 focus:ring-0 cursor-pointer"
                     />
                   </th>
                   <th className="py-3 px-4 font-semibold">Examination</th>
@@ -266,14 +266,14 @@ export default function AdminExamsPage() {
                   <th className="py-3 px-4 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-slate-200">
                 {exams.map((exam) => {
                   const isSelected = selectedExams.includes(exam._id);
                   return (
                     <tr
                       key={exam._id}
-                      className={`text-slate-300 hover:bg-slate-800/40 transition-colors ${
-                        isSelected ? 'bg-amber-500/5' : ''
+                      className={`text-slate-600 hover:bg-slate-50 transition-colors ${
+                        isSelected ? 'bg-blue-50/50' : ''
                       }`}
                     >
                       <td className="py-3 px-4">
@@ -281,27 +281,27 @@ export default function AdminExamsPage() {
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleToggleSelect(exam._id)}
-                          className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
+                          className="w-4 h-4 rounded bg-white border-slate-300 text-blue-600 accent-blue-600 focus:ring-0 cursor-pointer"
                         />
                       </td>
-                      <td className="py-3 px-4 font-bold text-white text-xs whitespace-nowrap max-w-xs truncate" title={exam.title}>
+                      <td className="py-3 px-4 font-bold text-slate-800 text-xs whitespace-nowrap max-w-xs truncate" title={exam.title}>
                         {exam.title}
                       </td>
-                      <td className="py-3 px-4 text-slate-400 text-xs whitespace-nowrap max-w-[220px] truncate" title={exam.description || ''}>
+                      <td className="py-3 px-4 text-slate-500 text-xs whitespace-nowrap max-w-[220px] truncate" title={exam.description || ''}>
                         {exam.description || '—'}
                       </td>
 
                       {isAdmin && (
                         <td className="py-3 px-4 whitespace-nowrap">
                           <div className="flex items-center gap-1.5">
-                            <span className="font-semibold text-slate-200">
+                            <span className="font-semibold text-slate-700">
                               {exam.createdBy?.name || 'Administrator'}
                             </span>
                             <span
                               className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
                                 exam.createdBy?.role === 'FACULTY'
-                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                                  ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                                  : 'bg-blue-50 text-blue-600 border border-blue-200'
                               }`}
                             >
                               {exam.createdBy?.role || 'ADMIN'}
@@ -310,22 +310,22 @@ export default function AdminExamsPage() {
                         </td>
                       )}
 
-                      <td className="py-3 px-4 font-mono font-medium text-slate-300">
+                      <td className="py-3 px-4 font-mono font-medium text-slate-600">
                         {exam.questionCount || exam.questions?.length || 0} Qs
                       </td>
-                      <td className="py-3 px-4 font-mono text-slate-300">
+                      <td className="py-3 px-4 font-mono text-slate-600">
                         {exam.duration}m
                       </td>
-                      <td className="py-3 px-4 font-mono font-bold text-white">
+                      <td className="py-3 px-4 font-mono font-bold text-slate-800">
                         {exam.totalMarks}
                       </td>
-                      <td className="py-3 px-4 font-mono font-bold text-emerald-400">
+                      <td className="py-3 px-4 font-mono font-bold text-emerald-600">
                         {exam.passingMarks}
                       </td>
-                      <td className="py-3 px-4 font-mono text-emerald-400 text-[11px] whitespace-nowrap">
+                      <td className="py-3 px-4 font-mono text-emerald-600 text-[11px] whitespace-nowrap">
                         {exam.startDate ? new Date(exam.startDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
                       </td>
-                      <td className="py-3 px-4 font-mono text-rose-400 text-[11px] whitespace-nowrap">
+                      <td className="py-3 px-4 font-mono text-rose-600 text-[11px] whitespace-nowrap">
                         {exam.endDate ? new Date(exam.endDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap">
@@ -334,8 +334,8 @@ export default function AdminExamsPage() {
                           disabled={actionLoading}
                           className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-colors cursor-pointer ${
                             exam.isPublished
-                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-rose-500/10 hover:text-rose-400'
-                              : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-emerald-500/10 hover:text-emerald-400'
+                              ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200'
+                              : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200'
                           }`}
                         >
                           {exam.isPublished ? '● PUBLISHED' : '○ DRAFT'}
@@ -346,14 +346,14 @@ export default function AdminExamsPage() {
                           <button
                             onClick={() => handleExportExamExcel(exam)}
                             disabled={actionLoading}
-                            className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
                             title="Export Exam Results (.xlsx)"
                           >
                             <Download className="w-3.5 h-3.5" />
                           </button>
                           <Link
                             to={`/admin/exams/${exam._id}/edit`}
-                            className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
                             title="Edit Exam"
                           >
                             <Edit className="w-3.5 h-3.5" />
@@ -361,7 +361,7 @@ export default function AdminExamsPage() {
                           <button
                             onClick={() => handleDuplicate(exam._id)}
                             disabled={actionLoading}
-                            className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-amber-400 hover:bg-slate-700 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
                             title="Duplicate Exam"
                           >
                             <Copy className="w-3.5 h-3.5" />
@@ -369,7 +369,7 @@ export default function AdminExamsPage() {
                           <button
                             onClick={() => handleDelete(exam._id)}
                             disabled={actionLoading}
-                            className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                             title="Delete Exam"
                           >
                             <Trash2 className="w-3.5 h-3.5" />

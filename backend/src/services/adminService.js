@@ -212,8 +212,9 @@ export class AdminService {
       conditions.push({
         $or: [
           { name: { $regex: query.search, $options: 'i' } },
-          { email: { $regex: query.search, $options: 'i' } },
+          { studentId: { $regex: query.search, $options: 'i' } },
           { rollNumber: { $regex: query.search, $options: 'i' } },
+          { email: { $regex: query.search, $options: 'i' } },
           { organization: { $regex: query.search, $options: 'i' } },
         ],
       });

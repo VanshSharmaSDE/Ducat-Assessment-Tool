@@ -11,7 +11,10 @@ export class AuthService {
     return jwt.sign(
       {
         userId: user._id,
-        email: user.email,
+        email: user.email || '',
+        studentId: user.studentId || user.rollNumber || '',
+        facultyId: user.facultyId || '',
+        adminId: user.adminId || '',
         role: user.role,
         name: user.name,
         sessionId: sessionId || user.currentSessionId || null,
@@ -35,13 +38,33 @@ export class AuthService {
     return token;
   }
 
-  static async register({ name, email, password, phone, role = 'USER' }) {
-    const existing = await User.findOne({ email: email.toLowerCase() });
-    if (existing) {
-      const error = new Error('Email already registered');
-      error.statusCode = 409;
-      error.errorCode = 'EMAIL_ALREADY_EXISTS';
-      throw error;
+  static async register({ name, email, studentId, password, phone, role = 'USER' }) {
+    const cleanEmail = email ? email.toLowerCase().trim() : undefined;
+    const cleanStudentId = studentId ? String(studentId).trim() : undefined;
+
+    if (cleanEmail) {
+      const existing = await User.findOne({ email: cleanEmail });
+      if (existing) {
+        const error = new Error('Email already registered');
+        error.statusCode = 409;
+        error.errorCode = 'EMAIL_ALREADY_EXISTS';
+        throw error;
+      }
+    }
+
+    if (cleanStudentId) {
+      const existingId = await User.findOne({
+        $or: [
+          { studentId: { $regex: new RegExp(`^${cleanStudentId}$`, 'i') } },
+          { rollNumber: { $regex: new RegExp(`^${cleanStudentId}$`, 'i') } },
+        ],
+      });
+      if (existingId) {
+        const error = new Error('Student ID already registered');
+        error.statusCode = 409;
+        error.errorCode = 'STUDENT_ID_EXISTS';
+        throw error;
+      }
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -50,7 +73,9 @@ export class AuthService {
 
     const user = await User.create({
       name,
-      email: email.toLowerCase(),
+      email: cleanEmail,
+      studentId: cleanStudentId,
+      rollNumber: cleanStudentId || '',
       passwordHash,
       phone: phone || '',
       role: role === 'ADMIN' ? 'ADMIN' : 'USER',
@@ -69,10 +94,34 @@ export class AuthService {
     };
   }
 
-  static async login({ email, password }) {
-    const user = await User.findOne({ email: email.toLowerCase() });
+  static async login({ email, identifier, loginId, studentId, facultyId, password }) {
+    const rawId = (identifier || email || loginId || studentId || facultyId || '').trim();
+    if (!rawId) {
+      const error = new Error('Student ID, Faculty ID, Admin ID, or Email is required');
+      error.statusCode = 400;
+      error.errorCode = 'IDENTIFIER_REQUIRED';
+      throw error;
+    }
+
+    const lowerId = rawId.toLowerCase();
+    const escaped = rawId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    // Build search queries: Student ID, Faculty ID, Admin ID, Roll Number, Email, or 'admin' shortcut
+    const searchConditions = [
+      { email: lowerId },
+      { studentId: { $regex: new RegExp(`^${escaped}$`, 'i') } },
+      { facultyId: { $regex: new RegExp(`^${escaped}$`, 'i') } },
+      { adminId: { $regex: new RegExp(`^${escaped}$`, 'i') } },
+      { rollNumber: { $regex: new RegExp(`^${escaped}$`, 'i') } },
+    ];
+
+    if (lowerId === 'admin') {
+      searchConditions.push({ role: 'ADMIN' });
+    }
+
+    const user = await User.findOne({ $or: searchConditions });
     if (!user) {
-      const error = new Error('Invalid email or password');
+      const error = new Error('Invalid ID/Email or password');
       error.statusCode = 401;
       error.errorCode = 'INVALID_CREDENTIALS';
       throw error;
@@ -87,7 +136,7 @@ export class AuthService {
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      const error = new Error('Invalid email or password');
+      const error = new Error('Invalid ID/Email or password');
       error.statusCode = 401;
       error.errorCode = 'INVALID_CREDENTIALS';
       throw error;

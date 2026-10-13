@@ -50,8 +50,8 @@ function RoleHomeRedirect() {
 
   if (loading) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-slate-950 text-white">
-        <div className="w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
+      <div className="h-screen w-screen flex items-center justify-center bg-[#f4f7fe] text-slate-800">
+        <div className="w-9 h-9 border-4 border-[#4f6bf7] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -70,8 +70,8 @@ function RequireAuth({ children, allowedRoles }) {
 
   if (loading) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-slate-950 text-white">
-        <div className="w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
+      <div className="h-screen w-screen flex items-center justify-center bg-[#f4f7fe] text-slate-800">
+        <div className="w-9 h-9 border-4 border-[#4f6bf7] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }

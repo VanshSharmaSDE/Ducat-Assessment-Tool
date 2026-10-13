@@ -14,10 +14,11 @@ import { Exam } from '../models/Exam.js';
  */
 export const createStudent = async (req, res) => {
   try {
-    const { name, email, password, rollNumber, phone, batch, organization, gender, age } = req.body;
+    const { name, email, studentId, rollNumber, password, phone, batch, organization, gender, age } = req.body;
+    const finalStudentId = (studentId || rollNumber || '').trim();
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
+    if (!name || !name.trim() || !finalStudentId || !password) {
+      return res.status(400).json({ success: false, message: 'Student ID, Name, and password are required' });
     }
 
     // Role check: Faculty must belong to an organization and can only create students in their organization
@@ -32,24 +33,40 @@ export const createStudent = async (req, res) => {
       studentOrg = req.user.organization.trim();
     }
 
-    const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
-    if (existingUser) {
-      return res.status(409).json({ success: false, message: 'A user with this email already exists' });
+    // Check existing student by Student ID / Roll Number
+    const existingById = await User.findOne({
+      $or: [
+        { studentId: { $regex: new RegExp(`^${finalStudentId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } },
+        { rollNumber: { $regex: new RegExp(`^${finalStudentId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } },
+      ],
+    });
+    if (existingById) {
+      return res.status(409).json({ success: false, message: `A student with Student ID "${finalStudentId}" already exists.` });
+    }
+
+    const cleanEmail = email && String(email).trim() ? String(email).toLowerCase().trim() : undefined;
+    if (cleanEmail) {
+      const existingUser = await User.findOne({ email: cleanEmail });
+      if (existingUser) {
+        return res.status(409).json({ success: false, message: 'A user with this email already exists' });
+      }
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newStudent = await User.create({
       name: name.trim(),
-      email: email.toLowerCase().trim(),
+      studentId: finalStudentId,
+      rollNumber: finalStudentId,
+      email: cleanEmail,
       passwordHash: hashedPassword,
       role: 'USER',
-      rollNumber: rollNumber ? String(rollNumber).trim() : '',
       phone: phone ? String(phone).trim() : '',
       batch: batch ? String(batch).trim() : '',
       organization: studentOrg,
       gender: gender ? String(gender).trim() : '',
       age: age ? Number(age) : null,
       createdBy: req.user._id,
+      assignedFaculties: req.user?.role === 'FACULTY' ? [req.user._id] : [],
       isActive: true,
       isVerified: true,
     });
@@ -59,9 +76,11 @@ export const createStudent = async (req, res) => {
       message: 'Student created successfully',
       student: {
         id: newStudent._id,
+        _id: newStudent._id,
         name: newStudent.name,
-        email: newStudent.email,
+        studentId: newStudent.studentId,
         rollNumber: newStudent.rollNumber,
+        email: newStudent.email || '',
         batch: newStudent.batch,
         organization: newStudent.organization,
         gender: newStudent.gender,
@@ -110,9 +129,9 @@ export const uploadStudentsExcel = async (req, res) => {
       const rowNumber = index + 2; // Accounting for 1-based index and header row
 
       const name = row['Full Name'] || row['name'] || row['Name'];
+      const rawStudentId = row['Student ID'] || row['studentId'] || row['StudentID'] || row['Roll Number'] || row['rollNumber'] || row['Roll'] || row['ID'] || row['id'];
       const email = row['Email'] || row['email'];
       const password = String(row['Password'] || row['password'] || 'Student@123');
-      const rollNumber = String(row['Roll Number'] || row['rollNumber'] || row['Roll'] || '');
       const phone = String(row['Phone'] || row['phone'] || '');
       const batch = String(row['Batch'] || row['batch'] || '');
       const rawOrg = String(row['Organization'] || row['organization'] || row['Organisation'] || row['organisation'] || '');
@@ -120,8 +139,10 @@ export const uploadStudentsExcel = async (req, res) => {
       const rawAge = row['Age'] || row['age'];
       const age = rawAge ? Number(rawAge) : null;
 
-      if (!name || !email) {
-        errors.push(`Row ${rowNumber}: Name and Email are required.`);
+      const studentId = rawStudentId ? String(rawStudentId).trim() : '';
+
+      if (!name || !studentId) {
+        errors.push(`Row ${rowNumber}: Full Name and Student ID are required.`);
         continue;
       }
 
@@ -131,10 +152,21 @@ export const uploadStudentsExcel = async (req, res) => {
         effectiveOrg = req.user.organization.trim();
       }
 
-      const existing = await User.findOne({ email: String(email).toLowerCase().trim() });
+      const cleanEmail = email && String(email).trim() ? String(email).toLowerCase().trim() : undefined;
+
+      // Find existing student by Student ID (or by email if provided)
+      const escapedId = studentId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      let existing = await User.findOne({
+        $or: [
+          { studentId: { $regex: new RegExp(`^${escapedId}$`, 'i') } },
+          { rollNumber: { $regex: new RegExp(`^${escapedId}$`, 'i') } },
+          ...(cleanEmail ? [{ email: cleanEmail }] : []),
+        ],
+      });
+
       if (existing) {
         if (existing.role !== 'USER') {
-          errors.push(`Row ${rowNumber}: Email "${email}" belongs to an administrative account and cannot be modified.`);
+          errors.push(`Row ${rowNumber}: Student ID "${studentId}" belongs to an administrative account and cannot be modified.`);
           continue;
         }
 
@@ -145,7 +177,7 @@ export const uploadStudentsExcel = async (req, res) => {
             existing.organization.trim().toLowerCase() !== req.user.organization.trim().toLowerCase()
           ) {
             errors.push(
-              `Row ${rowNumber}: Student "${email}" belongs to organization "${existing.organization}". You can only import students for your current active organization ("${req.user.organization}").`
+              `Row ${rowNumber}: Student "${studentId}" belongs to organization "${existing.organization}". You can only import students for your current active organization ("${req.user.organization}").`
             );
             continue;
           }
@@ -153,7 +185,9 @@ export const uploadStudentsExcel = async (req, res) => {
 
         // Update existing student profile information
         if (name) existing.name = String(name).trim();
-        if (rollNumber) existing.rollNumber = rollNumber.trim();
+        existing.studentId = studentId;
+        existing.rollNumber = studentId;
+        if (cleanEmail) existing.email = cleanEmail;
         if (phone) existing.phone = phone.trim();
         if (batch) existing.batch = batch.trim();
         if (effectiveOrg) existing.organization = effectiveOrg;
@@ -164,7 +198,7 @@ export const uploadStudentsExcel = async (req, res) => {
         }
 
         // If uploaded by faculty who is not the creator, link to assignedFaculties
-        if (req.user?.role === 'FACULTY' && String(existing.createdBy) !== String(req.user._id)) {
+        if (req.user?.role === 'FACULTY') {
           if (!existing.assignedFaculties) existing.assignedFaculties = [];
           if (!existing.assignedFaculties.some((f) => String(f) === String(req.user._id))) {
             existing.assignedFaculties.push(req.user._id);
@@ -172,28 +206,30 @@ export const uploadStudentsExcel = async (req, res) => {
         }
 
         await existing.save();
-        updatedUsers.push(existing.email);
+        updatedUsers.push(existing.studentId || existing.name);
         continue;
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
       const student = await User.create({
         name: String(name).trim(),
-        email: String(email).toLowerCase().trim(),
+        studentId,
+        rollNumber: studentId,
+        email: cleanEmail,
         passwordHash: hashedPassword,
         role: 'USER',
-        rollNumber: rollNumber.trim(),
         phone: phone.trim(),
         batch: batch.trim(),
         organization: effectiveOrg,
         gender: gender.trim(),
         age: age,
         createdBy: req.user._id,
+        assignedFaculties: req.user?.role === 'FACULTY' ? [req.user._id] : [],
         isActive: true,
         isVerified: true,
       });
 
-      createdUsers.push(student.email);
+      createdUsers.push(student.studentId || student.name);
     }
 
     const message = updatedUsers.length > 0
@@ -220,24 +256,24 @@ export const downloadStudentTemplate = async (req, res) => {
   try {
     const sampleData = [
       {
+        'Student ID': 'STU2026001',
         'Full Name': 'Amit Verma',
-        'Email': 'amit.verma@example.com',
         'Password': 'Student@123',
-        'Roll Number': 'CS2026-001',
+        'Email': 'amit.verma@example.com',
         'Phone': '9876543210',
         'Batch': 'Batch-2026-A',
-        'Organization': 'SkillCodex Institute',
+        'Organization': 'Shape My Skills',
         'Gender': 'Male',
         'Age': 21,
       },
       {
+        'Student ID': 'STU2026002',
         'Full Name': 'Sneha Rao',
-        'Email': 'sneha.rao@example.com',
         'Password': 'Student@123',
-        'Roll Number': 'CS2026-002',
+        'Email': '', // Optional
         'Phone': '9876543211',
         'Batch': 'Batch-2026-A',
-        'Organization': 'SkillCodex Institute',
+        'Organization': 'Shape My Skills',
         'Gender': 'Female',
         'Age': 20,
       },
@@ -865,7 +901,7 @@ export class AdminController {
 export const updateStudent = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, rollNumber, phone, batch, organization, gender, age, password } = req.body;
+    const { name, email, studentId, rollNumber, phone, batch, organization, gender, age, password } = req.body;
 
     const user = await User.findById(id);
     if (!user) {
@@ -878,16 +914,38 @@ export const updateStudent = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Access denied. You can only update students you created or have imported.' });
     }
 
-    if (email && email.toLowerCase().trim() !== user.email) {
-      const existing = await User.findOne({ email: email.toLowerCase().trim(), _id: { $ne: id } });
-      if (existing) {
-        return res.status(400).json({ success: false, message: 'Email already registered to another user.' });
+    const finalStudentId = studentId !== undefined ? String(studentId).trim() : (rollNumber !== undefined ? String(rollNumber).trim() : undefined);
+    if (finalStudentId !== undefined && finalStudentId !== '') {
+      if (finalStudentId !== user.studentId && finalStudentId !== user.rollNumber) {
+        const existingById = await User.findOne({
+          _id: { $ne: id },
+          $or: [
+            { studentId: { $regex: new RegExp(`^${finalStudentId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } },
+            { rollNumber: { $regex: new RegExp(`^${finalStudentId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } },
+          ],
+        });
+        if (existingById) {
+          return res.status(409).json({ success: false, message: `Student ID "${finalStudentId}" is already registered to another user.` });
+        }
       }
-      user.email = email.toLowerCase().trim();
+      user.studentId = finalStudentId;
+      user.rollNumber = finalStudentId;
+    }
+
+    if (email !== undefined) {
+      const cleanEmail = email && String(email).trim() ? String(email).toLowerCase().trim() : undefined;
+      if (cleanEmail && cleanEmail !== user.email) {
+        const existing = await User.findOne({ email: cleanEmail, _id: { $ne: id } });
+        if (existing) {
+          return res.status(400).json({ success: false, message: 'Email already registered to another user.' });
+        }
+        user.email = cleanEmail;
+      } else if (!cleanEmail) {
+        user.email = undefined;
+      }
     }
 
     if (name) user.name = name.trim();
-    if (rollNumber !== undefined) user.rollNumber = String(rollNumber).trim();
     if (phone !== undefined) user.phone = String(phone).trim();
     if (batch !== undefined) user.batch = String(batch).trim();
     if (organization !== undefined) {
@@ -1111,6 +1169,7 @@ export const getFacultyList = async (req, res) => {
     if (req.query.search) {
       filter.$or = [
         { name: { $regex: req.query.search, $options: 'i' } },
+        { facultyId: { $regex: req.query.search, $options: 'i' } },
         { email: { $regex: req.query.search, $options: 'i' } },
         { batch: { $regex: req.query.search, $options: 'i' } },
         { organization: { $regex: req.query.search, $options: 'i' } },
@@ -1134,9 +1193,10 @@ export const getFacultyList = async (req, res) => {
       data: {
         faculty: faculty.map((f) => ({
           _id: f._id,
+          facultyId: f.facultyId || '',
           name: f.name,
-          email: f.email,
-          phone: f.phone,
+          email: f.email || '',
+          phone: f.phone || '',
           department: f.batch || '',
           organization: f.organization || '',
           isActive: f.isActive,
@@ -1157,21 +1217,33 @@ export const getFacultyList = async (req, res) => {
 
 export const createFaculty = async (req, res) => {
   try {
-    const { name, email, password, department, organization, phone } = req.body;
+    const { facultyId, name, email, password, department, organization, phone } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
+    const finalFacultyId = facultyId ? String(facultyId).trim() : '';
+    if (!name || !password || !finalFacultyId) {
+      return res.status(400).json({ success: false, message: 'Faculty ID, Name, and Password are required.' });
     }
 
-    const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
-    if (existingUser) {
-      return res.status(409).json({ success: false, message: 'A user with this email already exists' });
+    const existingById = await User.findOne({
+      facultyId: { $regex: new RegExp(`^${finalFacultyId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+    });
+    if (existingById) {
+      return res.status(409).json({ success: false, message: `A faculty member with Faculty ID "${finalFacultyId}" already exists.` });
+    }
+
+    const cleanEmail = email && String(email).trim() ? String(email).toLowerCase().trim() : undefined;
+    if (cleanEmail) {
+      const existingUser = await User.findOne({ email: cleanEmail });
+      if (existingUser) {
+        return res.status(409).json({ success: false, message: 'A user with this email already exists.' });
+      }
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newFaculty = await User.create({
+      facultyId: finalFacultyId,
       name: name.trim(),
-      email: email.toLowerCase().trim(),
+      email: cleanEmail,
       passwordHash: hashedPassword,
       role: 'FACULTY',
       batch: department ? String(department).trim() : '',
@@ -1188,8 +1260,9 @@ export const createFaculty = async (req, res) => {
       data: {
         faculty: {
           _id: newFaculty._id,
+          facultyId: newFaculty.facultyId,
           name: newFaculty.name,
-          email: newFaculty.email,
+          email: newFaculty.email || '',
           phone: newFaculty.phone,
           department: newFaculty.batch,
           organization: newFaculty.organization,
@@ -1205,19 +1278,38 @@ export const createFaculty = async (req, res) => {
 export const updateFaculty = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, phone, department, organization, password } = req.body;
+    const { facultyId, name, email, phone, department, organization, password } = req.body;
 
     const faculty = await User.findOne({ _id: id, role: 'FACULTY' });
     if (!faculty) {
       return res.status(404).json({ success: false, message: 'Faculty member not found.' });
     }
 
-    if (email && email.toLowerCase().trim() !== faculty.email) {
-      const existing = await User.findOne({ email: email.toLowerCase().trim(), _id: { $ne: id } });
-      if (existing) {
-        return res.status(400).json({ success: false, message: 'Email already registered to another user.' });
+    if (facultyId !== undefined && String(facultyId).trim() !== '') {
+      const finalFacultyId = String(facultyId).trim();
+      if (finalFacultyId !== faculty.facultyId) {
+        const existingById = await User.findOne({
+          facultyId: { $regex: new RegExp(`^${finalFacultyId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+          _id: { $ne: id },
+        });
+        if (existingById) {
+          return res.status(409).json({ success: false, message: `Faculty ID "${finalFacultyId}" is already registered to another user.` });
+        }
+        faculty.facultyId = finalFacultyId;
       }
-      faculty.email = email.toLowerCase().trim();
+    }
+
+    if (email !== undefined) {
+      const cleanEmail = email && String(email).trim() ? String(email).toLowerCase().trim() : undefined;
+      if (cleanEmail && cleanEmail !== faculty.email) {
+        const existing = await User.findOne({ email: cleanEmail, _id: { $ne: id } });
+        if (existing) {
+          return res.status(400).json({ success: false, message: 'Email already registered to another user.' });
+        }
+        faculty.email = cleanEmail;
+      } else if (!cleanEmail) {
+        faculty.email = undefined;
+      }
     }
 
     if (name) faculty.name = name.trim();
@@ -1237,8 +1329,9 @@ export const updateFaculty = async (req, res) => {
       data: {
         faculty: {
           _id: faculty._id,
+          facultyId: faculty.facultyId || '',
           name: faculty.name,
-          email: faculty.email,
+          email: faculty.email || '',
           phone: faculty.phone,
           department: faculty.batch,
           organization: faculty.organization,
@@ -1274,17 +1367,19 @@ export const downloadFacultyTemplate = async (req, res) => {
   try {
     const sampleData = [
       {
+        'Faculty ID': 'FAC2026001',
         'Full Name': 'Dr. Rajesh Sharma',
-        'Email': 'rajesh.sharma@university.edu',
         'Password': 'Faculty@123',
+        'Email': 'rajesh.sharma@university.edu',
         'Organization': 'Tech University',
         'Department': 'Computer Science & Engineering',
         'Phone': '9876543210',
       },
       {
+        'Faculty ID': 'FAC2026002',
         'Full Name': 'Prof. Ananya Gupta',
-        'Email': 'ananya.gupta@university.edu',
         'Password': 'Faculty@123',
+        'Email': '', // Optional
         'Organization': 'Tech University',
         'Department': 'Information Technology',
         'Phone': '9876543211',
@@ -1325,44 +1420,74 @@ export const uploadFacultyExcel = async (req, res) => {
       const row = sheetData[index];
       const rowNumber = index + 2;
 
-      const name = row['Full Name'] || row['name'] || row['Name'];
-      const email = row['Email'] || row['email'];
+      const facultyIdRaw = row['Faculty ID'] || row['FacultyId'] || row['facultyId'] || row['FACULTY ID'] || row['faculty_id'] || row['Faculty Id'] || row['ID'];
+      const name = row['Full Name'] || row['name'] || row['Name'] || row['FULL NAME'];
+      const emailRaw = row['Email'] || row['email'] || row['EMAIL'];
       const password = String(row['Password'] || row['password'] || 'Faculty@123');
       const organization = String(row['Organization'] || row['organization'] || '');
       const department = String(row['Department'] || row['department'] || row['batch'] || '');
       const phone = String(row['Phone'] || row['phone'] || '');
 
-      if (!name || !email) {
-        errors.push(`Row ${rowNumber}: Name and Email are required.`);
+      const facultyId = facultyIdRaw ? String(facultyIdRaw).trim() : '';
+      const email = emailRaw && String(emailRaw).trim() ? String(emailRaw).toLowerCase().trim() : undefined;
+
+      if (!name || !facultyId) {
+        errors.push(`Row ${rowNumber}: Faculty ID and Full Name are required.`);
         continue;
       }
 
-      const existing = await User.findOne({ email: String(email).toLowerCase().trim() });
-      if (existing) {
-        errors.push(`Row ${rowNumber}: Email "${email}" already registered.`);
-        continue;
-      }
-
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const faculty = await User.create({
-        name: String(name).trim(),
-        email: String(email).toLowerCase().trim(),
-        passwordHash: hashedPassword,
+      // Check existing faculty by Faculty ID or Email
+      let existing = await User.findOne({
         role: 'FACULTY',
-        batch: department.trim(),
-        organization: organization.trim(),
-        phone: phone.trim(),
-        createdBy: req.user._id,
-        isActive: true,
-        isVerified: true,
+        facultyId: { $regex: new RegExp(`^${facultyId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
       });
 
-      createdFaculty.push(faculty.email);
+      if (!existing && email) {
+        existing = await User.findOne({ email });
+      }
+
+      if (existing) {
+        // Update existing faculty member
+        existing.facultyId = facultyId;
+        existing.name = String(name).trim();
+        if (email) existing.email = email;
+        if (department) existing.batch = department.trim();
+        if (organization) existing.organization = organization.trim();
+        if (phone) existing.phone = phone.trim();
+        await existing.save();
+        createdFaculty.push(facultyId);
+      } else {
+        // Validate email uniqueness if provided
+        if (email) {
+          const emailExists = await User.findOne({ email });
+          if (emailExists) {
+            errors.push(`Row ${rowNumber}: Email "${email}" already registered to another user.`);
+            continue;
+          }
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const faculty = await User.create({
+          facultyId,
+          name: String(name).trim(),
+          email: email || undefined,
+          passwordHash: hashedPassword,
+          role: 'FACULTY',
+          batch: department.trim(),
+          organization: organization.trim(),
+          phone: phone.trim(),
+          createdBy: req.user._id,
+          isActive: true,
+          isVerified: true,
+        });
+
+        createdFaculty.push(faculty.facultyId);
+      }
     }
 
     res.status(200).json({
       success: true,
-      message: `Processed ${sheetData.length} rows. Successfully imported ${createdFaculty.length} faculty accounts.`,
+      message: `Processed ${sheetData.length} rows. Successfully imported/updated ${createdFaculty.length} faculty accounts.`,
       data: {
         importedCount: createdFaculty.length,
         errorCount: errors.length,

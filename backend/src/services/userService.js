@@ -63,10 +63,14 @@ export class UserService {
 
     if (name) user.name = name.trim();
     if (phone !== undefined) user.phone = phone.trim();
-    if (rollNumber !== undefined) user.rollNumber = rollNumber.trim();
-    if (batch !== undefined) user.batch = batch.trim();
     if (gender !== undefined) user.gender = gender.trim();
     if (age !== undefined) user.age = age === '' || age === null ? null : Number(age);
+
+    // Only Admin can change assigned batch or rollNumber via self-profile update
+    if (user.role === 'ADMIN') {
+      if (rollNumber !== undefined) user.rollNumber = rollNumber.trim();
+      if (batch !== undefined) user.batch = batch.trim();
+    }
 
     if (password && password.trim().length >= 6) {
       const bcrypt = (await import('bcryptjs')).default;

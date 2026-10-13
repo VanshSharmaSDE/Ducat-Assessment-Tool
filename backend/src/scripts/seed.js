@@ -49,6 +49,7 @@ async function seed() {
 
   const admin = await User.create({
     name: 'Platform Administrator',
+    adminId: 'ADMIN001',
     email: 'admin@assessment.com',
     passwordHash: adminPasswordHash,
     role: 'ADMIN',

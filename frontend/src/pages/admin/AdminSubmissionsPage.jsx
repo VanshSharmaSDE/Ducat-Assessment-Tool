@@ -299,8 +299,8 @@ export default function AdminSubmissionsPage() {
       <div className="space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-extrabold text-white tracking-tight">Raw Submissions & Code Archive</h1>
-            <p className="text-sm text-slate-400 mt-1">
+            <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Raw Submissions & Code Archive</h1>
+            <p className="text-sm text-slate-500 mt-1">
               Hierarchical examination audit log with live code inspection and Word (.docx) reports
             </p>
           </div>
@@ -315,7 +315,7 @@ export default function AdminSubmissionsPage() {
                 )
               }
               disabled={downloadingDocx}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-600/20 transition-all shrink-0"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/15 transition-all shrink-0 cursor-pointer"
             >
               <Download className="w-4 h-4" />
               <span>{downloadingDocx ? 'Generating Word File...' : 'Download Exam Submissions (.docx)'}</span>
@@ -332,7 +332,7 @@ export default function AdminSubmissionsPage() {
                 )
               }
               disabled={downloadingDocx}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-600/20 transition-all shrink-0"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/15 transition-all shrink-0 cursor-pointer"
             >
               <Download className="w-4 h-4" />
               <span>{downloadingDocx ? 'Generating Word File...' : 'Download Student Report (.docx)'}</span>
@@ -341,11 +341,11 @@ export default function AdminSubmissionsPage() {
         </div>
 
         {/* Hierarchical Breadcrumbs */}
-        <div className="flex items-center gap-2 text-xs font-medium text-slate-400 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+        <div className="flex items-center gap-2 text-xs font-medium text-slate-500 bg-slate-100 p-2.5 rounded-xl border border-slate-200">
           <button
             onClick={handleBackToExams}
-            className={`hover:text-amber-400 transition-colors flex items-center gap-1.5 ${
-              currentLevel === 'EXAMS' ? 'text-amber-400 font-bold' : ''
+            className={`hover:text-blue-600 transition-colors flex items-center gap-1.5 cursor-pointer ${
+              currentLevel === 'EXAMS' ? 'text-blue-600 font-bold' : 'text-slate-600'
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
@@ -354,11 +354,11 @@ export default function AdminSubmissionsPage() {
 
           {selectedExam && (
             <>
-              <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
               <button
                 onClick={handleBackToStudents}
-                className={`hover:text-amber-400 transition-colors max-w-[200px] truncate ${
-                  currentLevel === 'STUDENTS' ? 'text-amber-400 font-bold' : ''
+                className={`hover:text-blue-600 transition-colors max-w-[200px] truncate cursor-pointer ${
+                  currentLevel === 'STUDENTS' ? 'text-blue-600 font-bold' : 'text-slate-600'
                 }`}
               >
                 {selectedExam.title}
@@ -368,8 +368,8 @@ export default function AdminSubmissionsPage() {
 
           {selectedStudent && (
             <>
-              <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
-              <span className="text-amber-400 font-bold max-w-[200px] truncate">
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+              <span className="text-blue-600 font-bold max-w-[200px] truncate">
                 {selectedStudent.user?.name || 'Candidate Solutions'}
               </span>
             </>
@@ -379,7 +379,7 @@ export default function AdminSubmissionsPage() {
 
       {loading ? (
         <div className="flex-1 flex items-center justify-center p-16">
-          <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
         <>
@@ -390,13 +390,13 @@ export default function AdminSubmissionsPage() {
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="relative max-w-sm w-full">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Search examinations..."
-                    className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
@@ -405,34 +405,34 @@ export default function AdminSubmissionsPage() {
                     <button
                       onClick={handleBulkDeleteExams}
                       disabled={actionLoading}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-md shadow-rose-600/15 transition-all cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                       <span>Delete Selected Exams ({selectedExams.length})</span>
                     </button>
                   )}
-                  <span className="text-xs text-slate-400">Total Exams: {exams.length}</span>
+                  <span className="text-xs text-slate-500">Total Exams: {exams.length}</span>
                 </div>
               </div>
 
               {exams.length === 0 ? (
-                <div className="p-12 text-center rounded-2xl bg-slate-900/40 border border-slate-800 text-slate-400">
-                  <Layers className="w-12 h-12 mx-auto text-slate-600 mb-3" />
-                  <h3 className="text-base font-semibold text-white">No examinations found</h3>
-                  <p className="text-xs text-slate-400 mt-1">Create an exam to start accepting student submissions.</p>
+                <div className="p-12 text-center rounded-2xl bg-white border border-slate-200 text-slate-500 shadow-sm">
+                  <Layers className="w-12 h-12 mx-auto text-slate-400 mb-3" />
+                  <h3 className="text-base font-semibold text-slate-800">No examinations found</h3>
+                  <p className="text-xs text-slate-500 mt-1">Create an exam to start accepting student submissions.</p>
                 </div>
               ) : (
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[1100px] text-left text-xs whitespace-nowrap">
                       <thead>
-                        <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
+                        <tr className="border-b border-slate-200 text-slate-600 bg-slate-50">
                           <th className="py-3 px-4 w-10">
                             <input
                               type="checkbox"
                               checked={exams.length > 0 && selectedExams.length === exams.length}
                               onChange={handleSelectAllExams}
-                              className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
+                              className="w-4 h-4 rounded bg-white border-slate-300 text-blue-600 accent-blue-600 focus:ring-0 cursor-pointer"
                             />
                           </th>
                           <th className="py-3 px-4 font-semibold">Exam Title</th>
@@ -444,7 +444,7 @@ export default function AdminSubmissionsPage() {
                           <th className="py-3 px-4 font-semibold text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-800/60">
+                      <tbody className="divide-y divide-slate-100">
                         {exams
                           .filter((e) =>
                             searchTerm ? e.title?.toLowerCase().includes(searchTerm.toLowerCase()) : true
@@ -452,23 +452,23 @@ export default function AdminSubmissionsPage() {
                           .map((exam) => {
                             const isSelected = selectedExams.includes(exam._id);
                             return (
-                            <tr key={exam._id} className={`text-slate-300 hover:bg-slate-800/40 transition-colors ${isSelected ? 'bg-amber-500/5' : ''}`}>
+                            <tr key={exam._id} className={`text-slate-600 hover:bg-slate-50 transition-colors ${isSelected ? 'bg-blue-50/50' : ''}`}>
                               <td className="py-3 px-4">
                                 <input
                                   type="checkbox"
                                   checked={isSelected}
                                   onChange={() => handleToggleSelectExam(exam._id)}
-                                  className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
+                                  className="w-4 h-4 rounded bg-white border-slate-300 text-blue-600 accent-blue-600 focus:ring-0 cursor-pointer"
                                 />
                               </td>
-                              <td className="py-3 px-4 font-bold text-white text-xs whitespace-nowrap max-w-xs truncate" title={exam.title}>
+                              <td className="py-3 px-4 font-bold text-slate-800 text-xs whitespace-nowrap max-w-xs truncate" title={exam.title}>
                                 {exam.title}
                               </td>
-                              <td className="py-3 px-4 font-mono whitespace-nowrap">{exam.duration} mins</td>
-                              <td className="py-3 px-4 font-mono font-bold text-amber-400 whitespace-nowrap">{exam.totalMarks}</td>
-                              <td className="py-3 px-4 font-mono text-slate-400 whitespace-nowrap">{exam.passingMarks}</td>
+                              <td className="py-3 px-4 font-mono text-slate-600 whitespace-nowrap">{exam.duration} mins</td>
+                              <td className="py-3 px-4 font-mono font-bold text-blue-600 whitespace-nowrap">{exam.totalMarks}</td>
+                              <td className="py-3 px-4 font-mono text-slate-500 whitespace-nowrap">{exam.passingMarks}</td>
                               <td className="py-3 px-4 whitespace-nowrap">
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-slate-800 text-slate-200 font-mono text-[11px]">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 font-mono text-[11px]">
                                   <strong>{exam.completedCount || 0}</strong> completed / {exam.attemptCount || 0} started
                                 </span>
                               </td>
@@ -476,8 +476,8 @@ export default function AdminSubmissionsPage() {
                                 <span
                                   className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                     exam.status === 'PUBLISHED'
-                                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                      : 'bg-slate-500/10 text-slate-400 border border-slate-700'
+                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                      : 'bg-slate-100 text-slate-600 border border-slate-200'
                                   }`}
                                 >
                                   {exam.status}
@@ -494,13 +494,13 @@ export default function AdminSubmissionsPage() {
                                       )
                                     }
                                     title="Export all submissions to Word (.docx)"
-                                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-blue-600 text-slate-300 hover:text-white transition-colors"
+                                    className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-600 text-slate-600 hover:text-white border border-slate-200 transition-colors cursor-pointer"
                                   >
                                     <Download className="w-3.5 h-3.5" />
                                   </button>
                                   <button
                                     onClick={() => handleSelectExam(exam)}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-colors"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-colors shadow-sm shadow-blue-600/15 cursor-pointer"
                                   >
                                     <span>View Candidates</span>
                                     <ChevronRight className="w-3.5 h-3.5" />
@@ -527,7 +527,7 @@ export default function AdminSubmissionsPage() {
                 <div className="flex items-center gap-3">
                   <button
                     onClick={handleBackToExams}
-                    className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-600 transition-colors cursor-pointer"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
                     <span>Back to Exam List</span>
@@ -537,7 +537,7 @@ export default function AdminSubmissionsPage() {
                     <button
                       onClick={handleBulkDeleteSubmissions}
                       disabled={actionLoading}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-md shadow-rose-600/15 transition-all cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>Delete Selected Submissions ({selectedSubmissions.length})</span>
@@ -546,35 +546,35 @@ export default function AdminSubmissionsPage() {
                 </div>
 
                 <div className="relative max-w-sm w-full">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Search candidate name, email, roll no..."
-                    className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
 
               {students.length === 0 ? (
-                <div className="p-12 text-center rounded-2xl bg-slate-900/40 border border-slate-800 text-slate-400">
-                  <User className="w-12 h-12 mx-auto text-slate-600 mb-3" />
-                  <h3 className="text-base font-semibold text-white">No attempts recorded</h3>
-                  <p className="text-xs text-slate-400 mt-1">No candidate has attempted this examination yet.</p>
+                <div className="p-12 text-center rounded-2xl bg-white border border-slate-200 text-slate-500 shadow-sm">
+                  <User className="w-12 h-12 mx-auto text-slate-400 mb-3" />
+                  <h3 className="text-base font-semibold text-slate-800">No attempts recorded</h3>
+                  <p className="text-xs text-slate-500 mt-1">No candidate has attempted this examination yet.</p>
                 </div>
               ) : (
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[1300px] text-left text-xs whitespace-nowrap">
                       <thead>
-                        <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
+                        <tr className="border-b border-slate-200 text-slate-600 bg-slate-50">
                           <th className="py-3 px-4 w-10">
                             <input
                               type="checkbox"
                               checked={students.length > 0 && selectedSubmissions.length === students.length}
                               onChange={handleSelectAllSubmissions}
-                              className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
+                              className="w-4 h-4 rounded bg-white border-slate-300 text-blue-600 accent-blue-600 focus:ring-0 cursor-pointer"
                             />
                           </th>
                           <th className="py-3 px-4 font-semibold">Candidate</th>
@@ -589,7 +589,7 @@ export default function AdminSubmissionsPage() {
                           <th className="py-3 px-4 font-semibold text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-800/60">
+                      <tbody className="divide-y divide-slate-100">
                         {students
                           .filter((item) => {
                             if (!searchTerm) return true;
@@ -604,50 +604,50 @@ export default function AdminSubmissionsPage() {
                           .map((item) => {
                             const isSelected = selectedSubmissions.includes(item.attemptId);
                             return (
-                            <tr key={item.attemptId} className={`text-slate-300 hover:bg-slate-800/40 transition-colors ${isSelected ? 'bg-amber-500/5' : ''}`}>
+                            <tr key={item.attemptId} className={`text-slate-600 hover:bg-slate-50 transition-colors ${isSelected ? 'bg-blue-50/50' : ''}`}>
                               <td className="py-3 px-4">
                                 <input
                                   type="checkbox"
                                   checked={isSelected}
                                   onChange={() => handleToggleSelectSubmission(item.attemptId)}
-                                  className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
+                                  className="w-4 h-4 rounded bg-white border-slate-300 text-blue-600 accent-blue-600 focus:ring-0 cursor-pointer"
                                 />
                               </td>
-                              <td className="py-3 px-4 font-semibold text-white whitespace-nowrap">
+                              <td className="py-3 px-4 font-semibold text-slate-800 whitespace-nowrap">
                                 <div className="flex items-center gap-2">
-                                  <div className="w-6 h-6 rounded-lg bg-sky-500/20 text-sky-400 font-bold flex items-center justify-center shrink-0 text-xs">
+                                  <div className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 font-bold flex items-center justify-center shrink-0 text-xs">
                                     {item.user?.name?.charAt(0) || 'C'}
                                   </div>
                                   <span className="font-bold">{item.user?.name || 'Candidate'}</span>
                                 </div>
                               </td>
-                              <td className="py-3 px-4 font-mono text-slate-400 whitespace-nowrap">
+                              <td className="py-3 px-4 font-mono text-slate-500 whitespace-nowrap">
                                 {item.user?.email || '—'}
                               </td>
-                              <td className="py-3 px-4 font-mono text-slate-200 whitespace-nowrap">
+                              <td className="py-3 px-4 font-mono text-slate-600 whitespace-nowrap">
                                 {item.user?.rollNumber || '—'}
                               </td>
-                              <td className="py-3 px-4 font-medium text-indigo-300 whitespace-nowrap">
+                              <td className="py-3 px-4 font-medium text-blue-700 whitespace-nowrap">
                                 {item.user?.batch || 'General'}
                               </td>
                               <td className="py-3 px-4 whitespace-nowrap">
                                 <span
                                   className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                     item.status === 'COMPLETED' || item.status === 'EVALUATED'
-                                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                      : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                      : 'bg-amber-50 text-amber-700 border border-amber-200'
                                   }`}
                                 >
                                   {item.status}
                                 </span>
                               </td>
-                              <td className="py-3 px-4 font-mono font-bold text-white whitespace-nowrap">
+                              <td className="py-3 px-4 font-mono font-bold text-slate-800 whitespace-nowrap">
                                 {item.totalScore} / {selectedExam.totalMarks}
                               </td>
                               <td className="py-3 px-4 whitespace-nowrap">
                                 <span
                                   className={`font-mono font-bold ${
-                                    item.passed ? 'text-emerald-400' : 'text-rose-400'
+                                    item.passed ? 'text-emerald-600' : 'text-rose-600'
                                   }`}
                                 >
                                   {(item.percentage || 0).toFixed(1)}%
@@ -655,15 +655,15 @@ export default function AdminSubmissionsPage() {
                               </td>
                               <td className="py-3 px-4 whitespace-nowrap">
                                 {item.violationCount > 0 ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 font-mono text-[11px]">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-50 text-rose-600 font-mono text-[11px] border border-rose-200">
                                     <ShieldAlert className="w-3 h-3" />
                                     <span>{item.violationCount}</span>
                                   </span>
                                 ) : (
-                                  <span className="text-emerald-400 text-xs">0</span>
+                                  <span className="text-emerald-600 text-xs">0</span>
                                 )}
                               </td>
-                              <td className="py-3 px-4 font-mono text-slate-400 whitespace-nowrap">
+                              <td className="py-3 px-4 font-mono text-slate-500 whitespace-nowrap">
                                 {item.submittedAt ? new Date(item.submittedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
                               </td>
                               <td className="py-3.5 px-4 text-right">
@@ -678,14 +678,14 @@ export default function AdminSubmissionsPage() {
                                         )
                                       }
                                       title="Export Candidate Solutions to Word (.docx)"
-                                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-blue-600 text-slate-300 hover:text-white transition-colors"
+                                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-600 text-slate-600 hover:text-white border border-slate-200 transition-colors cursor-pointer"
                                     >
                                       <Download className="w-3.5 h-3.5" />
                                     </button>
                                   )}
                                   <button
                                     onClick={() => handleSelectStudent(item)}
-                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-colors"
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-colors shadow-sm shadow-blue-600/15 cursor-pointer"
                                   >
                                     <span>View Solutions</span>
                                     <ChevronRight className="w-3.5 h-3.5" />
@@ -693,7 +693,7 @@ export default function AdminSubmissionsPage() {
                                   <button
                                     onClick={() => handleDeleteSubmission(item.attemptId, item.user?.name)}
                                     disabled={actionLoading}
-                                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
+                                    className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 border border-slate-200 transition-colors cursor-pointer"
                                     title="Delete Submission"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
@@ -718,36 +718,36 @@ export default function AdminSubmissionsPage() {
             <div className="space-y-6">
               <button
                 onClick={handleBackToStudents}
-                className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-600 transition-colors cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Back to Candidate List</span>
               </button>
 
               {/* Candidate Info Card */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 font-bold text-lg">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 font-bold text-lg">
                       {detailData.student?.name?.[0] || 'C'}
                     </div>
                     <div>
-                      <h2 className="text-lg font-bold text-white">{detailData.student?.name}</h2>
-                      <p className="text-xs text-slate-400">{detailData.student?.email}</p>
+                      <h2 className="text-lg font-bold text-slate-800">{detailData.student?.name}</h2>
+                      <p className="text-xs text-slate-500">{detailData.student?.email}</p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-bold ${
+                      className={`px-3 py-1 rounded-full text-xs font-bold border ${
                         detailData.attempt?.passed
-                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                          : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-rose-50 text-rose-700 border-rose-200'
                       }`}
                     >
                       {detailData.attempt?.passed ? 'PASSED' : 'FAILED'}
                     </span>
-                    <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-slate-800 text-slate-200">
+                    <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-slate-100 text-slate-700 border border-slate-200">
                       Score: {detailData.attempt?.totalScore} / {detailData.exam?.totalMarks} (
                       {(detailData.attempt?.percentage || 0).toFixed(1)}%)
                     </span>
@@ -757,21 +757,21 @@ export default function AdminSubmissionsPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
                   <div>
                     <span className="text-slate-500 block">Roll Number</span>
-                    <span className="font-mono text-slate-200 font-semibold">{detailData.student?.rollNumber || '-'}</span>
+                    <span className="font-mono text-slate-700 font-semibold">{detailData.student?.rollNumber || '-'}</span>
                   </div>
                   <div>
                     <span className="text-slate-500 block">Batch & Gender</span>
-                    <span className="text-slate-200 font-semibold">
+                    <span className="text-slate-700 font-semibold">
                       {detailData.student?.batch || 'Default'} ({detailData.student?.gender || 'N/A'}, Age: {detailData.student?.age || '-'})
                     </span>
                   </div>
                   <div>
                     <span className="text-slate-500 block">Violations Logged</span>
-                    <span className="font-mono text-rose-400 font-semibold">{detailData.attempt?.violationCount || 0} alerts</span>
+                    <span className="font-mono text-rose-600 font-semibold">{detailData.attempt?.violationCount || 0} alerts</span>
                   </div>
                   <div>
                     <span className="text-slate-500 block">Submitted Time</span>
-                    <span className="text-slate-200 font-semibold">
+                    <span className="text-slate-700 font-semibold">
                       {detailData.attempt?.submittedAt ? new Date(detailData.attempt.submittedAt).toLocaleTimeString() : '-'}
                     </span>
                   </div>
@@ -780,42 +780,42 @@ export default function AdminSubmissionsPage() {
 
               {/* Submissions List per Question */}
               <div className="space-y-4">
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <Code2 className="w-4 h-4 text-amber-400" />
+                <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                  <Code2 className="w-4 h-4 text-blue-600" />
                   <span>Submitted Solutions ({detailData.submissions?.length || 0})</span>
                 </h3>
 
                 {detailData.submissions?.length === 0 ? (
-                  <div className="p-8 text-center rounded-2xl bg-slate-900/40 border border-slate-800 text-slate-400 text-xs">
+                  <div className="p-8 text-center rounded-2xl bg-white border border-slate-200 text-slate-500 text-xs shadow-sm">
                     No solutions submitted for this exam attempt.
                   </div>
                 ) : (
                   detailData.submissions.map((sub, index) => (
                     <div
                       key={sub._id || index}
-                      className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl space-y-4 p-5"
+                      className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm space-y-4 p-5"
                     >
                       {/* Question Header */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-amber-400 font-bold text-xs">Q{index + 1}.</span>
-                            <h4 className="text-sm font-bold text-white">{sub.questionId?.title || 'Coding Problem'}</h4>
-                            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-slate-300">
+                            <span className="font-mono text-blue-600 font-bold text-xs">Q{index + 1}.</span>
+                            <h4 className="text-sm font-bold text-slate-800">{sub.questionId?.title || 'Coding Problem'}</h4>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-100 text-slate-700 border border-slate-200">
                               {sub.questionId?.marks || 10} Marks
                             </span>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 font-mono text-[10px] uppercase font-bold">
+                          <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-mono text-[10px] uppercase font-bold">
                             {sub.language}
                           </span>
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                               sub.status === 'ACCEPTED'
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-rose-50 text-rose-700 border border-rose-200'
                             }`}
                           >
                             {sub.status}
@@ -825,19 +825,19 @@ export default function AdminSubmissionsPage() {
 
                       {/* Source Code Section */}
                       <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-xs text-slate-400">
+                        <div className="flex items-center justify-between text-xs text-slate-500">
                           <span className="font-semibold flex items-center gap-1.5">
-                            <Terminal className="w-3.5 h-3.5 text-slate-500" />
+                            <Terminal className="w-3.5 h-3.5 text-slate-400" />
                             <span>Submitted Source Code</span>
                           </span>
                           <button
                             onClick={() => handleCopyCode(sub._id, sub.sourceCode)}
-                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] transition-colors"
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-[11px] transition-colors cursor-pointer"
                           >
                             {copiedCodeId === sub._id ? (
                               <>
-                                <Check className="w-3 h-3 text-emerald-400" />
-                                <span className="text-emerald-400">Copied</span>
+                                <Check className="w-3 h-3 text-emerald-600" />
+                                <span className="text-emerald-600 font-semibold">Copied</span>
                               </>
                             ) : (
                               <>
@@ -847,15 +847,15 @@ export default function AdminSubmissionsPage() {
                             )}
                           </button>
                         </div>
-                        <pre className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 font-mono text-xs text-slate-200 overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-80">
+                        <pre className="p-4 rounded-xl bg-slate-50 border border-slate-200 font-mono text-xs text-slate-800 overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-80">
                           {sub.sourceCode}
                         </pre>
                       </div>
 
                       {/* Test Cases Results */}
                       {sub.result?.testCases && sub.result.testCases.length > 0 && (
-                        <div className="space-y-2 pt-2 border-t border-slate-800/60">
-                          <h5 className="text-xs font-semibold text-slate-300">
+                        <div className="space-y-2 pt-2 border-t border-slate-200">
+                          <h5 className="text-xs font-semibold text-slate-700">
                             Test Cases Suite Results ({sub.result.testCases.filter((tc) => tc.passed).length} / {sub.result.testCases.length} Passed)
                           </h5>
                           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
@@ -864,8 +864,8 @@ export default function AdminSubmissionsPage() {
                                 key={tcIdx}
                                 className={`p-2.5 rounded-xl border text-[11px] flex items-center justify-between ${
                                   tc.passed
-                                    ? 'bg-emerald-950/20 border-emerald-500/20 text-emerald-300'
-                                    : 'bg-rose-950/20 border-rose-500/20 text-rose-300'
+                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                    : 'bg-rose-50 border-rose-200 text-rose-700'
                                 }`}
                               >
                                 <span className="font-semibold">Test Case #{tcIdx + 1} {tc.isHidden ? '(Hidden)' : '(Sample)'}</span>

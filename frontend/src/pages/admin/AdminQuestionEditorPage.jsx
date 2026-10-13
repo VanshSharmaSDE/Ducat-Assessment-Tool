@@ -194,7 +194,7 @@ export default function AdminQuestionEditorPage() {
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -203,25 +203,25 @@ export default function AdminQuestionEditorPage() {
     <div className="p-6 md:p-10 max-w-5xl mx-auto w-full space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <Link to="/admin/questions" className="text-xs text-slate-400 hover:text-white transition-colors mb-2 inline-block">
+          <Link to="/admin/questions" className="text-xs text-slate-500 hover:text-slate-800 transition-colors mb-2 inline-block">
             &larr; Back to Question Bank
           </Link>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight">
+          <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">
             {isEditing ? `Edit Problem: ${formData.title}` : 'Create New Problem'}
           </h1>
-          <p className="text-sm text-slate-400 mt-1">Configure statement, I/O formats, limits and test suites</p>
+          <p className="text-sm text-slate-500 mt-1">Configure statement, I/O formats, limits and test suites</p>
         </div>
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
       {success && (
-        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2">
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 text-xs flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
           <span>{success}</span>
         </div>
@@ -229,14 +229,14 @@ export default function AdminQuestionEditorPage() {
 
       <form onSubmit={handleSaveQuestion} className="space-y-6">
         {/* Main Problem Details */}
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
-          <h2 className="text-base font-bold text-white flex items-center gap-2">
-            <HelpCircle className="w-4 h-4 text-amber-400" /> Problem Specifications
+        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4">
+          <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+            <HelpCircle className="w-4 h-4 text-blue-600" /> Problem Specifications
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Problem Title *
               </label>
               <input
@@ -245,18 +245,18 @@ export default function AdminQuestionEditorPage() {
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 placeholder="e.g. Two Sum"
-                className="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Difficulty
               </label>
               <select
                 value={formData.difficulty}
                 onChange={(e) => setFormData({ ...formData, difficulty: e.target.value })}
-                className="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="EASY">EASY</option>
                 <option value="MEDIUM">MEDIUM</option>
@@ -266,7 +266,7 @@ export default function AdminQuestionEditorPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
               Problem Description *
             </label>
             <textarea
@@ -275,13 +275,13 @@ export default function AdminQuestionEditorPage() {
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="State the problem clearly, including preconditions and expected behavior..."
-              className="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono"
+              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Input Format
               </label>
               <textarea
@@ -289,12 +289,12 @@ export default function AdminQuestionEditorPage() {
                 value={formData.inputFormat}
                 onChange={(e) => setFormData({ ...formData, inputFormat: e.target.value })}
                 placeholder="Specification of standard input format..."
-                className="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono"
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Output Format
               </label>
               <textarea
@@ -302,13 +302,13 @@ export default function AdminQuestionEditorPage() {
                 value={formData.outputFormat}
                 onChange={(e) => setFormData({ ...formData, outputFormat: e.target.value })}
                 placeholder="Specification of standard output format..."
-                className="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono"
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
               Constraints
             </label>
             <textarea
@@ -316,20 +316,20 @@ export default function AdminQuestionEditorPage() {
               value={formData.constraints}
               onChange={(e) => setFormData({ ...formData, constraints: e.target.value })}
               placeholder="e.g. 1 <= n <= 10^5, -10^9 <= nums[i] <= 10^9"
-              className="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono"
+              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
             />
           </div>
         </div>
 
         {/* Limits & Evaluation Rules */}
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
-          <h2 className="text-base font-bold text-white flex items-center gap-2">
-            <Clock className="w-4 h-4 text-sky-400" /> Resource Limits & Judging Mode
+        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4">
+          <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-blue-600" /> Resource Limits & Judging Mode
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Default Marks
               </label>
               <input
@@ -337,12 +337,12 @@ export default function AdminQuestionEditorPage() {
                 min={1}
                 value={formData.marks}
                 onChange={(e) => setFormData({ ...formData, marks: Number(e.target.value) })}
-                className="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Time Limit (Seconds)
               </label>
               <input
@@ -352,12 +352,12 @@ export default function AdminQuestionEditorPage() {
                 max={15}
                 value={formData.timeLimit}
                 onChange={(e) => setFormData({ ...formData, timeLimit: Number(e.target.value) })}
-                className="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Memory Limit (MB)
               </label>
               <input
@@ -366,18 +366,18 @@ export default function AdminQuestionEditorPage() {
                 max={1024}
                 value={formData.memoryLimit}
                 onChange={(e) => setFormData({ ...formData, memoryLimit: Number(e.target.value) })}
-                className="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Output Comparison Mode
               </label>
               <select
                 value={formData.comparisonMode}
                 onChange={(e) => setFormData({ ...formData, comparisonMode: e.target.value })}
-                className="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="TRIMMED">TRIMMED (Standard)</option>
                 <option value="EXACT">EXACT</option>
@@ -387,7 +387,7 @@ export default function AdminQuestionEditorPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
               Allowed Programming Languages
             </label>
             <div className="flex flex-wrap gap-2">
@@ -400,8 +400,8 @@ export default function AdminQuestionEditorPage() {
                     onClick={() => handleLanguageToggle(lang)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-mono uppercase font-bold border transition-all ${
                       checked
-                        ? 'bg-amber-500/15 border-amber-500 text-amber-300'
-                        : 'bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-400'
+                        ? 'bg-blue-50 border-blue-500 text-blue-600'
+                        : 'bg-slate-50 border-slate-200 text-slate-500 hover:text-slate-700'
                     }`}
                   >
                     {lang} {checked ? '✓' : ''}
@@ -413,29 +413,29 @@ export default function AdminQuestionEditorPage() {
         </div>
 
         {/* Public Examples */}
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <Eye className="w-4 h-4 text-emerald-400" /> Public Problem Examples (Visible to Candidates)
+            <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+              <Eye className="w-4 h-4 text-emerald-600" /> Public Problem Examples (Visible to Candidates)
             </h2>
             <button
               type="button"
               onClick={addExample}
-              className="text-xs text-amber-400 hover:text-amber-300 font-semibold"
+              className="text-xs text-blue-600 hover:text-blue-700 font-semibold"
             >
               + Add Example
             </button>
           </div>
 
           {formData.examples.map((ex, idx) => (
-            <div key={idx} className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+            <div key={idx} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-300">Example #{idx + 1}</span>
+                <span className="text-xs font-bold text-slate-700">Example #{idx + 1}</span>
                 {formData.examples.length > 1 && (
                   <button
                     type="button"
                     onClick={() => removeExample(idx)}
-                    className="text-slate-500 hover:text-rose-400"
+                    className="text-slate-400 hover:text-rose-600"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -444,33 +444,33 @@ export default function AdminQuestionEditorPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-400 block mb-1">Example Input:</label>
+                  <label className="text-[11px] font-semibold text-slate-600 block mb-1">Example Input:</label>
                   <textarea
                     rows={2}
                     value={ex.input}
                     onChange={(e) => handleExampleChange(idx, 'input', e.target.value)}
-                    className="w-full p-2 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono text-slate-200"
+                    className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-400 block mb-1">Expected Output:</label>
+                  <label className="text-[11px] font-semibold text-slate-600 block mb-1">Expected Output:</label>
                   <textarea
                     rows={2}
                     value={ex.output}
                     onChange={(e) => handleExampleChange(idx, 'output', e.target.value)}
-                    className="w-full p-2 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono text-emerald-400"
+                    className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-mono text-emerald-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-400 block mb-1">Explanation (Optional):</label>
+                <label className="text-[11px] font-semibold text-slate-600 block mb-1">Explanation (Optional):</label>
                 <input
                   type="text"
                   value={ex.explanation || ''}
                   onChange={(e) => handleExampleChange(idx, 'explanation', e.target.value)}
                   placeholder="e.g. nums[0] + nums[1] == 9"
-                  className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-300"
+                  className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -481,7 +481,7 @@ export default function AdminQuestionEditorPage() {
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-lg shadow-amber-500/20 transition-all"
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition-all cursor-pointer"
           >
             <Save className="w-4 h-4" />
             <span>{saving ? 'Saving Problem...' : isEditing ? 'Update Problem' : 'Create Problem'}</span>
@@ -491,12 +491,12 @@ export default function AdminQuestionEditorPage() {
 
       {/* Test Case Management Section (Only active when editing an existing problem) */}
       {isEditing && (
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
+        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-6">
           <div>
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <Shield className="w-4 h-4 text-sky-400" /> Test Suite Management (Hidden & Private Cases)
+            <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+              <Shield className="w-4 h-4 text-blue-600" /> Test Suite Management (Hidden & Private Cases)
             </h2>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               Hidden test cases are strictly executed inside Docker containers and never sent to candidate browsers.
             </p>
           </div>
@@ -504,14 +504,14 @@ export default function AdminQuestionEditorPage() {
           {/* Existing Test Cases Table */}
           <div className="space-y-3">
             {testCases.length === 0 ? (
-              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-500 text-center">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500 text-center">
                 No test cases configured yet. Add test cases below.
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[700px] text-left text-xs">
                   <thead>
-                    <tr className="border-b border-slate-800 text-slate-400 bg-slate-950">
+                    <tr className="border-b border-slate-200 text-slate-600 bg-slate-50">
                       <th className="py-2.5 px-3">#</th>
                       <th className="py-2.5 px-3">Type</th>
                       <th className="py-2.5 px-3">Input</th>
@@ -520,32 +520,32 @@ export default function AdminQuestionEditorPage() {
                       <th className="py-2.5 px-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60 font-mono">
+                  <tbody className="divide-y divide-slate-200 font-mono">
                     {testCases.map((tc, idx) => (
-                      <tr key={tc._id} className="text-slate-300">
+                      <tr key={tc._id} className="text-slate-600 hover:bg-slate-50 transition-colors">
                         <td className="py-2.5 px-3">{idx + 1}</td>
                         <td className="py-2.5 px-3">
                           <span
                             className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                               tc.isHidden
-                                ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/30'
-                                : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                                ? 'bg-blue-50 text-blue-600 border border-blue-200'
+                                : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
                             }`}
                           >
                             {tc.isHidden ? 'HIDDEN' : 'PUBLIC'}
                           </span>
                         </td>
-                        <td className="py-2.5 px-3 max-w-[200px] truncate text-slate-400">
+                        <td className="py-2.5 px-3 max-w-[200px] truncate text-slate-500">
                           {tc.input || '(empty)'}
                         </td>
-                        <td className="py-2.5 px-3 max-w-[200px] truncate text-emerald-400">
+                        <td className="py-2.5 px-3 max-w-[200px] truncate text-emerald-600">
                           {tc.expectedOutput}
                         </td>
-                        <td className="py-2.5 px-3 font-bold text-white">{tc.marks}</td>
+                        <td className="py-2.5 px-3 font-bold text-slate-800">{tc.marks}</td>
                         <td className="py-2.5 px-3 text-right">
                           <button
                             onClick={() => handleDeleteTestCase(tc._id)}
-                            className="p-1 text-slate-500 hover:text-rose-400 transition-colors"
+                            className="p-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -559,30 +559,30 @@ export default function AdminQuestionEditorPage() {
           </div>
 
           {/* Add New Test Case Form */}
-          <form onSubmit={handleAddTestCase} className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-4">
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider">+ Add New Test Case</h4>
+          <form onSubmit={handleAddTestCase} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-4">
+            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">+ Add New Test Case</h4>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-[11px] font-semibold text-slate-400 block mb-1">Standard Input (stdin):</label>
+                <label className="text-[11px] font-semibold text-slate-600 block mb-1">Standard Input (stdin):</label>
                 <textarea
                   rows={3}
                   value={newTc.input}
                   onChange={(e) => setNewTc({ ...newTc, input: e.target.value })}
                   placeholder="Input provided to program..."
-                  className="w-full p-2 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono text-slate-200"
+                  className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-400 block mb-1">Expected Output (stdout) *:</label>
+                <label className="text-[11px] font-semibold text-slate-600 block mb-1">Expected Output (stdout) *:</label>
                 <textarea
                   rows={3}
                   required
                   value={newTc.expectedOutput}
                   onChange={(e) => setNewTc({ ...newTc, expectedOutput: e.target.value })}
                   placeholder="Exact expected standard output..."
-                  className="w-full p-2 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono text-emerald-400"
+                  className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-mono text-emerald-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -590,13 +590,13 @@ export default function AdminQuestionEditorPage() {
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <label className="text-xs text-slate-400 font-semibold">Marks:</label>
+                  <label className="text-xs text-slate-600 font-semibold">Marks:</label>
                   <input
                     type="number"
                     min={0}
                     value={newTc.marks}
                     onChange={(e) => setNewTc({ ...newTc, marks: Number(e.target.value) })}
-                    className="w-16 px-2 py-1 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono text-white text-center"
+                    className="w-16 px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-800 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
@@ -606,9 +606,9 @@ export default function AdminQuestionEditorPage() {
                     id="newTcHidden"
                     checked={newTc.isHidden}
                     onChange={(e) => setNewTc({ ...newTc, isHidden: e.target.checked })}
-                    className="w-4 h-4 rounded text-indigo-500 bg-slate-900 border-slate-700"
+                    className="w-4 h-4 rounded text-blue-600 bg-white border-slate-300 accent-blue-600 focus:ring-0 cursor-pointer"
                   />
-                  <label htmlFor="newTcHidden" className="text-xs text-slate-300 font-semibold select-none cursor-pointer">
+                  <label htmlFor="newTcHidden" className="text-xs text-slate-700 font-semibold select-none cursor-pointer">
                     Hidden Test Case (Confidential)
                   </label>
                 </div>
@@ -616,7 +616,7 @@ export default function AdminQuestionEditorPage() {
 
               <button
                 type="submit"
-                className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-sky-600/20"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-600/20 cursor-pointer"
               >
                 + Save Test Case
               </button>

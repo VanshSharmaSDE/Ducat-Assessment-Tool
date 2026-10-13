@@ -57,7 +57,7 @@ export default function UserDashboard() {
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -65,76 +65,85 @@ export default function UserDashboard() {
   return (
     <div className="p-6 md:p-8 space-y-8 max-w-7xl mx-auto w-full">
       {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-sky-900/60 via-indigo-900/40 to-slate-900 border border-sky-500/20 p-8 shadow-2xl">
+      <div className="relative overflow-hidden rounded-3xl bg-white border border-slate-100 p-8 shadow-sm">
         <div className="relative z-10 max-w-2xl">
-          <h1 className="text-3xl font-extrabold text-white tracking-tight sm:text-4xl">
+          <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight sm:text-4xl">
             Welcome back, {user?.name}!
           </h1>
-          <p className="mt-2 text-slate-300 text-sm sm:text-base leading-relaxed">
-            Ready for your next coding examination? Check available tests below. Remember that code execution is restricted during official assessments and runs automatically against rigorous test cases upon submission.
+          {(user?.studentId || user?.rollNumber) && (
+            <p className="mt-1 text-xs font-mono text-[#4f6bf7] font-semibold">
+              Student ID: {user?.studentId || user?.rollNumber}
+            </p>
+          )}
+          <p className="mt-2 text-slate-500 text-sm sm:text-base leading-relaxed">
+            Ready for your next coding examination? Check available tests below. Remember that code execution runs automatically against rigorous test cases upon submission.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               to="/exams"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold text-sm shadow-lg shadow-sky-600/30 transition-all"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#4f6bf7] hover:bg-[#3b5bf6] text-white font-semibold text-sm shadow-md shadow-[#4f6bf7]/25 transition-all"
             >
               <BookOpen className="w-4 h-4" />
               <span>Browse Active Exams ({availableCount})</span>
             </Link>
             <Link
               to="/results"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold text-sm transition-all"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm transition-all shadow-sm"
             >
-              <Award className="w-4 h-4" />
+              <Award className="w-4 h-4 text-[#4f6bf7]" />
               <span>View Past Results</span>
             </Link>
           </div>
         </div>
       </div>
 
-      {/* Metrics Row */}
+      {/* Metrics Row (styled to match design reference) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-slate-900/70 border border-slate-800/80 rounded-2xl p-5 backdrop-blur">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Available Exams</span>
-            <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400">
-              <BookOpen className="w-5 h-5" />
+        {/* Featured Gradient Card (like top cards in reference) */}
+        <div className="bg-gradient-to-r from-[#4f6bf7] to-[#6073ea] text-white rounded-2xl p-5 shadow-lg shadow-[#4f6bf7]/20 relative overflow-hidden">
+          <div className="flex items-center justify-between relative z-10">
+            <span className="text-[11px] font-bold text-white/80 uppercase tracking-wider">Available Exams</span>
+            <div className="w-9 h-9 rounded-xl bg-white/20 text-white flex items-center justify-center backdrop-blur-sm">
+              <BookOpen className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-white mt-3">{availableCount}</p>
-          <p className="text-xs text-slate-400 mt-1">Open for taking right now</p>
+          <p className="text-3xl font-extrabold text-white mt-3 relative z-10 font-mono">{availableCount}</p>
+          <p className="text-[11px] text-white/80 mt-1 relative z-10">Open for taking right now</p>
         </div>
 
-        <div className="bg-slate-900/70 border border-slate-800/80 rounded-2xl p-5 backdrop-blur">
+        {/* Completed */}
+        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Completed</span>
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
-              <CheckCircle2 className="w-5 h-5" />
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Completed</span>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <CheckCircle2 className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-white mt-3">{stats.totalCompleted}</p>
+          <p className="text-3xl font-extrabold text-slate-800 mt-3 font-mono">{stats.totalCompleted}</p>
           <p className="text-xs text-slate-400 mt-1">Evaluated examinations</p>
         </div>
 
-        <div className="bg-slate-900/70 border border-slate-800/80 rounded-2xl p-5 backdrop-blur">
+        {/* Average Score */}
+        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Average Score</span>
-            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
-              <TrendingUp className="w-5 h-5" />
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Average Score</span>
+            <div className="w-9 h-9 rounded-xl bg-[#eef2ff] text-[#4f6bf7] flex items-center justify-center">
+              <TrendingUp className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-white mt-3">{stats.averageScore}%</p>
+          <p className="text-3xl font-extrabold text-slate-800 mt-3 font-mono">{stats.averageScore}%</p>
           <p className="text-xs text-slate-400 mt-1">Overall candidate performance</p>
         </div>
 
-        <div className="bg-slate-900/70 border border-slate-800/80 rounded-2xl p-5 backdrop-blur">
+        {/* Highest Score */}
+        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Highest Score</span>
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
-              <Award className="w-5 h-5" />
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Highest Score</span>
+            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <Award className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-white mt-3">{stats.highestScore}%</p>
+          <p className="text-3xl font-extrabold text-slate-800 mt-3 font-mono">{stats.highestScore}%</p>
           <p className="text-xs text-slate-400 mt-1">Top examination score</p>
         </div>
       </div>
@@ -145,18 +154,18 @@ export default function UserDashboard() {
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Layers className="w-5 h-5 text-sky-400" />
-              <h2 className="text-xl font-bold text-white">Active Assessments</h2>
+              <Layers className="w-5 h-5 text-blue-600" />
+              <h2 className="text-xl font-bold text-slate-800">Active Assessments</h2>
             </div>
-            <Link to="/exams" className="text-xs text-sky-400 hover:text-sky-300 font-semibold flex items-center gap-1">
+            <Link to="/exams" className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1">
               View All <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
           <div className="space-y-3">
             {exams.filter((e) => e.examStatus === 'ACTIVE').length === 0 ? (
-              <div className="p-8 rounded-2xl bg-slate-900/40 border border-slate-800/80 text-center text-slate-400">
-                <BookOpen className="w-10 h-10 mx-auto text-slate-600 mb-2" />
+              <div className="p-8 rounded-2xl bg-slate-50 border border-slate-200 text-center text-slate-500">
+                <BookOpen className="w-10 h-10 mx-auto text-slate-400 mb-2" />
                 <p className="text-sm">No active assessments right now.</p>
               </div>
             ) : (
@@ -166,38 +175,38 @@ export default function UserDashboard() {
                 .map((exam) => (
                   <div
                     key={exam._id}
-                    className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-slate-700/80 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 transition-all shadow-sm hover:shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                   >
                     <div className="space-y-1.5 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-white text-base truncate">{exam.title}</span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        <span className="font-bold text-slate-800 text-base truncate">{exam.title}</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200">
                           ACTIVE
                         </span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-800 text-slate-300">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
                           {exam.difficulty}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-400 line-clamp-1">{exam.description}</p>
+                      <p className="text-xs text-slate-500 line-clamp-1">{exam.description}</p>
                       <div className="flex items-center gap-3 flex-wrap text-[11px] pt-1">
-                        <span className="font-mono text-emerald-400 font-medium">
+                        <span className="font-mono text-emerald-600 font-medium">
                           Starts: {new Date(exam.startDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                         </span>
-                        <span className="text-slate-600">•</span>
-                        <span className="font-mono text-rose-400 font-medium">
+                        <span className="text-slate-300">•</span>
+                        <span className="font-mono text-rose-600 font-medium">
                           Expires: {new Date(exam.endDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                         </span>
                       </div>
-                      <div className="flex items-center gap-4 text-xs text-slate-400 pt-0.5">
+                      <div className="flex items-center gap-4 text-xs text-slate-500 pt-0.5">
                         <span className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5 text-slate-500" />
+                          <Clock className="w-3.5 h-3.5 text-slate-400" />
                           {exam.duration} mins
                         </span>
                         <span className="flex items-center gap-1">
-                          <Code2 className="w-3.5 h-3.5 text-slate-500" />
+                          <Code2 className="w-3.5 h-3.5 text-slate-400" />
                           {exam.questionCount} Questions
                         </span>
-                        <span className="flex items-center gap-1 font-medium text-slate-300">
+                        <span className="flex items-center gap-1 font-medium text-slate-600">
                           Total: {exam.totalMarks} Marks
                         </span>
                       </div>
@@ -207,21 +216,21 @@ export default function UserDashboard() {
                       {exam.userStatus === 'COMPLETED' ? (
                         <Link
                           to={exam.attemptId ? `/results/${exam.attemptId}` : '/results'}
-                          className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700 transition-colors"
+                          className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold hover:bg-slate-200 border border-slate-200 transition-colors"
                         >
                           View Result
                         </Link>
                       ) : exam.userStatus === 'IN_PROGRESS' ? (
                         <Link
                           to={`/exams/${exam._id}/take`}
-                          className="px-4 py-2 rounded-xl bg-amber-500 text-slate-950 text-xs font-bold hover:bg-amber-400 transition-colors shadow-lg shadow-amber-500/20"
+                          className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 transition-colors shadow-md shadow-blue-600/15"
                         >
                           Resume Exam
                         </Link>
                       ) : (
                         <Link
                           to={`/exams/${exam._id}/instructions`}
-                          className="px-4 py-2 rounded-xl bg-sky-600 text-white text-xs font-semibold hover:bg-sky-500 transition-colors shadow-lg shadow-sky-600/20"
+                          className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-500 transition-colors shadow-md shadow-blue-600/20"
                         >
                           Start Assessment
                         </Link>
@@ -236,13 +245,13 @@ export default function UserDashboard() {
         {/* Right Column: Recent Results & Upcoming */}
         <div className="space-y-6">
           <div className="space-y-3">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <Award className="w-5 h-5 text-indigo-400" />
+            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+              <Award className="w-5 h-5 text-blue-600" />
               Recent Attempts
             </h2>
 
             {results.length === 0 ? (
-              <div className="p-6 rounded-2xl bg-slate-900/40 border border-slate-800 text-center text-xs text-slate-400">
+              <div className="p-6 rounded-2xl bg-white border border-slate-200 text-center text-xs text-slate-500 shadow-sm">
                 You have not completed any examinations yet.
               </div>
             ) : (
@@ -251,23 +260,23 @@ export default function UserDashboard() {
                   <Link
                     key={res._id}
                     to={`/results/${res._id}`}
-                    className="block p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition-all"
+                    className="block p-3.5 rounded-xl bg-white border border-slate-200 hover:border-slate-300 shadow-sm transition-all"
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-semibold text-white truncate max-w-[160px]">
+                      <span className="text-xs font-semibold text-slate-800 truncate max-w-[160px]">
                         {res.exam?.title || 'Examination'}
                       </span>
                       <span
                         className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                           res.resultStatus === 'PASS'
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                            : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                            : 'bg-rose-50 text-rose-600 border border-rose-200'
                         }`}
                       >
                         {res.resultStatus}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center text-[11px] text-slate-400">
+                    <div className="flex justify-between items-center text-[11px] text-slate-500">
                       <span>Score: {res.totalScore} / {res.maxScore} ({res.percentage}%)</span>
                       <span>{new Date(res.submittedAt || res.startedAt).toLocaleDateString()}</span>
                     </div>
@@ -279,15 +288,15 @@ export default function UserDashboard() {
 
           {upcomingExams.length > 0 && (
             <div className="space-y-3">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-amber-400" />
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-blue-600" />
                 Upcoming Exams
               </h2>
               <div className="space-y-2">
                 {upcomingExams.slice(0, 2).map((up) => (
-                  <div key={up._id} className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 text-xs">
-                    <p className="font-semibold text-slate-200">{up.title}</p>
-                    <p className="text-slate-400 mt-0.5">Opens: {new Date(up.startDate).toLocaleString()}</p>
+                  <div key={up._id} className="p-3.5 rounded-xl bg-white border border-slate-200 text-xs shadow-sm">
+                    <p className="font-semibold text-slate-700">{up.title}</p>
+                    <p className="text-slate-500 mt-0.5">Opens: {new Date(up.startDate).toLocaleString()}</p>
                   </div>
                 ))}
               </div>
