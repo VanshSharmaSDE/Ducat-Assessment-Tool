@@ -249,10 +249,11 @@ export default function AdminUsersPage() {
 
     try {
       setActionLoading(true);
-      await api.delete(`/admin/users/${user._id}`);
+      const res = await api.delete(`/admin/users/${user._id}`);
+      setSelectedUsers((prev) => prev.filter((id) => id !== user._id));
       await showAlert({
-        title: 'Student Deleted',
-        message: 'Student deleted successfully!',
+        title: 'Candidate Removed',
+        message: res.data?.message || 'Candidate removed successfully!',
         type: 'success',
       });
       await loadUsers();
@@ -272,7 +273,7 @@ export default function AdminUsersPage() {
     if (selectedUsers.length === 0) return;
     const confirmed = await showConfirm({
       title: 'Bulk Delete Candidate Accounts',
-      message: `Are you sure you want to permanently delete ${selectedUsers.length} selected candidate(s)? This will cascade delete their accounts, exam attempts, and all submitted solutions.`,
+      message: `Are you sure you want to permanently delete or unlink ${selectedUsers.length} selected candidate(s)? This will remove their accounts or unlink them from your dashboard.`,
       confirmText: `Delete (${selectedUsers.length}) Candidates`,
       isDanger: true,
     });
@@ -280,10 +281,14 @@ export default function AdminUsersPage() {
 
     try {
       setActionLoading(true);
-      const res = await api.post('/admin/users/bulk-delete', { userIds: selectedUsers });
+      const res = await api.post('/admin/users/bulk-delete', {
+        ids: selectedUsers,
+        userIds: selectedUsers,
+        studentIds: selectedUsers,
+      });
       await showAlert({
-        title: 'Candidates Deleted',
-        message: res.data?.message || `Successfully deleted ${selectedUsers.length} candidate(s).`,
+        title: 'Candidates Removed',
+        message: res.data?.message || `Successfully removed ${selectedUsers.length} candidate(s).`,
         type: 'success',
       });
       setSelectedUsers([]);

@@ -72,6 +72,7 @@ export default function AdminExamsPage() {
     try {
       setActionLoading(true);
       await api.delete(`/admin/exams/${id}`);
+      setSelectedExams((prev) => prev.filter((item) => item !== id));
       await loadExams();
     } catch (err) {
       await showAlert({
@@ -159,10 +160,13 @@ export default function AdminExamsPage() {
 
     try {
       setActionLoading(true);
-      const res = await api.post('/admin/exams/bulk-delete', { examIds: selectedExams });
+      const res = await api.post('/admin/exams/bulk-delete', {
+        ids: selectedExams,
+        examIds: selectedExams,
+      });
       await showAlert({
         title: 'Exams Deleted',
-        message: res.data.message || `Successfully deleted ${selectedExams.length} examination(s).`,
+        message: res.data?.message || `Successfully deleted ${selectedExams.length} examination(s).`,
         type: 'success',
       });
       setSelectedExams([]);

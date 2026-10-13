@@ -166,9 +166,11 @@ export default function AdminResultsPage() {
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      setSelectedResults(results.map((r) => r._id));
+      const idsToAdd = filteredCandidates.map((r) => r._id);
+      setSelectedResults((prev) => Array.from(new Set([...prev, ...idsToAdd])));
     } else {
-      setSelectedResults([]);
+      const idsToRemove = new Set(filteredCandidates.map((r) => r._id));
+      setSelectedResults((prev) => prev.filter((id) => !idsToRemove.has(id)));
     }
   };
 
@@ -220,10 +222,14 @@ export default function AdminResultsPage() {
 
     try {
       setActionLoading(true);
-      const res = await api.post('/admin/results/bulk-delete', { ids: selectedResults });
+      const res = await api.post('/admin/results/bulk-delete', {
+        ids: selectedResults,
+        attemptIds: selectedResults,
+        resultIds: selectedResults,
+      });
       await showAlert({
         title: 'Results Deleted',
-        message: res.data.message || `Successfully deleted ${selectedResults.length} results.`,
+        message: res.data?.message || `Successfully deleted ${selectedResults.length} results.`,
         type: 'success',
       });
       setSelectedResults([]);
@@ -671,7 +677,7 @@ export default function AdminResultsPage() {
                       <th className="py-3 px-4 w-10">
                         <input
                           type="checkbox"
-                          checked={results.length > 0 && selectedResults.length === results.length}
+                          checked={filteredCandidates.length > 0 && filteredCandidates.every((att) => selectedResults.includes(att._id))}
                           onChange={handleSelectAll}
                           className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 accent-amber-500 focus:ring-0 cursor-pointer"
                         />

@@ -69,8 +69,9 @@ export class QuestionController {
 
   static async bulkDeleteQuestions(req, res, next) {
     try {
-      const { ids } = req.body;
-      const result = await QuestionService.bulkDeleteQuestions(ids, req.user);
+      const { ids, questionIds } = req.body;
+      const targetIds = ids || questionIds || [];
+      const result = await QuestionService.bulkDeleteQuestions(targetIds, req.user);
       res.status(200).json({
         success: true,
         ...result,

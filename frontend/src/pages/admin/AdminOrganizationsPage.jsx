@@ -10,8 +10,6 @@ import {
   Edit,
   Trash2,
   X,
-  CheckCircle2,
-  AlertCircle,
   GraduationCap,
   Layers,
   Globe,
@@ -33,7 +31,6 @@ export default function AdminOrganizationsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
-  const [notification, setNotification] = useState(null);
 
   // Modals state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -59,11 +56,6 @@ export default function AdminOrganizationsPage() {
     isActive: true,
   });
 
-  const showBanner = (msg, isError = false) => {
-    setNotification({ msg, isError });
-    setTimeout(() => setNotification(null), 4000);
-  };
-
   const loadOrganizations = async () => {
     try {
       const res = await api.get(
@@ -71,7 +63,7 @@ export default function AdminOrganizationsPage() {
       );
       setOrganizations(res.data.data.organizations || []);
     } catch (err) {
-      showBanner(err.response?.data?.message || 'Failed to fetch organizations', true);
+      console.error('Failed to fetch organizations:', err);
     } finally {
       setLoading(false);
     }
@@ -84,19 +76,31 @@ export default function AdminOrganizationsPage() {
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name.trim()) {
-      showBanner('Organization name is required', true);
+      await showAlert({
+        title: 'Validation Error',
+        message: 'Organization name is required',
+        type: 'error',
+      });
       return;
     }
 
     try {
       setActionLoading(true);
       await api.post('/admin/organizations', formData);
-      showBanner(`Organization "${formData.name}" created successfully!`);
       setShowCreateModal(false);
       setFormData({ name: '', code: '', description: '', website: '', isActive: true });
+      await showAlert({
+        title: 'Organization Created',
+        message: `Organization "${formData.name}" created successfully!`,
+        type: 'success',
+      });
       await loadOrganizations();
     } catch (err) {
-      showBanner(err.response?.data?.message || 'Failed to create organization', true);
+      await showAlert({
+        title: 'Creation Failed',
+        message: err.response?.data?.message || 'Failed to create organization',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -121,12 +125,20 @@ export default function AdminOrganizationsPage() {
     try {
       setActionLoading(true);
       await api.put(`/admin/organizations/${activeOrg._id}`, formData);
-      showBanner(`Organization "${formData.name}" updated successfully!`);
       setShowEditModal(false);
       setActiveOrg(null);
+      await showAlert({
+        title: 'Organization Updated',
+        message: `Organization "${formData.name}" updated successfully!`,
+        type: 'success',
+      });
       await loadOrganizations();
     } catch (err) {
-      showBanner(err.response?.data?.message || 'Failed to update organization', true);
+      await showAlert({
+        title: 'Update Failed',
+        message: err.response?.data?.message || 'Failed to update organization',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -144,11 +156,19 @@ export default function AdminOrganizationsPage() {
     try {
       setActionLoading(true);
       await api.delete(`/admin/organizations/${org._id}`);
-      showBanner(`Organization "${org.name}" deleted successfully!`);
       setSelectedOrgs((prev) => prev.filter((id) => id !== org._id));
+      await showAlert({
+        title: 'Organization Deleted',
+        message: `Organization "${org.name}" deleted successfully!`,
+        type: 'success',
+      });
       await loadOrganizations();
     } catch (err) {
-      showBanner(err.response?.data?.message || 'Failed to delete organization', true);
+      await showAlert({
+        title: 'Delete Failed',
+        message: err.response?.data?.message || 'Failed to delete organization',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -180,12 +200,23 @@ export default function AdminOrganizationsPage() {
 
     try {
       setActionLoading(true);
-      const res = await api.post('/admin/organizations/bulk-delete', { ids: selectedOrgs });
-      showBanner(res.data?.message || `Successfully deleted ${selectedOrgs.length} organization(s)!`);
+      const res = await api.post('/admin/organizations/bulk-delete', {
+        ids: selectedOrgs,
+        orgIds: selectedOrgs,
+      });
       setSelectedOrgs([]);
+      await showAlert({
+        title: 'Organizations Deleted',
+        message: res.data?.message || `Successfully deleted ${selectedOrgs.length} organization(s)!`,
+        type: 'success',
+      });
       await loadOrganizations();
     } catch (err) {
-      showBanner(err.response?.data?.message || 'Failed to delete selected organizations', true);
+      await showAlert({
+        title: 'Bulk Delete Failed',
+        message: err.response?.data?.message || 'Failed to delete selected organizations',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -203,7 +234,11 @@ export default function AdminOrganizationsPage() {
       const res = await api.get(`/admin/organizations/${org._id}`);
       setOrgDetails(res.data.data.organization);
     } catch (err) {
-      showBanner('Failed to load organization members', true);
+      await showAlert({
+        title: 'Load Failed',
+        message: 'Failed to load organization members',
+        type: 'error',
+      });
     } finally {
       setLoadingMembers(false);
     }
@@ -219,7 +254,11 @@ export default function AdminOrganizationsPage() {
       const res = await api.get(`/admin/organizations/${activeOrg._id}/available-faculty`);
       setAvailableFaculty(res.data.data?.faculty || []);
     } catch (err) {
-      showBanner(err.response?.data?.message || 'Failed to load available faculty', true);
+      await showAlert({
+        title: 'Load Failed',
+        message: err.response?.data?.message || 'Failed to load available faculty',
+        type: 'error',
+      });
     } finally {
       setLoadingAvailableFaculty(false);
     }
@@ -241,15 +280,23 @@ export default function AdminOrganizationsPage() {
       const res = await api.post(`/admin/organizations/${activeOrg._id}/faculty`, {
         facultyIds: targetIds,
       });
-      showBanner(res.data?.message || `Assigned ${targetIds.length} faculty member(s) to "${activeOrg.name}"!`);
       setSelectedAssignFacultyIds([]);
       setFacultyViewMode('enrolled');
       // Refresh organization details and main list
       const updatedOrgRes = await api.get(`/admin/organizations/${activeOrg._id}`);
       setOrgDetails(updatedOrgRes.data.data.organization);
       await loadOrganizations();
+      await showAlert({
+        title: 'Faculty Assigned',
+        message: res.data?.message || `Assigned ${targetIds.length} faculty member(s) to "${activeOrg.name}"!`,
+        type: 'success',
+      });
     } catch (err) {
-      showBanner(err.response?.data?.message || 'Failed to assign faculty member(s)', true);
+      await showAlert({
+        title: 'Assignment Failed',
+        message: err.response?.data?.message || 'Failed to assign faculty member(s)',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -268,13 +315,21 @@ export default function AdminOrganizationsPage() {
     try {
       setActionLoading(true);
       const res = await api.post(`/admin/organizations/${activeOrg._id}/remove-faculty`, { facultyId });
-      showBanner(res.data?.message || `Removed ${facultyName} from "${activeOrg.name}".`);
       // Refresh modal details and main list
       const updatedOrgRes = await api.get(`/admin/organizations/${activeOrg._id}`);
       setOrgDetails(updatedOrgRes.data.data.organization);
       await loadOrganizations();
+      await showAlert({
+        title: 'Faculty Removed',
+        message: res.data?.message || `Removed ${facultyName} from "${activeOrg.name}".`,
+        type: 'success',
+      });
     } catch (err) {
-      showBanner(err.response?.data?.message || 'Failed to remove faculty member', true);
+      await showAlert({
+        title: 'Removal Failed',
+        message: err.response?.data?.message || 'Failed to remove faculty member',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -317,24 +372,6 @@ export default function AdminOrganizationsPage() {
           </button>
         )}
       </div>
-
-      {/* Notification Banner */}
-      {notification && (
-        <div
-          className={`p-4 rounded-xl border text-xs flex items-center gap-2 ${
-            notification.isError
-              ? 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-              : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-          }`}
-        >
-          {notification.isError ? (
-            <AlertCircle className="w-4 h-4 shrink-0" />
-          ) : (
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-          )}
-          <span>{notification.msg}</span>
-        </div>
-      )}
 
       {/* Search & Actions Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

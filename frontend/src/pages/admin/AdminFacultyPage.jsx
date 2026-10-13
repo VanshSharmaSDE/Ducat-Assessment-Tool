@@ -249,7 +249,10 @@ export default function AdminFacultyPage() {
 
     try {
       setActionLoading(true);
-      const res = await api.post('/admin/faculty/bulk-delete', { facultyIds: selectedFaculty });
+      const res = await api.post('/admin/faculty/bulk-delete', {
+        ids: selectedFaculty,
+        facultyIds: selectedFaculty,
+      });
       await showAlert({
         title: 'Faculty Members Deleted',
         message: res.data?.message || `Successfully deleted ${selectedFaculty.length} faculty member(s).`,

@@ -190,7 +190,10 @@ export default function AdminSubmissionsPage() {
 
     try {
       setActionLoading(true);
-      await api.post('/admin/exams/bulk-delete', { examIds: selectedExams });
+      await api.post('/admin/exams/bulk-delete', {
+        ids: selectedExams,
+        examIds: selectedExams,
+      });
       await showAlert({
         title: 'Exams Deleted',
         message: `Successfully deleted ${selectedExams.length} exam(s).`,
@@ -236,7 +239,11 @@ export default function AdminSubmissionsPage() {
 
     try {
       setActionLoading(true);
-      await api.post('/admin/results/bulk-delete', { attemptIds: selectedSubmissions });
+      await api.post('/admin/results/bulk-delete', {
+        ids: selectedSubmissions,
+        attemptIds: selectedSubmissions,
+        resultIds: selectedSubmissions,
+      });
       await showAlert({
         title: 'Submissions Deleted',
         message: `Successfully deleted ${selectedSubmissions.length} candidate submission(s).`,

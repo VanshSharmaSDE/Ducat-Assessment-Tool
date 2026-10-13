@@ -694,8 +694,9 @@ export class AdminController {
 
   static async bulkDeleteExams(req, res, next) {
     try {
-      const { ids } = req.body;
-      const result = await AdminService.bulkDeleteExams(ids, req.user);
+      const { ids, examIds } = req.body;
+      const targetIds = ids || examIds || [];
+      const result = await AdminService.bulkDeleteExams(targetIds, req.user);
       res.status(200).json({
         success: true,
         ...result,
@@ -707,8 +708,9 @@ export class AdminController {
 
   static async bulkDeleteUsers(req, res, next) {
     try {
-      const { ids } = req.body;
-      const result = await AdminService.bulkDeleteUsers(ids, req.user);
+      const { ids, userIds, studentIds } = req.body;
+      const targetIds = ids || userIds || studentIds || [];
+      const result = await AdminService.bulkDeleteUsers(targetIds, req.user);
       res.status(200).json({
         success: true,
         ...result,
@@ -788,8 +790,9 @@ export class AdminController {
 
   static async bulkDeleteResults(req, res, next) {
     try {
-      const { ids } = req.body;
-      const result = await AdminService.bulkDeleteResults(ids, req.user);
+      const { ids, resultIds, attemptIds } = req.body;
+      const targetIds = ids || resultIds || attemptIds || [];
+      const result = await AdminService.bulkDeleteResults(targetIds, req.user);
       res.status(200).json({
         success: true,
         ...result,

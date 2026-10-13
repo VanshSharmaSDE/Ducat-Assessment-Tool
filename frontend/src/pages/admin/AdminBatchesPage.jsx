@@ -21,7 +21,7 @@ import {
 
 export default function AdminBatchesPage() {
   const { user } = useAuth();
-  const { showConfirm } = useModal();
+  const { showConfirm, showAlert } = useModal();
   const isAdmin = user?.role === 'ADMIN';
 
   const [batches, setBatches] = useState([]);
@@ -29,7 +29,6 @@ export default function AdminBatchesPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
-  const [notification, setNotification] = useState(null);
 
   // Modals state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -51,17 +50,12 @@ export default function AdminBatchesPage() {
   const [activeTab, setActiveTab] = useState('enrolled'); // 'enrolled' or 'add'
   const [loadingStudents, setLoadingStudents] = useState(false);
 
-  const showBanner = (msg, isError = false) => {
-    setNotification({ msg, isError });
-    setTimeout(() => setNotification(null), 4000);
-  };
-
   const loadBatches = async () => {
     try {
       const res = await api.get(`/admin/batches${searchTerm ? `?search=${encodeURIComponent(searchTerm)}` : ''}`);
       setBatches(res.data.data.batches || []);
     } catch (err) {
-      showBanner(err.response?.data?.message || 'Failed to fetch batches', true);
+      console.error('Failed to fetch batches:', err);
     } finally {
       setLoading(false);
     }
@@ -76,12 +70,20 @@ export default function AdminBatchesPage() {
     try {
       setActionLoading(true);
       await api.post('/admin/batches', formData);
-      showBanner(`Batch "${formData.name}" created successfully!`);
       setShowCreateModal(false);
       setFormData({ name: '', department: '', description: '' });
+      await showAlert({
+        title: 'Batch Created',
+        message: `Batch "${formData.name}" created successfully!`,
+        type: 'success',
+      });
       await loadBatches();
     } catch (err) {
-      showBanner(err.response?.data?.message || 'Failed to create batch', true);
+      await showAlert({
+        title: 'Creation Failed',
+        message: err.response?.data?.message || 'Failed to create batch',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -103,12 +105,20 @@ export default function AdminBatchesPage() {
     try {
       setActionLoading(true);
       await api.put(`/admin/batches/${selectedBatch._id}`, formData);
-      showBanner(`Batch "${formData.name}" updated successfully!`);
       setShowEditModal(false);
       setSelectedBatch(null);
+      await showAlert({
+        title: 'Batch Updated',
+        message: `Batch "${formData.name}" updated successfully!`,
+        type: 'success',
+      });
       await loadBatches();
     } catch (err) {
-      showBanner(err.response?.data?.message || 'Failed to update batch', true);
+      await showAlert({
+        title: 'Update Failed',
+        message: err.response?.data?.message || 'Failed to update batch',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -126,10 +136,19 @@ export default function AdminBatchesPage() {
     try {
       setActionLoading(true);
       await api.delete(`/admin/batches/${b._id}`);
-      showBanner(`Batch "${b.name}" deleted successfully!`);
+      setSelectedBatches((prev) => prev.filter((id) => id !== b._id));
+      await showAlert({
+        title: 'Batch Deleted',
+        message: `Batch "${b.name}" deleted successfully!`,
+        type: 'success',
+      });
       await loadBatches();
     } catch (err) {
-      showBanner(err.response?.data?.message || 'Failed to delete batch', true);
+      await showAlert({
+        title: 'Delete Failed',
+        message: err.response?.data?.message || 'Failed to delete batch',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -161,12 +180,23 @@ export default function AdminBatchesPage() {
 
     try {
       setActionLoading(true);
-      const res = await api.post('/admin/batches/bulk-delete', { ids: selectedBatches });
-      showBanner(res.data?.message || `Successfully deleted ${selectedBatches.length} batch(es)!`);
+      const res = await api.post('/admin/batches/bulk-delete', {
+        ids: selectedBatches,
+        batchIds: selectedBatches,
+      });
+      await showAlert({
+        title: 'Batches Deleted',
+        message: res.data?.message || `Successfully deleted ${selectedBatches.length} batch(es)!`,
+        type: 'success',
+      });
       setSelectedBatches([]);
       await loadBatches();
     } catch (err) {
-      showBanner(err.response?.data?.message || 'Failed to delete selected batches', true);
+      await showAlert({
+        title: 'Bulk Delete Failed',
+        message: err.response?.data?.message || 'Failed to delete selected batches',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -189,7 +219,11 @@ export default function AdminBatchesPage() {
       const usersRes = await api.get('/admin/users?limit=100');
       setAllAvailableStudents(usersRes.data.data.users || []);
     } catch (err) {
-      showBanner('Failed to load batch students', true);
+      await showAlert({
+        title: 'Loading Failed',
+        message: 'Failed to load batch students',
+        type: 'error',
+      });
     } finally {
       setLoadingStudents(false);
     }
@@ -197,14 +231,30 @@ export default function AdminBatchesPage() {
 
   const handleRemoveStudent = async (studentId) => {
     if (!selectedBatch) return;
+    const confirmed = await showConfirm({
+      title: 'Remove Candidate from Batch',
+      message: `Are you sure you want to remove this candidate from batch "${selectedBatch.name}"?`,
+      confirmText: 'Remove Candidate',
+      isDanger: true,
+    });
+    if (!confirmed) return;
+
     try {
       setActionLoading(true);
       await api.post(`/admin/batches/${selectedBatch._id}/remove-student`, { studentId });
       setBatchStudents((prev) => prev.filter((s) => s._id !== studentId));
-      showBanner('Student removed from batch');
+      await showAlert({
+        title: 'Candidate Removed',
+        message: 'Candidate was successfully removed from batch.',
+        type: 'success',
+      });
       await loadBatches();
     } catch (err) {
-      showBanner(err.response?.data?.message || 'Failed to remove student', true);
+      await showAlert({
+        title: 'Action Failed',
+        message: err.response?.data?.message || 'Failed to remove candidate',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -217,7 +267,11 @@ export default function AdminBatchesPage() {
       const res = await api.post(`/admin/batches/${selectedBatch._id}/students`, {
         studentIds: selectedStudentIds,
       });
-      showBanner(res.data.message || 'Students added successfully!');
+      await showAlert({
+        title: 'Candidates Added',
+        message: res.data?.message || 'Candidates added to batch successfully!',
+        type: 'success',
+      });
       setSelectedStudentIds([]);
       // Reload batch students
       const batchRes = await api.get(`/admin/batches/${selectedBatch._id}`);
@@ -225,7 +279,11 @@ export default function AdminBatchesPage() {
       setActiveTab('enrolled');
       await loadBatches();
     } catch (err) {
-      showBanner(err.response?.data?.message || 'Failed to add students', true);
+      await showAlert({
+        title: 'Action Failed',
+        message: err.response?.data?.message || 'Failed to add candidates',
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -282,24 +340,6 @@ export default function AdminBatchesPage() {
           <span>Create New Batch</span>
         </button>
       </div>
-
-      {/* Notification Banner */}
-      {notification && (
-        <div
-          className={`p-4 rounded-xl border text-xs flex items-center gap-2 ${
-            notification.isError
-              ? 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-              : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-          }`}
-        >
-          {notification.isError ? (
-            <AlertCircle className="w-4 h-4 shrink-0" />
-          ) : (
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-          )}
-          <span>{notification.msg}</span>
-        </div>
-      )}
 
       {/* Search & Actions Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

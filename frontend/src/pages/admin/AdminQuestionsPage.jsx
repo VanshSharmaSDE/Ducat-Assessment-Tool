@@ -146,7 +146,10 @@ export default function AdminQuestionsPage() {
 
     try {
       setActionLoading(true);
-      const res = await api.post('/admin/questions/bulk-delete', { ids: selectedQuestions });
+      const res = await api.post('/admin/questions/bulk-delete', {
+        ids: selectedQuestions,
+        questionIds: selectedQuestions,
+      });
       await showAlert({
         title: 'Questions Deleted',
         message: res.data.message || `Successfully deleted ${selectedQuestions.length} questions.`,

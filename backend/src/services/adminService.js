@@ -425,11 +425,23 @@ export class AdminService {
       throw error;
     }
 
-    if (currentUser && currentUser.role === 'FACULTY' && String(user.createdBy) !== String(currentUser._id)) {
-      const error = new Error('Access denied. You can only delete students created by you.');
-      error.statusCode = 403;
-      error.errorCode = 'FORBIDDEN';
-      throw error;
+    if (currentUser && currentUser.role === 'FACULTY') {
+      const isCreator = String(user.createdBy) === String(currentUser._id);
+      const isAssigned = user.assignedFaculties?.some((fId) => String(fId) === String(currentUser._id));
+      if (!isCreator && !isAssigned) {
+        const error = new Error('Access denied. You can only delete or unlink candidates in your dashboard.');
+        error.statusCode = 403;
+        error.errorCode = 'FORBIDDEN';
+        throw error;
+      }
+      if (!isCreator && isAssigned) {
+        // Unlink from this faculty's dashboard
+        await User.findByIdAndUpdate(userId, { $pull: { assignedFaculties: currentUser._id } });
+        return {
+          success: true,
+          message: `Candidate ${user.name} was successfully unlinked from your dashboard.`,
+        };
+      }
     }
 
     // Cascade delete attempts, submissions, and submission results
@@ -602,17 +614,56 @@ export class AdminService {
       throw error;
     }
 
-    let filter = { _id: { $in: ids }, role: 'USER' };
     if (currentUser && currentUser.role === 'FACULTY') {
-      filter.$or = [
-        { createdBy: currentUser._id },
-        { assignedFaculties: currentUser._id }
-      ];
+      const myCreatedUsers = await User.find({
+        _id: { $in: ids },
+        role: 'USER',
+        createdBy: currentUser._id,
+      }).distinct('_id');
+
+      const myAssignedUsers = await User.find({
+        _id: { $in: ids },
+        role: 'USER',
+        createdBy: { $ne: currentUser._id },
+        assignedFaculties: currentUser._id,
+      }).distinct('_id');
+
+      let deletedCount = 0;
+      let unlinkedCount = 0;
+
+      if (myCreatedUsers.length > 0) {
+        const attemptIds = await ExamAttempt.find({ userId: { $in: myCreatedUsers } }).distinct('_id');
+        if (attemptIds.length > 0) {
+          await SubmissionResult.deleteMany({ attemptId: { $in: attemptIds } });
+          await Submission.deleteMany({ attemptId: { $in: attemptIds } });
+          await ExamAttempt.deleteMany({ userId: { $in: myCreatedUsers } });
+        }
+        const delRes = await User.deleteMany({ _id: { $in: myCreatedUsers } });
+        deletedCount = delRes.deletedCount;
+      }
+
+      if (myAssignedUsers.length > 0) {
+        await User.updateMany(
+          { _id: { $in: myAssignedUsers } },
+          { $pull: { assignedFaculties: currentUser._id } }
+        );
+        unlinkedCount = myAssignedUsers.length;
+      }
+
+      const totalHandled = deletedCount + unlinkedCount;
+      if (totalHandled === 0) {
+        return { count: 0, message: 'No eligible candidate accounts found to delete or unlink' };
+      }
+
+      return {
+        count: totalHandled,
+        message: `Successfully removed ${totalHandled} candidate(s)${unlinkedCount > 0 ? ` (${deletedCount} deleted, ${unlinkedCount} unlinked from dashboard)` : ''}.`,
+      };
     }
 
-    const usersToDelete = await User.find(filter).distinct('_id');
+    const usersToDelete = await User.find({ _id: { $in: ids }, role: 'USER' }).distinct('_id');
     if (usersToDelete.length === 0) {
-      return { count: 0, message: 'No eligible students found to delete' };
+      return { count: 0, message: 'No eligible candidates found to delete' };
     }
 
     const attemptIds = await ExamAttempt.find({ userId: { $in: usersToDelete } }).distinct('_id');
@@ -623,7 +674,7 @@ export class AdminService {
     }
 
     const res = await User.deleteMany({ _id: { $in: usersToDelete } });
-    return { count: res.deletedCount, message: `Successfully deleted ${res.deletedCount} student(s).` };
+    return { count: res.deletedCount, message: `Successfully deleted ${res.deletedCount} candidate account(s).` };
   }
 
   static async bulkDeleteFaculty(ids) {
@@ -646,13 +697,15 @@ export class AdminService {
     }
 
     if (currentUser && currentUser.role === 'FACULTY') {
+      const isMyExam = attempt.examId && (await Exam.exists({ _id: attempt.examId, createdBy: currentUser._id }));
       const student = await User.findById(attempt.userId);
       const isMyStudent = student && (
         String(student.createdBy) === String(currentUser._id) ||
-        student.assignedFaculties?.some((fId) => String(fId) === String(currentUser._id))
+        student.assignedFaculties?.some((fId) => String(fId) === String(currentUser._id)) ||
+        (currentUser.organization && student.organization === currentUser.organization)
       );
-      if (!isMyStudent) {
-        const error = new Error('Access denied. You can only delete results for your students.');
+      if (!isMyStudent && !isMyExam) {
+        const error = new Error('Access denied. You can only delete results for your students or your exams.');
         error.statusCode = 403;
         throw error;
       }
@@ -673,14 +726,19 @@ export class AdminService {
 
     let filter = { _id: { $in: attemptIds } };
     if (currentUser && currentUser.role === 'FACULTY') {
+      const myExamIds = await Exam.find({ createdBy: currentUser._id }).distinct('_id');
       const allowedStudentIds = await User.find({
         role: 'USER',
         $or: [
           { createdBy: currentUser._id },
-          { assignedFaculties: currentUser._id }
+          { assignedFaculties: currentUser._id },
+          { organization: currentUser.organization || '__NONE__' },
         ]
       }).distinct('_id');
-      filter.userId = { $in: allowedStudentIds };
+      filter.$or = [
+        { examId: { $in: myExamIds } },
+        { userId: { $in: allowedStudentIds } }
+      ];
     }
 
     const validAttempts = await ExamAttempt.find(filter).distinct('_id');
