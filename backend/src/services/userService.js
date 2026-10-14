@@ -81,4 +81,17 @@ export class UserService {
     await user.save();
     return user.toJSON();
   }
+
+  static async updateTheme(userId, theme) {
+    const user = await User.findById(userId);
+    if (!user) {
+      const error = new Error('User not found');
+      error.statusCode = 404;
+      error.errorCode = 'USER_NOT_FOUND';
+      throw error;
+    }
+    user.theme = theme;
+    await user.save();
+    return user.toJSON();
+  }
 }

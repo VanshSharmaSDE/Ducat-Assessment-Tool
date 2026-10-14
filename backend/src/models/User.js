@@ -108,6 +108,11 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    theme: {
+      type: String,
+      enum: ['light', 'dark'],
+      default: 'light',
+    },
   },
   {
     timestamps: true,

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import {
   Lock,
   Mail,
@@ -12,12 +13,15 @@ import {
   Code2,
   Sparkles,
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import logo from '../assets/logo.jpeg';
 
 export default function LoginPage() {
   const { user, login } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -67,13 +71,26 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f7fe] flex items-center justify-center p-4 sm:p-6 lg:p-10 relative overflow-hidden">
+    <div className="min-h-screen bg-[#f4f7fe] dark:bg-slate-950 flex items-center justify-center p-4 sm:p-6 lg:p-10 relative overflow-hidden transition-colors duration-200">
+      {/* Floating Theme Switcher on Login Page */}
+      <div className="absolute top-5 right-5 z-30">
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold shadow-md hover:bg-slate-50 dark:hover:bg-slate-700/80 transition-all cursor-pointer"
+          title={`Switch to ${isDark ? 'Light' : 'Dark'} Mode`}
+        >
+          {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600" />}
+          <span>{isDark ? 'Light Mode' : 'Dark Mode'}</span>
+        </button>
+      </div>
+
       {/* Background ambient purplish-blue glows */}
-      <div className="absolute top-1/4 left-1/4 w-[480px] h-[480px] bg-[#4f6bf7]/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-[480px] h-[480px] bg-[#7c3aed]/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/4 left-1/4 w-[480px] h-[480px] bg-[#4f6bf7]/10 dark:bg-[#4f6bf7]/15 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-[480px] h-[480px] bg-[#7c3aed]/10 dark:bg-[#7c3aed]/15 rounded-full blur-3xl pointer-events-none" />
 
       {/* Main Split Login Card */}
-      <div className="w-full max-w-5xl bg-white rounded-[32px] shadow-[0_20px_70px_-15px_rgba(79,107,247,0.15)] border border-slate-100 overflow-hidden flex flex-col lg:flex-row relative z-10">
+      <div className="w-full max-w-5xl bg-white dark:bg-slate-900 rounded-[32px] shadow-[0_20px_70px_-15px_rgba(79,107,247,0.15)] dark:shadow-[0_20px_70px_-15px_rgba(0,0,0,0.6)] border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col lg:flex-row relative z-10 transition-colors duration-200">
         
         {/* Left Side: Modern Purplish Visual Panel */}
         <div className="lg:w-1/2 relative bg-gradient-to-br from-[#4f6bf7] via-[#5b5bf5] to-[#7048e8] text-white p-8 sm:p-12 flex flex-col justify-between overflow-hidden min-h-[300px] lg:min-h-[620px]">
@@ -107,7 +124,7 @@ export default function LoginPage() {
 
           {/* Top: Brand Logo */}
           <div className="relative z-10 flex items-center gap-3">
-            <div className="bg-white/95 backdrop-blur-md rounded-2xl p-2.5 shadow-md border border-white/40 w-fit">
+            <div className="bg-white/95 dark:bg-white/90 backdrop-blur-md rounded-2xl p-2.5 shadow-md border border-white/40 w-fit">
               <img src={logo} alt="SkillCodex Logo" className="w-full object-contain rounded-xl" />
             </div>
           </div>
@@ -137,37 +154,37 @@ export default function LoginPage() {
         </div>
 
         {/* Right Side: Clean Login Form */}
-        <div className="lg:w-1/2 p-8 sm:p-12 lg:p-14 flex flex-col justify-center bg-white">
+        <div className="lg:w-1/2 p-8 sm:p-12 lg:p-14 flex flex-col justify-center bg-white dark:bg-slate-900 transition-colors duration-200">
           <div className="w-full max-w-md mx-auto">
             {/* Header */}
             <div className="mb-8">
-              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-800">
+              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-800 dark:text-white">
                 Log in
               </h2>
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                 Login with your Student ID, Faculty ID, Admin ID, or Email
               </p>
             </div>
 
             {/* Concurrent Session Alert */}
             {isConcurrentLogout && !error && (
-              <div className="mb-5 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2.5">
-                <AlertCircle className="w-5 h-5 shrink-0 text-amber-600" />
+              <div className="mb-5 p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-amber-800 dark:text-amber-200 text-xs flex items-center gap-2.5">
+                <AlertCircle className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400" />
                 <span>Your account was logged in from another device. You have been logged out from this session for security.</span>
               </div>
             )}
 
             {/* Inactivity Session Alert */}
             {isInactivityLogout && !error && (
-              <div className="mb-5 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2.5">
-                <AlertCircle className="w-5 h-5 shrink-0 text-amber-600" />
+              <div className="mb-5 p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-amber-800 dark:text-amber-200 text-xs flex items-center gap-2.5">
+                <AlertCircle className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400" />
                 <span>You have been automatically logged out due to 2 hours of inactivity. Please sign in again.</span>
               </div>
             )}
 
             {/* Error Banner */}
             {error && (
-              <div className="mb-5 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 text-sm flex items-center gap-2.5">
+              <div className="mb-5 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-300 text-sm flex items-center gap-2.5">
                 <AlertCircle className="w-5 h-5 shrink-0 text-rose-500" />
                 <span>{error}</span>
               </div>
@@ -177,18 +194,18 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* ID or Email Input */}
               <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-2">
                   Login ID or Email
                 </label>
                 <div className="relative">
-                  <User className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <User className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                   <input
                     type="text"
                     required
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
                     placeholder="e.g. STU2026001 or Email"
-                    className="w-full pl-11 pr-4 py-3 bg-[#f8fafc] border border-slate-200 rounded-2xl text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#4f6bf7] focus:bg-white focus:border-transparent transition-all shadow-xs"
+                    className="w-full pl-11 pr-4 py-3 bg-[#f8fafc] dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-[#4f6bf7] focus:bg-white dark:focus:bg-slate-800 focus:border-transparent transition-all shadow-xs"
                   />
                 </div>
               </div>
@@ -196,31 +213,25 @@ export default function LoginPage() {
               {/* Password Input with Eye Toggle */}
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                     Password
                   </label>
-                  {/* <Link
-                    to="/forgot-password"
-                    className="text-xs text-[#4f6bf7] hover:text-[#3b5bf6] font-semibold transition-colors"
-                  >
-                    Forgot login or password?
-                  </Link> */}
                 </div>
                 <div className="relative">
-                  <Lock className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Lock className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-11 pr-12 py-3 bg-[#f8fafc] border border-slate-200 rounded-2xl text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#4f6bf7] focus:bg-white focus:border-transparent transition-all shadow-xs"
+                    className="w-full pl-11 pr-12 py-3 bg-[#f8fafc] dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-[#4f6bf7] focus:bg-white dark:focus:bg-slate-800 focus:border-transparent transition-all shadow-xs"
                   />
                   {/* Eye Icon Button */}
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors p-1 cursor-pointer focus:outline-none"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors p-1 cursor-pointer focus:outline-none"
                     title={showPassword ? 'Hide password' : 'Show password'}
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
@@ -237,7 +248,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-3 flex items-center justify-center gap-2 py-3.5 px-6 bg-gradient-to-r from-[#4f6bf7] to-[#6073ea] hover:from-[#3f5be7] hover:to-[#5063da] disabled:opacity-50 text-white font-bold text-sm rounded-2xl shadow-lg shadow-[#4f6bf7]/25 transition-all transform active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-[#4f6bf7] focus:ring-offset-2 focus:ring-offset-white cursor-pointer"
+                className="w-full mt-3 flex items-center justify-center gap-2 py-3.5 px-6 bg-gradient-to-r from-[#4f6bf7] to-[#6073ea] hover:from-[#3f5be7] hover:to-[#5063da] disabled:opacity-50 text-white font-bold text-sm rounded-2xl shadow-lg shadow-[#4f6bf7]/25 transition-all transform active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-[#4f6bf7] focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900 cursor-pointer"
               >
                 {loading ? 'Authenticating...' : 'Log in'}
                 {!loading && <ArrowRight className="w-4 h-4" />}
@@ -245,8 +256,8 @@ export default function LoginPage() {
             </form>
 
             {/* Footer Notice */}
-            <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-              <p className="text-xs text-slate-400">
+            <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 text-center">
+              <p className="text-xs text-slate-400 dark:text-slate-500">
                 Protected by SkillCodex Enterprise Session & Proctoring Security
               </p>
             </div>

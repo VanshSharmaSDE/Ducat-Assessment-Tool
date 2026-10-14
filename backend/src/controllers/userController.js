@@ -38,4 +38,21 @@ export class UserController {
       next(err);
     }
   }
+
+  static async updateTheme(req, res, next) {
+    try {
+      const { theme } = req.body;
+      if (!theme || !['light', 'dark'].includes(theme)) {
+        return res.status(400).json({ success: false, message: 'Invalid theme. Must be "light" or "dark".' });
+      }
+      const user = await UserService.updateTheme(req.user._id, theme);
+      res.status(200).json({
+        success: true,
+        message: 'Theme preference saved successfully',
+        data: { theme: user.theme, user },
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }

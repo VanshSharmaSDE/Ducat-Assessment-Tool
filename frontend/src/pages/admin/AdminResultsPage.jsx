@@ -26,6 +26,7 @@ import {
   Calendar,
   Check,
   TrendingUp,
+  RotateCcw,
 } from 'lucide-react';
 
 export default function AdminResultsPage() {
@@ -210,6 +211,39 @@ export default function AdminResultsPage() {
     }
   };
 
+  const handleAllowRetake = async (att) => {
+    const studentName = att.userId?.name || 'this candidate';
+    const examTitle = att.examId?.title || 'this exam';
+
+    const confirmed = await showConfirm({
+      title: 'Allow Exam Retake',
+      message: `Are you sure you want to allow ${studentName} to retake "${examTitle}"? Their previous attempt, score, violations, and submitted code will be deleted automatically so they can take the examination fresh.`,
+      confirmText: 'Allow Retake',
+      isDanger: false,
+    });
+    if (!confirmed) return;
+
+    try {
+      setActionLoading(true);
+      const res = await api.post(`/admin/results/${att._id}/allow-retake`);
+      await showAlert({
+        title: 'Retake Granted',
+        message: res.data?.message || 'Retake allowed successfully. The student can now take the exam again.',
+        type: 'success',
+      });
+      setSelectedResults((prev) => prev.filter((id) => id !== att._id));
+      await loadResults();
+    } catch (err) {
+      await showAlert({
+        title: 'Retake Action Failed',
+        message: err.response?.data?.message || 'Failed to grant retake for this candidate.',
+        type: 'error',
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleBulkDelete = async () => {
     if (selectedResults.length === 0) return;
     const confirmed = await showConfirm({
@@ -333,14 +367,14 @@ export default function AdminResultsPage() {
         <div className="flex flex-wrap items-center gap-3">
           {/* View mode toggle (when not drilled down) */}
           {!selectedExam && (
-            <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200 text-xs font-semibold">
+            <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
               <button
                 type="button"
                 onClick={() => setViewMode('by-exam')}
                 className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
                   viewMode === 'by-exam'
-                    ? 'bg-white text-blue-600 font-bold shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 font-bold shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
                 }`}
               >
                 <BookOpen className="w-3.5 h-3.5" />
@@ -351,8 +385,8 @@ export default function AdminResultsPage() {
                 onClick={() => setViewMode('flat-candidates')}
                 className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
                   viewMode === 'flat-candidates'
-                    ? 'bg-white text-blue-600 font-bold shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 font-bold shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
                 }`}
               >
                 <Users className="w-3.5 h-3.5" />
@@ -445,41 +479,41 @@ export default function AdminResultsPage() {
                     {filteredExamsSummary.map((ex) => (
                       <tr
                         key={ex._id}
-                        className="text-slate-600 hover:bg-slate-50 transition-colors group cursor-pointer"
+                        className="text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors group cursor-pointer"
                         onClick={() => handleDrillIntoExam(ex)}
                       >
                         <td className="py-3 px-4 max-w-xs truncate" title={ex.title}>
                           <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0">
-                              <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+                            <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 flex items-center justify-center shrink-0">
+                              <BookOpen className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                             </div>
-                            <span className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors truncate">
+                            <span className="font-bold text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
                               {ex.title}
                             </span>
                           </div>
                         </td>
 
                         <td className="py-3 px-4 whitespace-nowrap">
-                          <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-slate-100 text-slate-700 border border-slate-200">
+                          <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                             {ex.difficulty || 'INTERMEDIATE'}
                           </span>
                         </td>
 
-                        <td className="py-3 px-4 font-mono text-slate-500 text-xs whitespace-nowrap">
+                        <td className="py-3 px-4 font-mono text-slate-500 dark:text-slate-400 text-xs whitespace-nowrap">
                           {new Date(ex.createdAt).toLocaleDateString()}
                         </td>
 
                         {isAdmin && (
                           <td className="py-3 px-4 whitespace-nowrap">
                             <div className="flex items-center gap-1.5">
-                              <span className="font-semibold text-slate-700">
+                              <span className="font-semibold text-slate-700 dark:text-slate-200">
                                 {ex.createdBy?.name || 'Administrator'}
                               </span>
                               <span
                                 className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
                                   ex.createdBy?.role === 'FACULTY'
-                                    ? 'text-emerald-700 bg-emerald-50 border border-emerald-200'
-                                    : 'text-slate-600 bg-slate-100 border border-slate-200'
+                                    ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800'
+                                    : 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700'
                                 }`}
                               >
                                 {ex.createdBy?.role || 'ADMIN'}
@@ -488,43 +522,43 @@ export default function AdminResultsPage() {
                           </td>
                         )}
 
-                        <td className="py-3 px-4 font-mono text-slate-600 whitespace-nowrap">
+                        <td className="py-3 px-4 font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">
                           {ex.duration}m
                         </td>
 
-                        <td className="py-3 px-4 font-mono font-bold text-slate-800 whitespace-nowrap">
+                        <td className="py-3 px-4 font-mono font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
                           {ex.totalMarks}
                         </td>
 
-                        <td className="py-3 px-4 font-mono font-bold text-emerald-600 whitespace-nowrap">
+                        <td className="py-3 px-4 font-mono font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                           {ex.passingMarks}
                         </td>
 
                         <td className="py-3 px-4 whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-600 border border-blue-200 font-mono">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 font-mono">
                             <Users className="w-3 h-3" />
                             {ex.totalAttempts || 0}
                           </span>
                         </td>
 
-                        <td className="py-3 px-4 font-mono font-bold text-emerald-600 whitespace-nowrap">
+                        <td className="py-3 px-4 font-mono font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                           {ex.passedCount || 0}
                         </td>
 
-                        <td className="py-3 px-4 font-mono font-bold text-rose-600 whitespace-nowrap">
+                        <td className="py-3 px-4 font-mono font-bold text-rose-600 dark:text-rose-400 whitespace-nowrap">
                           {ex.failedCount || 0}
                         </td>
 
-                        <td className="py-3 px-4 font-mono text-slate-700 whitespace-nowrap">
-                          {ex.avgScore || 0} <span className="text-slate-400">/ {ex.totalMarks}</span>
+                        <td className="py-3 px-4 font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                          {ex.avgScore || 0} <span className="text-slate-400 dark:text-slate-500">/ {ex.totalMarks}</span>
                         </td>
 
-                        <td className="py-3 px-4 font-mono font-bold text-blue-600 whitespace-nowrap">
+                        <td className="py-3 px-4 font-mono font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
                           {ex.avgPercentage || 0}%
                         </td>
 
-                        <td className="py-3 px-4 font-mono font-bold text-emerald-600 whitespace-nowrap">
-                          {ex.highestScore || 0} <span className="text-slate-400 font-normal">/ {ex.totalMarks}</span>
+                        <td className="py-3 px-4 font-mono font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                          {ex.highestScore || 0} <span className="text-slate-400 dark:text-slate-500 font-normal">/ {ex.totalMarks}</span>
                         </td>
 
                         <td className="py-3 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
@@ -540,7 +574,7 @@ export default function AdminResultsPage() {
                             <button
                               type="button"
                               onClick={() => handleExportExcel(ex._id)}
-                              className="p-1.5 rounded-xl bg-slate-100 hover:bg-emerald-600 text-slate-600 hover:text-white border border-slate-200 transition-colors cursor-pointer"
+                              className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-600 dark:hover:bg-emerald-600 text-slate-600 dark:text-slate-300 hover:text-white dark:hover:text-white border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
                               title="Download Exam Excel"
                             >
                               <Download className="w-3.5 h-3.5" />
@@ -704,8 +738,8 @@ export default function AdminResultsPage() {
                       return (
                         <tr
                           key={att._id}
-                          className={`text-slate-600 hover:bg-slate-50 transition-colors ${
-                            isSelected ? 'bg-blue-50/50' : ''
+                          className={`text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors ${
+                            isSelected ? 'bg-blue-50/50 dark:bg-blue-950/40' : ''
                           }`}
                         >
                           <td className="py-3 px-4">
@@ -713,35 +747,35 @@ export default function AdminResultsPage() {
                               type="checkbox"
                               checked={isSelected}
                               onChange={() => handleToggleSelect(att._id)}
-                              className="w-4 h-4 rounded bg-white border-slate-300 text-blue-600 accent-blue-600 focus:ring-0 cursor-pointer"
+                              className="w-4 h-4 rounded bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-blue-600 accent-blue-600 focus:ring-0 cursor-pointer"
                             />
                           </td>
-                          <td className="py-3 px-4 font-semibold text-slate-800 whitespace-nowrap">
+                          <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">
                             <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-md bg-blue-50 text-blue-600 font-bold flex items-center justify-center shrink-0 text-[10px]">
+                              <div className="w-6 h-6 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center shrink-0 text-[10px]">
                                 {att.userId?.name?.charAt(0) || 'U'}
                               </div>
                               <span className="font-bold">{att.userId?.name || 'Anonymous'}</span>
                             </div>
                           </td>
-                          <td className="py-3 px-4 font-mono text-slate-500 whitespace-nowrap">
+                          <td className="py-3 px-4 font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
                             {att.userId?.email || '—'}
                           </td>
-                          <td className="py-3 px-4 font-mono text-slate-600 whitespace-nowrap">
+                          <td className="py-3 px-4 font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">
                             {att.userId?.rollNumber || '—'}
                           </td>
 
                           {isAdmin && (
                             <td className="py-3 px-4 whitespace-nowrap">
                               <div className="flex items-center gap-1.5">
-                                <span className="font-semibold text-slate-700">
+                                <span className="font-semibold text-slate-700 dark:text-slate-200">
                                   {att.userId?.createdBy?.name || 'Admin / Direct'}
                                 </span>
                                 <span
                                   className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
                                     att.userId?.createdBy?.role === 'FACULTY'
-                                      ? 'text-emerald-700 bg-emerald-50 border border-emerald-200'
-                                      : 'text-slate-600 bg-slate-100 border border-slate-200'
+                                      ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800'
+                                      : 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700'
                                   }`}
                                 >
                                   {att.userId?.createdBy?.role || 'SYSTEM'}
@@ -751,15 +785,15 @@ export default function AdminResultsPage() {
                           )}
 
                           {!selectedExam && (
-                            <td className="py-3 px-4 font-semibold text-slate-700 whitespace-nowrap max-w-xs truncate" title={att.examId?.title}>
+                            <td className="py-3 px-4 font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap max-w-xs truncate" title={att.examId?.title}>
                               {att.examId?.title || 'Exam'}
                             </td>
                           )}
 
-                          <td className="py-3 px-4 text-blue-700 font-medium whitespace-nowrap">
+                          <td className="py-3 px-4 text-blue-700 dark:text-blue-400 font-medium whitespace-nowrap">
                             {att.userId?.batch || '—'}
                           </td>
-                          <td className="py-3 px-4 text-slate-500 whitespace-nowrap">
+                          <td className="py-3 px-4 text-slate-500 dark:text-slate-400 whitespace-nowrap">
                             {att.userId?.gender || '—'}
                           </td>
                           <td className="py-3 px-4 whitespace-nowrap">
@@ -768,13 +802,13 @@ export default function AdminResultsPage() {
                                 att.languagesUsed.map((lang) => (
                                   <span
                                     key={lang}
-                                    className="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-mono text-blue-700 border border-slate-200"
+                                    className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-mono text-blue-700 dark:text-blue-400 border border-slate-200 dark:border-slate-700"
                                   >
                                     {lang}
                                   </span>
                                 ))
                               ) : (
-                                <span className="text-slate-400 font-mono text-[10px]">—</span>
+                                <span className="text-slate-400 dark:text-slate-500 font-mono text-[10px]">—</span>
                               )}
                             </div>
                           </td>
@@ -782,41 +816,50 @@ export default function AdminResultsPage() {
                             <span
                               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                                 (att.violationCount || 0) > 0
-                                  ? 'bg-rose-50 text-rose-600 border-rose-200'
-                                  : 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                                  ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800'
+                                  : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
                               }`}
                             >
                               <ShieldAlert className="w-3 h-3" />
                               {att.violationCount || 0}
                             </span>
                           </td>
-                          <td className="py-3 px-4 font-mono font-bold text-slate-800 whitespace-nowrap">
+                          <td className="py-3 px-4 font-mono font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
                             {att.totalScore} / {att.maxScore}
                           </td>
-                          <td className="py-3 px-4 font-mono font-bold text-blue-600 whitespace-nowrap">
+                          <td className="py-3 px-4 font-mono font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
                             {att.percentage}%
                           </td>
                           <td className="py-3 px-4 whitespace-nowrap">
                             <span
                               className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                                 att.resultStatus === 'PASS'
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
                                   : att.resultStatus === 'FAIL'
-                                  ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                  : 'bg-amber-50 text-amber-700 border-amber-200'
+                                  ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+                                  : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
                               }`}
                             >
                               {att.resultStatus}
                             </span>
                           </td>
-                          <td className="py-3 px-4 font-mono text-slate-500 text-[11px] whitespace-nowrap">
+                          <td className="py-3 px-4 font-mono text-slate-500 dark:text-slate-400 text-[11px] whitespace-nowrap">
                             {new Date(att.submittedAt || att.startedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                           </td>
                           <td className="py-3 px-4 text-right whitespace-nowrap">
                             <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => handleAllowRetake(att)}
+                                disabled={actionLoading}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-xs font-semibold transition-colors cursor-pointer"
+                                title="Allow Student to Retake Exam (resets prior attempt)"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>Allow Retake</span>
+                              </button>
                               <Link
                                 to={`/admin/results/${att._id}`}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-semibold transition-colors cursor-pointer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold transition-colors cursor-pointer"
                                 title="Inspect Attempt Details"
                               >
                                 <span>Inspect</span>
@@ -825,7 +868,7 @@ export default function AdminResultsPage() {
                               <button
                                 onClick={() => handleDeleteSingleResult(att._id)}
                                 disabled={actionLoading}
-                                className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 transition-colors cursor-pointer"
+                                className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
                                 title="Delete Result"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -840,7 +883,7 @@ export default function AdminResultsPage() {
               </div>
 
               {pagination.pages > 1 && (
-                <div className="p-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+                <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                   <span>
                     Showing Page {page} of {pagination.pages}
                   </span>
@@ -848,14 +891,14 @@ export default function AdminResultsPage() {
                     <button
                       disabled={page <= 1}
                       onClick={() => setPage(page - 1)}
-                      className="px-3 py-1 bg-slate-100 border border-slate-200 text-slate-700 rounded-lg disabled:opacity-40 hover:bg-slate-200 cursor-pointer transition-colors"
+                      className="px-3 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer transition-colors"
                     >
                       Previous
                     </button>
                     <button
                       disabled={page >= pagination.pages}
                       onClick={() => setPage(page + 1)}
-                      className="px-3 py-1 bg-slate-100 border border-slate-200 text-slate-700 rounded-lg disabled:opacity-40 hover:bg-slate-200 cursor-pointer transition-colors"
+                      className="px-3 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer transition-colors"
                     >
                       Next
                     </button>

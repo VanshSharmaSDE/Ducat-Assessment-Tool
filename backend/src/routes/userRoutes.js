@@ -10,6 +10,7 @@ router.use(authenticateUser);
 
 router.get('/profile', UserController.getProfile);
 router.put('/profile', UserController.updateProfile);
+router.put('/theme', UserController.updateTheme);
 router.put('/change-password', validate(changePasswordSchema), UserController.changePassword);
 
 export default router;

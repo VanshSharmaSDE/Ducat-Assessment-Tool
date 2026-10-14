@@ -148,7 +148,7 @@ export default function AdminDashboardPage() {
         {/* Candidates - Featured Gradient Card 1 */}
         <Link
           to="/admin/users"
-          className="group p-5 rounded-2xl bg-gradient-to-r from-[#4f6bf7] to-[#6073ea] text-white shadow-lg shadow-[#4f6bf7]/20 hover:shadow-xl hover:shadow-[#4f6bf7]/30 transition-all block relative overflow-hidden"
+          className="group p-5 rounded-2xl bg-gradient-to-r from-[#4f6bf7] to-[#6073ea] text-white shadow-lg shadow-[#4f6bf7]/20 hover:shadow-xl hover:shadow-[#4f6bf7]/30 dark:shadow-none dark:border dark:border-[#4f6bf7]/40 transition-all block relative overflow-hidden"
         >
           <div className="flex items-center justify-between relative z-10">
             <span className="text-[11px] font-bold text-white/80 uppercase tracking-wider">
@@ -168,7 +168,7 @@ export default function AdminDashboardPage() {
         {/* Examinations - Featured Gradient Card 2 */}
         <Link
           to="/admin/exams"
-          className="group p-5 rounded-2xl bg-gradient-to-r from-[#4f6bf7] to-[#6073ea] text-white shadow-lg shadow-[#4f6bf7]/20 hover:shadow-xl hover:shadow-[#4f6bf7]/30 transition-all block relative overflow-hidden"
+          className="group p-5 rounded-2xl bg-gradient-to-r from-[#4f6bf7] to-[#6073ea] text-white shadow-lg shadow-[#4f6bf7]/20 hover:shadow-xl hover:shadow-[#4f6bf7]/30 dark:shadow-none dark:border dark:border-[#4f6bf7]/40 transition-all block relative overflow-hidden"
         >
           <div className="flex items-center justify-between relative z-10">
             <span className="text-[11px] font-bold text-white/80 uppercase tracking-wider">
@@ -191,7 +191,7 @@ export default function AdminDashboardPage() {
         {/* Attempts & Code Runs - Featured Gradient Card 3 */}
         <Link
           to="/admin/submissions"
-          className="group p-5 rounded-2xl bg-gradient-to-r from-[#4f6bf7] to-[#6073ea] text-white shadow-lg shadow-[#4f6bf7]/20 hover:shadow-xl hover:shadow-[#4f6bf7]/30 transition-all block relative overflow-hidden"
+          className="group p-5 rounded-2xl bg-gradient-to-r from-[#4f6bf7] to-[#6073ea] text-white shadow-lg shadow-[#4f6bf7]/20 hover:shadow-xl hover:shadow-[#4f6bf7]/30 dark:shadow-none dark:border dark:border-[#4f6bf7]/40 transition-all block relative overflow-hidden"
         >
           <div className="flex items-center justify-between relative z-10">
             <span className="text-[11px] font-bold text-white/80 uppercase tracking-wider">
@@ -214,89 +214,89 @@ export default function AdminDashboardPage() {
         {/* Pass Rate - Clean Card */}
         <Link
           to="/admin/results"
-          className="group p-5 rounded-2xl bg-white border border-slate-100 hover:border-slate-200 transition-all shadow-sm hover:shadow-md block"
+          className="group p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 transition-all shadow-sm hover:shadow-md block"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider group-hover:text-[#4f6bf7] transition-colors">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider group-hover:text-[#4f6bf7] transition-colors">
               Overall Pass Rate
             </span>
-            <div className="w-9 h-9 rounded-xl bg-[#eef2ff] text-[#4f6bf7] flex items-center justify-center group-hover:bg-[#e0e7ff] transition-colors">
+            <div className="w-9 h-9 rounded-xl bg-[#eef2ff] dark:bg-indigo-950/60 text-[#4f6bf7] dark:text-indigo-400 flex items-center justify-center group-hover:bg-[#e0e7ff] dark:group-hover:bg-indigo-900/40 transition-colors">
               <Award className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-3xl font-extrabold text-[#4f6bf7] mt-3 font-mono">{stats.passRate}%</p>
-          <span className="text-[11px] text-slate-500 mt-1 block flex items-center justify-between">
-            <span className="text-emerald-600 font-bold">{stats.passedCount} Pass</span>
-            <span className="text-rose-500 font-bold">{stats.failedCount} Fail</span>
+          <p className="text-3xl font-extrabold text-[#4f6bf7] dark:text-indigo-400 mt-3 font-mono">{stats.passRate}%</p>
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 block flex items-center justify-between">
+            <span className="text-emerald-600 dark:text-emerald-400 font-bold">{stats.passedCount} Pass</span>
+            <span className="text-rose-500 dark:text-rose-400 font-bold">{stats.failedCount} Fail</span>
           </span>
         </Link>
 
         {/* Avg Performance - Pastel Teal */}
-        <div className="p-5 rounded-2xl bg-[#eaf8f4] border border-[#d2f2e7] shadow-sm">
+        <div className="p-5 rounded-2xl bg-[#eaf8f4] dark:bg-emerald-950/30 border border-[#d2f2e7] dark:border-emerald-800/40 shadow-sm transition-colors">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-teal-800 uppercase tracking-wider">
+            <span className="text-xs font-bold text-teal-800 dark:text-emerald-300 uppercase tracking-wider">
               Avg Assessment Score
             </span>
-            <div className="w-9 h-9 rounded-xl bg-white text-teal-600 flex items-center justify-center shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-white dark:bg-emerald-900/40 border border-transparent dark:border-emerald-700/50 text-teal-600 dark:text-emerald-400 flex items-center justify-center shadow-xs">
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-3xl font-extrabold text-teal-900 mt-3 font-mono">{stats.averageScore}%</p>
-          <span className="text-[11px] text-teal-700/80 mt-1 block font-medium">Candidate average marks</span>
+          <p className="text-3xl font-extrabold text-teal-900 dark:text-emerald-200 mt-3 font-mono">{stats.averageScore}%</p>
+          <span className="text-[11px] text-teal-700/80 dark:text-emerald-400/80 mt-1 block font-medium">Candidate average marks</span>
         </div>
 
         {/* Batches - Pastel Purple */}
         <Link
           to="/admin/batches"
-          className="group p-5 rounded-2xl bg-[#f5f3ff] border border-[#ede9fe] hover:border-purple-300 transition-all shadow-sm hover:shadow-md block"
+          className="group p-5 rounded-2xl bg-[#f5f3ff] dark:bg-purple-950/30 border border-[#ede9fe] dark:border-purple-800/40 hover:border-purple-300 dark:hover:border-purple-700/60 transition-all shadow-sm hover:shadow-md block"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-purple-800 uppercase tracking-wider group-hover:text-purple-900 transition-colors">
+            <span className="text-xs font-bold text-purple-800 dark:text-purple-300 uppercase tracking-wider group-hover:text-purple-900 dark:group-hover:text-purple-200 transition-colors">
               Batches & Cohorts
             </span>
-            <div className="w-9 h-9 rounded-xl bg-white text-purple-600 flex items-center justify-center shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-white dark:bg-purple-900/40 border border-transparent dark:border-purple-700/50 text-purple-600 dark:text-purple-400 flex items-center justify-center shadow-xs">
               <Layers className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-3xl font-extrabold text-purple-900 mt-3 font-mono">{stats.totalBatches}</p>
-          <span className="text-[11px] text-purple-700/80 mt-1 block flex items-center justify-between font-medium">
+          <p className="text-3xl font-extrabold text-purple-900 dark:text-purple-200 mt-3 font-mono">{stats.totalBatches}</p>
+          <span className="text-[11px] text-purple-700/80 dark:text-purple-400/80 mt-1 block flex items-center justify-between font-medium">
             <span>Student cohorts</span>
-            <ChevronRight className="w-3.5 h-3.5 text-purple-400 group-hover:text-purple-600 transition-colors" />
+            <ChevronRight className="w-3.5 h-3.5 text-purple-400 group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors" />
           </span>
         </Link>
 
-        {/* Organizations - Pastel Yellow/Amber (like Category in reference) */}
+        {/* Organizations - Pastel Yellow/Amber */}
         <Link
           to="/admin/organizations"
-          className="group p-5 rounded-2xl bg-[#fef9eb] border border-[#fef0cd] hover:border-amber-300 transition-all shadow-sm hover:shadow-md block"
+          className="group p-5 rounded-2xl bg-[#fef9eb] dark:bg-amber-950/30 border border-[#fef0cd] dark:border-amber-800/40 hover:border-amber-300 dark:hover:border-amber-700/60 transition-all shadow-sm hover:shadow-md block"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-amber-900 uppercase tracking-wider group-hover:text-amber-950 transition-colors">
+            <span className="text-xs font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wider group-hover:text-amber-950 dark:group-hover:text-amber-200 transition-colors">
               Organizations
             </span>
-            <div className="w-9 h-9 rounded-xl bg-white text-amber-600 flex items-center justify-center shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-white dark:bg-amber-900/40 border border-transparent dark:border-amber-700/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-xs">
               <Building2 className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-3xl font-extrabold text-amber-950 mt-3 font-mono">{stats.totalOrganizations}</p>
-          <span className="text-[11px] text-amber-800/80 mt-1 block flex items-center justify-between font-medium">
+          <p className="text-3xl font-extrabold text-amber-950 dark:text-amber-200 mt-3 font-mono">{stats.totalOrganizations}</p>
+          <span className="text-[11px] text-amber-800/80 dark:text-amber-400/80 mt-1 block flex items-center justify-between font-medium">
             <span>Institutional partners</span>
-            <ChevronRight className="w-3.5 h-3.5 text-amber-400 group-hover:text-amber-600 transition-colors" />
+            <ChevronRight className="w-3.5 h-3.5 text-amber-400 group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors" />
           </span>
         </Link>
 
         {/* Proctoring Violations - Soft Coral Card */}
-        <div className="p-5 rounded-2xl bg-rose-50 border border-rose-100 shadow-sm">
+        <div className="p-5 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-800/40 shadow-sm transition-colors">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-rose-800 uppercase tracking-wider">
+            <span className="text-xs font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wider">
               Proctoring Security
             </span>
-            <div className="w-9 h-9 rounded-xl bg-white text-rose-600 flex items-center justify-center shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-white dark:bg-rose-900/40 border border-transparent dark:border-rose-700/50 text-rose-600 dark:text-rose-400 flex items-center justify-center shadow-xs">
               <ShieldAlert className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-3xl font-extrabold text-rose-700 mt-3 font-mono">{stats.totalViolations}</p>
-          <span className="text-[11px] text-rose-600/80 mt-1 block font-medium">Tab switch & exit infractions</span>
+          <p className="text-3xl font-extrabold text-rose-700 dark:text-rose-300 mt-3 font-mono">{stats.totalViolations}</p>
+          <span className="text-[11px] text-rose-600/80 dark:text-rose-400/80 mt-1 block font-medium">Tab switch & exit infractions</span>
         </div>
       </div>
 

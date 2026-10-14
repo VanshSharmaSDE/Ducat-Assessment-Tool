@@ -19,7 +19,9 @@ import {
   Mail,
   Phone,
   Lock,
-  UserCheck
+  UserCheck,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 export default function AdminFacultyPage() {
@@ -33,6 +35,8 @@ export default function AdminFacultyPage() {
 
   // Manual Create Modal
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
   const [createFormData, setCreateFormData] = useState({
     facultyId: '',
     name: '',
@@ -592,15 +596,25 @@ export default function AdminFacultyPage() {
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Initial Password *</label>
-                <input
-                  type="password"
-                  required
-                  value={createFormData.password}
-                  onChange={(e) => setCreateFormData({ ...createFormData, password: e.target.value })}
-                  placeholder="Minimum 6 characters"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <label className="block text-slate-700 dark:text-slate-200 font-semibold mb-1">Initial Password *</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={createFormData.password}
+                    onChange={(e) => setCreateFormData({ ...createFormData, password: e.target.value })}
+                    placeholder="Minimum 6 characters"
+                    className="w-full px-3 py-2 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -764,16 +778,26 @@ export default function AdminFacultyPage() {
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">
+                <label className="block text-slate-700 dark:text-slate-200 font-semibold mb-1">
                   Reset Password <span className="text-slate-400 font-normal">(Leave blank to keep unchanged)</span>
                 </label>
-                <input
-                  type="password"
-                  value={editFormData.password}
-                  onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
-                  placeholder="Enter new password if resetting"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <div className="relative">
+                  <input
+                    type={showEditPassword ? 'text' : 'password'}
+                    value={editFormData.password}
+                    onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
+                    placeholder="Enter new password if resetting"
+                    className="w-full px-3 py-2 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowEditPassword(!showEditPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                    title={showEditPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showEditPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-200">

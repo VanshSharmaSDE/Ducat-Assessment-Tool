@@ -135,69 +135,69 @@ export default function ProfilePage() {
     <div className="p-6 md:p-10 max-w-4xl mx-auto w-full space-y-8">
       <div>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Account Profile & Settings</h1>
+          <h1 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">Account Profile & Settings</h1>
           {isAdmin ? (
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-600 border border-blue-200 flex items-center gap-1">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5" /> Administrator
             </span>
           ) : isFaculty ? (
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center gap-1">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1">
               <GraduationCap className="w-3.5 h-3.5" /> Faculty Member
             </span>
           ) : (
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-600 border border-blue-200 flex items-center gap-1">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 flex items-center gap-1">
               <User className="w-3.5 h-3.5" /> Student
             </span>
           )}
         </div>
-        <p className="text-sm text-slate-500 mt-1">Manage your identity credentials, view institutional affiliations, and update security passwords</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Manage your identity credentials, view institutional affiliations, and update security passwords</p>
       </div>
 
       {/* Institutional Affiliation & Credentials Card (Prominently displayed) */}
-      <div className="bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-slate-50 border border-blue-100 rounded-2xl p-5 shadow-sm">
+      <div className="bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-slate-50 dark:from-slate-900/95 dark:via-slate-800/80 dark:to-slate-900/95 border border-blue-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-3.5">
-          <Building2 className="w-4 h-4 text-blue-600" />
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">Institutional Affiliation & Credentials</h2>
-          <span className="ml-auto text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-blue-100/70 text-blue-700 border border-blue-200/50">
+          <Building2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">Institutional Affiliation & Credentials</h2>
+          <span className="ml-auto text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-blue-100/70 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/60">
             Read-Only Verification
           </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
           {/* Organization */}
-          <div className="bg-white/90 backdrop-blur-sm border border-slate-200/80 rounded-xl p-3 shadow-xs">
-            <span className="text-[11px] font-medium text-slate-500 block mb-1 flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5 text-blue-500" />
+          <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200/80 dark:border-slate-700/60 rounded-xl p-3 shadow-xs">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block mb-1 flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" />
               Organization
             </span>
-            <div className="text-sm font-bold text-slate-800 truncate" title={user?.organization || 'Independent / Unassigned'}>
+            <div className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate" title={user?.organization || 'Independent / Unassigned'}>
               {user?.organization || 'Independent / Unassigned'}
             </div>
-            <p className="text-[10px] text-slate-400 mt-0.5">Assigned institutional entity</p>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Assigned institutional entity</p>
           </div>
 
           {/* Batch / Group */}
-          <div className="bg-white/90 backdrop-blur-sm border border-slate-200/80 rounded-xl p-3 shadow-xs">
-            <span className="text-[11px] font-medium text-slate-500 block mb-1 flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-indigo-500" />
+          <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200/80 dark:border-slate-700/60 rounded-xl p-3 shadow-xs">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block mb-1 flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
               Batch
             </span>
-            <div className="text-sm font-bold text-slate-800 truncate" title={user?.batch || 'General'}>
+            <div className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate" title={user?.batch || 'General'}>
               {user?.batch || (isAdmin ? 'All Batches' : 'General')}
             </div>
-            <p className="text-[10px] text-slate-400 mt-0.5">Assigned cohort or department</p>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Assigned cohort or department</p>
           </div>
 
           {/* Primary ID */}
-          <div className="bg-white/90 backdrop-blur-sm border border-slate-200/80 rounded-xl p-3 shadow-xs">
-            <span className="text-[11px] font-medium text-slate-500 block mb-1 flex items-center gap-1.5">
-              <Hash className="w-3.5 h-3.5 text-emerald-500" />
+          <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200/80 dark:border-slate-700/60 rounded-xl p-3 shadow-xs">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block mb-1 flex items-center gap-1.5">
+              <Hash className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
               {idLabel}
             </span>
-            <div className="text-sm font-bold font-mono text-blue-700 truncate" title={primaryId}>
+            <div className="text-sm font-bold font-mono text-blue-700 dark:text-blue-400 truncate" title={primaryId}>
               {primaryId}
             </div>
-            <p className="text-[10px] text-slate-400 mt-0.5">Official login & exam credential</p>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Official login & exam credential</p>
           </div>
         </div>
       </div>

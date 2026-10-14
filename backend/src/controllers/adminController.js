@@ -830,6 +830,19 @@ export class AdminController {
     }
   }
 
+  static async allowRetake(req, res, next) {
+    try {
+      const { id } = req.params;
+      const result = await AdminService.allowRetake(id, req.user);
+      res.status(200).json({
+        success: true,
+        ...result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async bulkDeleteResults(req, res, next) {
     try {
       const { ids, resultIds, attemptIds } = req.body;

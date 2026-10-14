@@ -261,7 +261,7 @@ export default function AdminExamWizardPage() {
       )}
 
       {/* Stepper Navigation */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 border-b border-slate-200 pb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 border-b border-slate-200 dark:border-slate-800 pb-4">
         {steps.map((s) => {
           const Icon = s.icon;
           const isActive = step === s.num;
@@ -271,12 +271,12 @@ export default function AdminExamWizardPage() {
             <button
               key={s.num}
               onClick={() => setStep(s.num)}
-              className={`p-3 rounded-xl text-left border transition-all flex items-center gap-3 ${
+              className={`p-3 rounded-xl text-left border transition-all flex items-center gap-3 cursor-pointer ${
                 isActive
-                  ? 'bg-blue-50 border-blue-300 text-blue-600 font-bold'
+                  ? 'bg-blue-50 dark:bg-blue-950/50 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 font-bold'
                   : isDone
-                  ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                  : 'bg-slate-50 border-slate-200 text-slate-400'
+                  ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                  : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500'
               }`}
             >
               <div
@@ -284,8 +284,8 @@ export default function AdminExamWizardPage() {
                   isActive
                     ? 'bg-blue-600 text-white'
                     : isDone
-                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-                    : 'bg-slate-200 text-slate-500'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                    : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
                 }`}
               >
                 {isDone ? <CheckCircle2 className="w-4 h-4" /> : s.num}
@@ -430,21 +430,21 @@ export default function AdminExamWizardPage() {
                 />
               </div>
 
-              <div className="sm:col-span-2 p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-4">
+              <div className="sm:col-span-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-4">
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Candidate Code Testing</span>
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider">Candidate Code Testing</span>
                     <span
-                      className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${
                         formData.allowCodeRun
-                          ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-                          : 'bg-slate-200 text-slate-500'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                          : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-600'
                       }`}
                     >
                       {formData.allowCodeRun ? 'Enabled' : 'Disabled'}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     Allow students to test-run their programs with custom input in the IDE during this examination. Hidden test suites remain private and final assessment scoring is not affected.
                   </p>
                 </div>
@@ -455,7 +455,7 @@ export default function AdminExamWizardPage() {
                     onChange={(e) => setFormData({ ...formData, allowCodeRun: e.target.checked })}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  <div className="w-11 h-6 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 dark:after:border-slate-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                 </label>
               </div>
             </div>
@@ -497,20 +497,20 @@ export default function AdminExamWizardPage() {
                     return (
                       <div
                         key={q.questionId}
-                        className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:border-slate-300 transition-colors"
+                        className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="font-mono text-blue-600 font-bold shrink-0">#{idx + 1}</span>
+                          <span className="font-mono text-blue-600 dark:text-blue-400 font-bold shrink-0">#{idx + 1}</span>
                           <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 border ${
                               isCoding
-                                ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                                : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                                ? 'bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                                : 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
                             }`}
                           >
                             {isCoding ? 'Coding' : 'MCQ'}
                           </span>
-                          <span className="font-semibold text-slate-800 truncate" title={q.title}>
+                          <span className="font-semibold text-slate-800 dark:text-slate-100 truncate" title={q.title}>
                             {q.title}
                           </span>
                         </div>
@@ -518,15 +518,15 @@ export default function AdminExamWizardPage() {
                         <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
                           {/* Per-Question Code Run Toggle for Coding Questions */}
                           {isCoding && (
-                            <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-2 py-1 rounded-lg">
-                              <span className="text-[10px] font-semibold text-slate-600">Run Code:</span>
+                            <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-1 rounded-lg">
+                              <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400">Run Code:</span>
                               <button
                                 type="button"
                                 onClick={() => handleQuestionCodeRunToggle(q.questionId)}
-                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer border ${
                                   hasCodeRun
-                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                    : 'bg-slate-100 text-slate-400 border border-slate-200'
+                                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                                    : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-400 border-slate-200 dark:border-slate-600'
                                 }`}
                                 title={hasCodeRun ? 'Candidate can run test code' : 'Code run disabled for this question'}
                               >
@@ -536,20 +536,20 @@ export default function AdminExamWizardPage() {
                           )}
 
                           <div className="flex items-center gap-1.5">
-                            <label className="text-slate-500 text-[11px]">Marks:</label>
+                            <label className="text-slate-500 dark:text-slate-400 text-[11px]">Marks:</label>
                             <input
                               type="number"
                               min={1}
                               value={q.marks}
                               onChange={(e) => handleQuestionMarksChange(q.questionId, e.target.value)}
-                              className="w-14 px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-800 text-center focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                              className="w-14 px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono text-slate-800 dark:text-slate-100 text-center focus:ring-1 focus:ring-blue-500 focus:outline-none"
                             />
                           </div>
 
                           <button
                             type="button"
                             onClick={() => handleRemoveQuestion(q.questionId)}
-                            className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
+                            className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
                             title="Remove Question"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -563,21 +563,21 @@ export default function AdminExamWizardPage() {
             </div>
 
             {/* Question Bank Picker with Filter Tabs */}
-            <div className="space-y-3 pt-4 border-t border-slate-200">
+            <div className="space-y-3 pt-4 border-t border-slate-200 dark:border-slate-800">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Available in Question Banks
                 </h4>
 
                 {/* Question Type Filter Tabs */}
-                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200/60 dark:border-slate-700">
                   <button
                     type="button"
                     onClick={() => setQuestionBankTab('ALL')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       questionBankTab === 'ALL'
-                        ? 'bg-white text-blue-600 shadow-xs'
-                        : 'text-slate-500 hover:text-slate-800'
+                        ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                     }`}
                   >
                     All ({availableQuestions.length})
@@ -585,10 +585,10 @@ export default function AdminExamWizardPage() {
                   <button
                     type="button"
                     onClick={() => setQuestionBankTab('CODING')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
                       questionBankTab === 'CODING'
-                        ? 'bg-white text-blue-600 shadow-xs'
-                        : 'text-slate-500 hover:text-slate-800'
+                        ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                     }`}
                   >
                     <Code2 className="w-3.5 h-3.5" />
@@ -597,10 +597,10 @@ export default function AdminExamWizardPage() {
                   <button
                     type="button"
                     onClick={() => setQuestionBankTab('MCQ')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
                       questionBankTab === 'MCQ'
-                        ? 'bg-white text-blue-600 shadow-xs'
-                        : 'text-slate-500 hover:text-slate-800'
+                        ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                     }`}
                   >
                     <CheckSquare className="w-3.5 h-3.5" />
@@ -624,22 +624,22 @@ export default function AdminExamWizardPage() {
                     return (
                       <div
                         key={q._id}
-                        className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs hover:border-slate-300 transition-colors"
+                        className="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-between text-xs hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
                       >
                         <div className="min-w-0 pr-3">
                           <div className="flex items-center gap-2">
                             <span
-                              className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase shrink-0 ${
+                              className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase shrink-0 border ${
                                 isCoding
-                                  ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                                  : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                                  ? 'bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                                  : 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
                               }`}
                             >
                               {isCoding ? 'Coding' : 'MCQ'}
                             </span>
-                            <span className="font-semibold text-slate-800 truncate">{q.title}</span>
+                            <span className="font-semibold text-slate-800 dark:text-slate-100 truncate">{q.title}</span>
                           </div>
-                          <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
+                          <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 dark:text-slate-400">
                             <span>{q.difficulty}</span>
                             <span>•</span>
                             <span className="font-mono">{q.marks} Marks</span>
@@ -664,7 +664,7 @@ export default function AdminExamWizardPage() {
                           disabled={isAdded}
                           className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${
                             isAdded
-                              ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                              ? 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
                               : 'bg-blue-600 hover:bg-blue-500 text-white font-bold transition-colors shadow-xs'
                           }`}
                         >
@@ -681,42 +681,42 @@ export default function AdminExamWizardPage() {
         {/* Step 4: Review & Publish */}
         {step === 4 && (
           <div className="space-y-6">
-            <h2 className="text-base font-bold text-slate-800">Step 4: Summary & Publish Status</h2>
+            <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">Step 4: Summary & Publish Status</h2>
 
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 text-xs">
-              <div className="flex justify-between py-1 border-b border-slate-200">
-                <span className="text-slate-500">Title:</span>
-                <span className="font-bold text-slate-800">{formData.title || 'Untitled'}</span>
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3 text-xs">
+              <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
+                <span className="text-slate-500 dark:text-slate-400">Title:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-100">{formData.title || 'Untitled'}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-200">
-                <span className="text-slate-500">Duration:</span>
-                <span className="font-mono text-slate-800">{formData.duration} Minutes</span>
+              <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
+                <span className="text-slate-500 dark:text-slate-400">Duration:</span>
+                <span className="font-mono text-slate-800 dark:text-slate-100">{formData.duration} Minutes</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-200">
-                <span className="text-slate-500">Total Marks:</span>
-                <span className="font-mono text-slate-800">{formData.totalMarks} (Pass: {formData.passingMarks})</span>
+              <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
+                <span className="text-slate-500 dark:text-slate-400">Total Marks:</span>
+                <span className="font-mono text-slate-800 dark:text-slate-100">{formData.totalMarks} (Pass: {formData.passingMarks})</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-200">
-                <span className="text-slate-500">Problems Selected:</span>
-                <span className="font-bold text-blue-600">
+              <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
+                <span className="text-slate-500 dark:text-slate-400">Problems Selected:</span>
+                <span className="font-bold text-blue-600 dark:text-blue-400">
                   {formData.questions.length} Questions ({formData.questions.filter((q) => q.type === 'CODING').length} Coding, {formData.questions.filter((q) => q.type === 'MCQ').length} MCQ)
                 </span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-200">
-                <span className="text-slate-500">Scheduled:</span>
-                <span className="text-slate-700">
+              <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
+                <span className="text-slate-500 dark:text-slate-400">Scheduled:</span>
+                <span className="text-slate-700 dark:text-slate-300">
                   {new Date(formData.startDate).toLocaleString()} to {new Date(formData.endDate).toLocaleString()}
                 </span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-200">
-                <span className="text-slate-500">Candidate Code Testing (Global):</span>
-                <span className={`font-semibold ${formData.allowCodeRun ? 'text-emerald-600' : 'text-slate-500'}`}>
+              <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
+                <span className="text-slate-500 dark:text-slate-400">Candidate Code Testing (Global):</span>
+                <span className={`font-semibold ${formData.allowCodeRun ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
                   {formData.allowCodeRun ? 'Enabled' : 'Disabled (Customized per question)'}
                 </span>
               </div>
               {formData.questions.some((q) => q.type === 'CODING' && q.allowCodeRun) && (
-                <div className="flex justify-between py-1 border-b border-slate-200 text-emerald-700">
-                  <span className="text-slate-500">Questions with Code Run Allowed:</span>
+                <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700 text-emerald-700 dark:text-emerald-400">
+                  <span className="text-slate-500 dark:text-slate-400">Questions with Code Run Allowed:</span>
                   <span className="font-bold font-mono">
                     {formData.questions.filter((q) => q.type === 'CODING' && q.allowCodeRun).length} / {formData.questions.filter((q) => q.type === 'CODING').length} Coding Problems
                   </span>
@@ -724,15 +724,15 @@ export default function AdminExamWizardPage() {
               )}
             </div>
 
-            <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
               <input
                 type="checkbox"
                 id="isPublished"
                 checked={formData.isPublished}
                 onChange={(e) => setFormData({ ...formData, isPublished: e.target.checked })}
-                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 bg-white border-slate-300 accent-blue-600 cursor-pointer"
+                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 accent-blue-600 cursor-pointer"
               />
-              <label htmlFor="isPublished" className="text-xs text-slate-700 select-none cursor-pointer">
+              <label htmlFor="isPublished" className="text-xs text-slate-700 dark:text-slate-300 select-none cursor-pointer">
                 <strong>Publish Immediately:</strong> Make assessment visible to candidates right away.
               </label>
             </div>
@@ -740,12 +740,12 @@ export default function AdminExamWizardPage() {
         )}
 
         {/* Wizard Controls */}
-        <div className="flex justify-between pt-4 border-t border-slate-200">
+        <div className="flex justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
           <button
             type="button"
             disabled={step === 1}
             onClick={() => setStep(step - 1)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 disabled:opacity-30 hover:bg-slate-100 bg-white transition-colors"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-30 hover:bg-slate-100 dark:hover:bg-slate-800 bg-white dark:bg-slate-800 transition-colors cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" /> Previous
           </button>
@@ -754,7 +754,7 @@ export default function AdminExamWizardPage() {
             <button
               type="button"
               onClick={() => setStep(step + 1)}
-              className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-sm shadow-blue-600/15"
+              className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-sm shadow-blue-600/15 cursor-pointer"
             >
               Next Step <ChevronRight className="w-4 h-4" />
             </button>

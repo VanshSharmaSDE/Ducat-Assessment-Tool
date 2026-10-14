@@ -39,15 +39,15 @@ export default function UserResultsPage() {
   return (
     <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
       <div>
-        <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Examination Results</h1>
-        <p className="text-sm text-slate-500 mt-1">Review your performance scores and question evaluations</p>
+        <h1 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">Examination Results</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Review your performance scores and question evaluations</p>
       </div>
 
       {results.length === 0 ? (
-        <div className="p-12 text-center rounded-2xl bg-white border border-slate-200 text-slate-500 shadow-sm">
-          <Award className="w-12 h-12 mx-auto text-slate-400 mb-3" />
-          <h3 className="text-base font-semibold text-slate-800">No completed assessments yet</h3>
-          <p className="text-xs text-slate-500 mt-1">
+        <div className="p-12 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 shadow-sm">
+          <Award className="w-12 h-12 mx-auto text-slate-400 dark:text-slate-500 mb-3" />
+          <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100">No completed assessments yet</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Once you take an assessment and submit your solutions, the results will appear here.
           </p>
           <Link
@@ -66,45 +66,45 @@ export default function UserResultsPage() {
             return (
               <div
                 key={res._id}
-                className="flex flex-col justify-between rounded-2xl bg-white border border-slate-200 hover:border-slate-300 p-6 shadow-sm hover:shadow-md transition-all"
+                className="flex flex-col justify-between rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 p-6 shadow-sm hover:shadow-md transition-all"
               >
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span
                       className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
                         isEvaluating
-                          ? 'bg-blue-50 text-blue-600 border-blue-200'
+                          ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800'
                           : isPass
-                          ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
-                          : 'bg-rose-50 text-rose-600 border-rose-200'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                          : 'bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800'
                       }`}
                     >
                       {isEvaluating ? 'EVALUATING IN DOCKER' : res.resultStatus}
                     </span>
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
                       {new Date(res.submittedAt || res.startedAt).toLocaleDateString()}
                     </span>
                   </div>
 
                   <div>
-                    <h3 className="font-bold text-lg text-slate-800 tracking-tight line-clamp-1">
+                    <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 tracking-tight line-clamp-1">
                       {res.exam?.title || 'Examination'}
                     </h3>
-                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
                       {res.exam?.description}
                     </p>
                   </div>
 
                   {/* Score pill */}
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                    <span className="text-xs text-slate-500">Final Score:</span>
-                    <span className="text-sm font-bold text-slate-800 font-mono">
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">Final Score:</span>
+                    <span className="text-sm font-bold text-slate-800 dark:text-slate-100 font-mono">
                       {res.totalScore} / {res.maxScore} ({res.percentage}%)
                     </span>
                   </div>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-slate-100">
+                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
                   <Link
                     to={`/results/${res._id}`}
                     className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md shadow-blue-600/20 transition-all"

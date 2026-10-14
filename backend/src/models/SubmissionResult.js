@@ -117,6 +117,7 @@ const submissionResultSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: [
+        'PENDING',
         'PASSED',
         'PARTIAL',
         'WRONG_ANSWER',

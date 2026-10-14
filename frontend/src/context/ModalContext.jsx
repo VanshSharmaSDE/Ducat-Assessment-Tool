@@ -129,34 +129,34 @@ export function ModalProvider({ children }) {
 
     if (isDanger || type === 'danger') {
       return (
-        <div className="w-8 h-8 rounded-lg bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shrink-0">
+        <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0">
           <Trash2 className="w-4 h-4" />
         </div>
       );
     }
     if (type === 'error') {
       return (
-        <div className="w-8 h-8 rounded-lg bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shrink-0">
+        <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0">
           <AlertCircle className="w-4 h-4" />
         </div>
       );
     }
     if (type === 'success') {
       return (
-        <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0">
+        <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
           <CheckCircle2 className="w-4 h-4" />
         </div>
       );
     }
     if (type === 'warning') {
       return (
-        <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
+        <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
           <AlertTriangle className="w-4 h-4" />
         </div>
       );
     }
     return (
-      <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shrink-0">
+      <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
         <Info className="w-4 h-4" />
       </div>
     );
@@ -178,27 +178,27 @@ export function ModalProvider({ children }) {
       {children}
       {modalState && (
         <div 
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-150"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
           onClick={() => handleClose(false)}
         >
           <div
-            className="bg-white border border-slate-200 rounded-2xl max-w-sm sm:max-w-md w-full p-5 shadow-lg space-y-3.5 animate-in zoom-in-95 duration-150 relative"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-sm sm:max-w-md w-full p-5 shadow-2xl space-y-3.5 animate-in zoom-in-95 duration-150 relative text-slate-800 dark:text-slate-100"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
           >
             {/* Header: Icon + Title + Close Button */}
-            <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2.5 min-w-0">
                 {renderIcon()}
-                <h3 className="text-sm sm:text-base font-semibold text-slate-800 tracking-tight truncate">
+                <h3 className="text-sm sm:text-base font-semibold text-slate-800 dark:text-slate-100 tracking-tight truncate">
                   {modalState.title}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => handleClose(false)}
-                className="p-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors shrink-0 cursor-pointer"
+                className="p-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors shrink-0 cursor-pointer"
                 title="Close"
               >
                 <X className="w-4 h-4" />
@@ -206,17 +206,17 @@ export function ModalProvider({ children }) {
             </div>
 
             {/* Body Message */}
-            <div className="text-xs text-slate-600 leading-relaxed max-h-56 overflow-y-auto whitespace-pre-line py-1">
+            <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-h-56 overflow-y-auto whitespace-pre-line py-1">
               {modalState.message}
             </div>
 
             {/* Actions: Cancel (if confirm) + Red/Green Action Button */}
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-200">
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-200 dark:border-slate-800">
               {modalState.isConfirm && (
                 <button
                   type="button"
                   onClick={() => handleClose(false)}
-                  className="px-3.5 py-2 border border-slate-200 hover:bg-slate-100 text-slate-600 hover:text-slate-900 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                  className="px-3.5 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer"
                 >
                   {modalState.cancelText || 'Cancel'}
                 </button>

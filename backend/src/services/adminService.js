@@ -718,6 +718,43 @@ export class AdminService {
     return { message: 'Result and associated submissions deleted successfully.' };
   }
 
+  static async allowRetake(attemptId, currentUser = null) {
+    const attempt = await ExamAttempt.findById(attemptId).populate('userId', 'name rollNumber studentId').populate('examId', 'title');
+    if (!attempt) {
+      const error = new Error('Result attempt not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (currentUser && currentUser.role === 'FACULTY') {
+      const isMyExam = attempt.examId && (await Exam.exists({ _id: attempt.examId._id || attempt.examId, createdBy: currentUser._id }));
+      const student = await User.findById(attempt.userId?._id || attempt.userId);
+      const isMyStudent = student && (
+        String(student.createdBy) === String(currentUser._id) ||
+        student.assignedFaculties?.some((fId) => String(fId) === String(currentUser._id)) ||
+        (currentUser.organization && student.organization === currentUser.organization)
+      );
+      if (!isMyStudent && !isMyExam) {
+        const error = new Error('Access denied. You can only grant retakes for your students or your exams.');
+        error.statusCode = 403;
+        throw error;
+      }
+    }
+
+    const studentName = attempt.userId?.name || 'Candidate';
+    const examTitle = attempt.examId?.title || 'Exam';
+
+    // Wipe prior attempt, submissions, and evaluation results so candidate starts fresh
+    await SubmissionResult.deleteMany({ attemptId });
+    await Submission.deleteMany({ attemptId });
+    await ExamAttempt.findByIdAndDelete(attemptId);
+
+    return {
+      success: true,
+      message: `Retake successfully granted for candidate "${studentName}". Previous attempt and results for "${examTitle}" have been deleted.`,
+    };
+  }
+
   static async bulkDeleteResults(attemptIds, currentUser = null) {
     if (!attemptIds || !Array.isArray(attemptIds) || attemptIds.length === 0) {
       const error = new Error('No result IDs provided for deletion');

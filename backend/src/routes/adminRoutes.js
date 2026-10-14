@@ -120,6 +120,7 @@ router.delete('/testcases/:id', TestCaseController.deleteTestCase);
 router.get('/results/export-excel', exportResultsExcel);
 router.get('/results', AdminController.getAllResults);
 router.delete('/results/:id', AdminController.deleteResult);
+router.post('/results/:id/allow-retake', AdminController.allowRetake);
 router.post('/results/bulk-delete', AdminController.bulkDeleteResults);
 router.get('/results/:id', ResultController.getResultDetails);
 router.get('/submissions', AdminController.getAllSubmissions);

@@ -21,6 +21,7 @@ import CodingExamPage from './pages/CodingExamPage';
 import UserResultsPage from './pages/UserResultsPage';
 import ResultDetailPage from './pages/ResultDetailPage';
 import ProfilePage from './pages/ProfilePage';
+import SettingsPage from './pages/SettingsPage';
 
 // Admin & Faculty Pages
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
@@ -128,6 +129,7 @@ export default function App() {
         <Route path="/results" element={<UserResultsPage />} />
         <Route path="/results/:id" element={<ResultDetailPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Route>
 
       {/* Faculty Shortcut Route - seamlessly routes to Admin & Faculty Control Hub */}
@@ -167,6 +169,7 @@ export default function App() {
         <Route path="results/:id" element={<AdminResultDetailPage />} />
         <Route path="submissions" element={<AdminSubmissionsPage />} />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="settings" element={<SettingsPage />} />
       </Route>
 
       {/* Catch-all Fallback */}

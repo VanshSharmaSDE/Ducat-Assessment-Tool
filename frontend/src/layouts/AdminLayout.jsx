@@ -20,7 +20,8 @@ import {
   GraduationCap,
   Layers,
   Building2,
-  CheckSquare
+  CheckSquare,
+  Settings,
 } from 'lucide-react';
 
 export default function AdminLayout() {
@@ -47,15 +48,16 @@ export default function AdminLayout() {
     { label: isSuperAdmin ? 'Results & Reports' : 'Student Results', path: '/admin/results', icon: Award },
     { label: isSuperAdmin ? 'Raw Submissions' : 'Submissions', path: '/admin/submissions', icon: Terminal },
     { label: isSuperAdmin ? 'Admin Profile' : 'Faculty Profile', path: '/admin/profile', icon: User },
+    { label: 'Settings', path: '/admin/settings', icon: Settings },
   ];
 
   return (
-    <div className="min-h-screen bg-[#f4f7fe] text-slate-800 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-[#f4f7fe] dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col md:flex-row">
       {/* Mobile Topbar */}
-      <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200">
+      <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center space-x-2">
           <Code2 className="w-6 h-6 text-[#4f6bf7]" />
-          <span className="font-bold tracking-tight text-slate-800">
+          <span className="font-bold tracking-tight text-slate-800 dark:text-slate-100">
             {isSuperAdmin ? 'SkillCodex Admin' : 'SkillCodex Faculty'}
           </span>
         </div>
@@ -69,13 +71,13 @@ export default function AdminLayout() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed md:sticky top-0 h-screen z-40 w-64 bg-white border-r border-slate-200/70 flex flex-col justify-between transition-transform duration-200 ease-in-out shadow-[2px_0_16px_rgba(0,0,0,0.02)] ${
+        className={`fixed md:sticky top-0 h-screen z-40 w-64 bg-white dark:bg-slate-900 border-r border-slate-200/70 dark:border-slate-800 flex flex-col justify-between transition-transform duration-200 ease-in-out shadow-[2px_0_16px_rgba(0,0,0,0.02)] ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
         <div className="flex flex-col min-h-0 flex-1">
           {/* Logo */}
-          <div className="flex flex-col items-center px-6 py-5 border-b border-slate-100 gap-2 shrink-0">
+          <div className="flex flex-col items-center px-6 py-5 border-b border-slate-100 dark:border-slate-800 gap-2 shrink-0">
             <div className="w-[140px] flex items-center justify-center">
               <img src={logo} alt="SkillCodex Logo" className="w-full h-auto rounded-xl" />
             </div>
@@ -95,7 +97,7 @@ export default function AdminLayout() {
                     `flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all ${
                       isActive
                         ? 'bg-[#4f6bf7] text-white shadow-md shadow-[#4f6bf7]/25'
-                        : 'text-slate-500 hover:text-slate-900 hover:bg-[#f4f7fe]'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-[#f4f7fe] dark:hover:bg-slate-800/60'
                     }`
                   }
                 >
@@ -111,20 +113,20 @@ export default function AdminLayout() {
         </div>
 
         {/* Floating Profile Card at bottom (matching reference image) */}
-        <div className="p-3.5 border-t border-slate-100 shrink-0">
-          <div className="flex items-center justify-between p-2.5 rounded-2xl bg-[#f4f7fe] border border-slate-200/60 shadow-sm">
+        <div className="p-3.5 border-t border-slate-100 dark:border-slate-800 shrink-0">
+          <div className="flex items-center justify-between p-2.5 rounded-2xl bg-[#f4f7fe] dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 shadow-sm">
             <Link to="/admin/profile" className="flex items-center gap-2.5 min-w-0 hover:opacity-85 transition-opacity">
               <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#4f6bf7] to-[#6073ea] text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm shadow-[#4f6bf7]/30">
                 {user?.name?.charAt(0).toUpperCase() || 'A'}
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-bold text-slate-800 truncate">{user?.name}</p>
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{user?.name}</p>
                 <div className="flex items-center gap-1.5">
-                  <span className="inline-block px-1.5 py-0.2 text-[9px] font-extrabold tracking-wider rounded-md bg-rose-50 text-rose-600 border border-rose-200">
+                  <span className="inline-block px-1.5 py-0.2 text-[9px] font-extrabold tracking-wider rounded-md bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
                     {isSuperAdmin ? 'ADMIN' : 'FACULTY'}
                   </span>
                   {(user?.adminId || user?.facultyId) && (
-                    <span className="text-[10px] font-mono text-slate-400 truncate">
+                    <span className="text-[10px] font-mono text-slate-400 dark:text-slate-400 truncate">
                       {user?.adminId || user?.facultyId}
                     </span>
                   )}
@@ -134,7 +136,7 @@ export default function AdminLayout() {
             <button
               onClick={handleLogout}
               title="Logout"
-              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -143,7 +145,7 @@ export default function AdminLayout() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 min-h-screen overflow-y-auto bg-[#f4f7fe]">
+      <main className="flex-1 flex flex-col min-w-0 min-h-screen overflow-y-auto bg-[#f4f7fe] dark:bg-slate-950">
         <Outlet />
       </main>
     </div>
