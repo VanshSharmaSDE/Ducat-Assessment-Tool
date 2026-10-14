@@ -53,11 +53,10 @@ export const createStudent = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newStudent = await User.create({
+    const studentPayload = {
       name: name.trim(),
       studentId: finalStudentId,
       rollNumber: finalStudentId,
-      email: cleanEmail,
       passwordHash: hashedPassword,
       role: 'USER',
       phone: phone ? String(phone).trim() : '',
@@ -69,7 +68,11 @@ export const createStudent = async (req, res) => {
       assignedFaculties: req.user?.role === 'FACULTY' ? [req.user._id] : [],
       isActive: true,
       isVerified: true,
-    });
+    };
+    if (cleanEmail) {
+      studentPayload.email = cleanEmail;
+    }
+    const newStudent = await User.create(studentPayload);
 
     return res.status(201).json({
       success: true,
@@ -211,11 +214,10 @@ export const uploadStudentsExcel = async (req, res) => {
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
-      const student = await User.create({
+      const studentPayload = {
         name: String(name).trim(),
         studentId,
         rollNumber: studentId,
-        email: cleanEmail,
         passwordHash: hashedPassword,
         role: 'USER',
         phone: phone.trim(),
@@ -227,7 +229,11 @@ export const uploadStudentsExcel = async (req, res) => {
         assignedFaculties: req.user?.role === 'FACULTY' ? [req.user._id] : [],
         isActive: true,
         isVerified: true,
-      });
+      };
+      if (cleanEmail) {
+        studentPayload.email = cleanEmail;
+      }
+      const student = await User.create(studentPayload);
 
       createdUsers.push(student.studentId || student.name);
     }
@@ -1240,10 +1246,9 @@ export const createFaculty = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newFaculty = await User.create({
+    const facultyPayload = {
       facultyId: finalFacultyId,
       name: name.trim(),
-      email: cleanEmail,
       passwordHash: hashedPassword,
       role: 'FACULTY',
       batch: department ? String(department).trim() : '',
@@ -1252,7 +1257,11 @@ export const createFaculty = async (req, res) => {
       createdBy: req.user._id,
       isActive: true,
       isVerified: true,
-    });
+    };
+    if (cleanEmail) {
+      facultyPayload.email = cleanEmail;
+    }
+    const newFaculty = await User.create(facultyPayload);
 
     res.status(201).json({
       success: true,
@@ -1467,10 +1476,9 @@ export const uploadFacultyExcel = async (req, res) => {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const faculty = await User.create({
+        const facultyPayload = {
           facultyId,
           name: String(name).trim(),
-          email: email || undefined,
           passwordHash: hashedPassword,
           role: 'FACULTY',
           batch: department.trim(),
@@ -1479,7 +1487,11 @@ export const uploadFacultyExcel = async (req, res) => {
           createdBy: req.user._id,
           isActive: true,
           isVerified: true,
-        });
+        };
+        if (email) {
+          facultyPayload.email = email;
+        }
+        const faculty = await User.create(facultyPayload);
 
         createdFaculty.push(faculty.facultyId);
       }

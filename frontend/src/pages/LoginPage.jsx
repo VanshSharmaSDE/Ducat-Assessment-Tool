@@ -38,8 +38,9 @@ export default function LoginPage() {
     }
   }, [user, navigate]);
 
-  // Check if redirected due to concurrent session login
+  // Check if redirected due to concurrent session login or inactivity timeout
   const isConcurrentLogout = new URLSearchParams(location.search).get('reason') === 'concurrent_session';
+  const isInactivityLogout = new URLSearchParams(location.search).get('reason') === 'inactivity';
   const from = location.state?.from?.pathname;
 
   const handleSubmit = async (e) => {
@@ -153,6 +154,14 @@ export default function LoginPage() {
               <div className="mb-5 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2.5">
                 <AlertCircle className="w-5 h-5 shrink-0 text-amber-600" />
                 <span>Your account was logged in from another device. You have been logged out from this session for security.</span>
+              </div>
+            )}
+
+            {/* Inactivity Session Alert */}
+            {isInactivityLogout && !error && (
+              <div className="mb-5 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2.5">
+                <AlertCircle className="w-5 h-5 shrink-0 text-amber-600" />
+                <span>You have been automatically logged out due to 2 hours of inactivity. Please sign in again.</span>
               </div>
             )}
 

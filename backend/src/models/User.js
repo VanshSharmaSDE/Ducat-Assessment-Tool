@@ -122,16 +122,16 @@ userSchema.index({ email: 1 }, { unique: true, sparse: true });
 
 // Pre-save cleanup for sparse indexes and sync studentId <-> rollNumber
 userSchema.pre('save', function (next) {
-  if (this.email === '' || this.email === null) {
+  if (!this.email || (typeof this.email === 'string' && !this.email.trim())) {
     this.email = undefined;
   }
-  if (this.studentId === '' || this.studentId === null) {
+  if (!this.studentId || (typeof this.studentId === 'string' && !this.studentId.trim())) {
     this.studentId = undefined;
   }
-  if (this.facultyId === '' || this.facultyId === null) {
+  if (!this.facultyId || (typeof this.facultyId === 'string' && !this.facultyId.trim())) {
     this.facultyId = undefined;
   }
-  if (this.adminId === '' || this.adminId === null) {
+  if (!this.adminId || (typeof this.adminId === 'string' && !this.adminId.trim())) {
     this.adminId = undefined;
   }
   if (this.role === 'USER') {
