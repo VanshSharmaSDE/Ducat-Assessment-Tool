@@ -235,5 +235,234 @@ export class QuestionExcelService {
       errors,
     };
   }
+
+  /**
+   * Generates a sample Excel template for bulk MCQ questions uploading
+   */
+  static generateMcqTemplate() {
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Template data with sample MCQs
+    const sampleRows = [
+      {
+        'Question Title': 'What is the time complexity of searching in a balanced Binary Search Tree?',
+        'Description': 'Consider a self-balancing binary search tree (such as AVL or Red-Black tree) containing n elements.',
+        'Difficulty': 'EASY',
+        'Marks': 1,
+        'Option A': 'O(1)',
+        'Option B': 'O(log n)',
+        'Option C': 'O(n)',
+        'Option D': 'O(n log n)',
+        'Option E': '',
+        'Correct Answer': 'B',
+        'Explanation': 'In a balanced BST, the maximum height of the tree is O(log n), so search operation runs in O(log n) time.',
+        'Tags': 'Data Structures, Trees, BST',
+      },
+      {
+        'Question Title': 'Which HTTP status code signifies that a resource was successfully created?',
+        'Description': 'RESTful API standard convention for resource creation response.',
+        'Difficulty': 'EASY',
+        'Marks': 1,
+        'Option A': '200 OK',
+        'Option B': '201 Created',
+        'Option C': '204 No Content',
+        'Option D': '400 Bad Request',
+        'Option E': '',
+        'Correct Answer': 'B',
+        'Explanation': 'HTTP 201 Created status indicates that the request has been fulfilled and has resulted in one or more new resources being created.',
+        'Tags': 'Web, Networking, HTTP, REST',
+      },
+      {
+        'Question Title': 'Which sorting algorithm has a worst-case time complexity of O(n^2)?',
+        'Description': '',
+        'Difficulty': 'MEDIUM',
+        'Marks': 2,
+        'Option A': 'Merge Sort',
+        'Option B': 'Quick Sort',
+        'Option C': 'Heap Sort',
+        'Option D': 'Counting Sort',
+        'Option E': '',
+        'Correct Answer': 'B',
+        'Explanation': 'Quick Sort has average time complexity of O(n log n), but in the worst case (e.g. already sorted array with unbalanced pivot choices) it degrades to O(n^2).',
+        'Tags': 'Algorithms, Sorting, Complexity',
+      },
+    ];
+
+    const wsTemplate = XLSX.utils.json_to_sheet(sampleRows);
+    XLSX.utils.book_append_sheet(wb, wsTemplate, 'MCQ_Template');
+
+    // Sheet 2: Guidelines
+    const guidelines = [
+      { 'Field': 'Question Title', 'Required': 'YES', 'Description': 'The question text / problem statement' },
+      { 'Field': 'Description', 'Required': 'NO', 'Description': 'Optional context, code snippet, or background details' },
+      { 'Field': 'Difficulty', 'Required': 'NO', 'Description': 'EASY, MEDIUM, or HARD (default: MEDIUM)' },
+      { 'Field': 'Marks', 'Required': 'NO', 'Description': 'Marks awarded for correct answer (default: 1)' },
+      { 'Field': 'Option A', 'Required': 'YES', 'Description': 'Text for Option A' },
+      { 'Field': 'Option B', 'Required': 'YES', 'Description': 'Text for Option B' },
+      { 'Field': 'Option C', 'Required': 'NO', 'Description': 'Text for Option C (optional)' },
+      { 'Field': 'Option D', 'Required': 'NO', 'Description': 'Text for Option D (optional)' },
+      { 'Field': 'Option E', 'Required': 'NO', 'Description': 'Text for Option E (optional)' },
+      { 'Field': 'Correct Answer', 'Required': 'YES', 'Description': 'Option letter (A, B, C, D, E) or index (1, 2, 3, 4, 5)' },
+      { 'Field': 'Explanation', 'Required': 'NO', 'Description': 'Detailed explanation displayed in evaluation dossier' },
+      { 'Field': 'Tags', 'Required': 'NO', 'Description': 'Comma-separated keywords or categories' },
+    ];
+
+    const wsGuidelines = XLSX.utils.json_to_sheet(guidelines);
+    XLSX.utils.book_append_sheet(wb, wsGuidelines, 'Guidelines');
+
+    return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  }
+
+  /**
+   * Imports MCQ questions from an uploaded Excel workbook
+   */
+  static async importMcqQuestions(fileBuffer, creatorId) {
+    const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet);
+
+    if (!rows || rows.length === 0) {
+      throw new Error('Uploaded Excel sheet is empty or contains no valid rows.');
+    }
+
+    const createdQuestions = [];
+    const errors = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNum = i + 2;
+
+      const title = String(
+        row['Question Title'] || row['Title'] || row['Question'] || row['title'] || ''
+      ).trim();
+      const description = String(row['Description'] || row['description'] || '').trim();
+
+      if (!title) {
+        errors.push(`Row ${rowNum}: Question Title is required.`);
+        continue;
+      }
+
+      // Collect options: Option A, Option B, Option C, Option D, Option E
+      const rawOptions = [];
+      const optionKeys = [
+        ['Option A', 'OptionA', 'optionA', 'option_a', 'A'],
+        ['Option B', 'OptionB', 'optionB', 'option_b', 'B'],
+        ['Option C', 'OptionC', 'optionC', 'option_c', 'C'],
+        ['Option D', 'OptionD', 'optionD', 'option_d', 'D'],
+        ['Option E', 'OptionE', 'optionE', 'option_e', 'E'],
+      ];
+
+      for (let optIdx = 0; optIdx < optionKeys.length; optIdx++) {
+        const keys = optionKeys[optIdx];
+        let val = '';
+        for (const k of keys) {
+          if (row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== '') {
+            val = String(row[k]).trim();
+            break;
+          }
+        }
+        if (val) {
+          rawOptions.push({ text: val });
+        }
+      }
+
+      if (rawOptions.length < 2) {
+        errors.push(`Row ${rowNum} ("${title.slice(0, 30)}..."): At least 2 options (Option A and Option B) are required.`);
+        continue;
+      }
+
+      // Parse Correct Answer
+      const rawCorrect =
+        row['Correct Answer'] ||
+        row['CorrectAnswer'] ||
+        row['correctAnswer'] ||
+        row['Correct Option'] ||
+        row['CorrectOption'] ||
+        row['Answer'] ||
+        row['answer'];
+
+      if (rawCorrect === undefined || rawCorrect === null || String(rawCorrect).trim() === '') {
+        errors.push(`Row ${rowNum} ("${title.slice(0, 30)}..."): Correct Answer is required.`);
+        continue;
+      }
+
+      let correctIndex = -1;
+      const strCorrect = String(rawCorrect).trim().toUpperCase();
+
+      // Check letter: 'A' -> 0, 'B' -> 1, 'C' -> 2, etc.
+      if (/^[A-E]$/.test(strCorrect)) {
+        correctIndex = strCorrect.charCodeAt(0) - 65;
+      } else if (/^\d+$/.test(strCorrect)) {
+        const num = parseInt(strCorrect, 10);
+        // If 1-based (1..N)
+        if (num >= 1 && num <= rawOptions.length) {
+          correctIndex = num - 1;
+        } else if (num === 0) {
+          correctIndex = 0;
+        }
+      } else {
+        // Try matching option text
+        const matched = rawOptions.findIndex((o) => o.text.trim().toLowerCase() === strCorrect.toLowerCase());
+        if (matched !== -1) {
+          correctIndex = matched;
+        }
+      }
+
+      if (correctIndex < 0 || correctIndex >= rawOptions.length) {
+        errors.push(
+          `Row ${rowNum} ("${title.slice(0, 30)}..."): Invalid Correct Answer "${rawCorrect}". Must be A-${String.fromCharCode(
+            64 + rawOptions.length
+          )} or 1-${rawOptions.length}.`
+        );
+        continue;
+      }
+
+      let difficulty = String(row['Difficulty'] || row['difficulty'] || 'MEDIUM').toUpperCase().trim();
+      if (!['EASY', 'MEDIUM', 'HARD'].includes(difficulty)) {
+        difficulty = 'MEDIUM';
+      }
+
+      const marks = Number(row['Marks'] || row['marks'] || 1) || 1;
+      const explanation = String(row['Explanation'] || row['explanation'] || '').trim();
+
+      // Tags
+      let tags = [];
+      const rawTags = row['Tags'] || row['tags'] || row['Category'];
+      if (rawTags) {
+        tags = String(rawTags).split(',').map((t) => t.trim()).filter(Boolean);
+      }
+
+      try {
+        const question = await Question.create({
+          title,
+          description,
+          type: 'MCQ',
+          difficulty,
+          marks,
+          options: rawOptions,
+          correctAnswer: correctIndex,
+          explanation,
+          tags,
+          createdBy: creatorId,
+        });
+
+        createdQuestions.push({
+          id: question._id,
+          title: question.title,
+          optionsCount: rawOptions.length,
+        });
+      } catch (err) {
+        errors.push(`Row ${rowNum} ("${title.slice(0, 30)}..."): ${err.message}`);
+      }
+    }
+
+    return {
+      importedCount: createdQuestions.length,
+      failedCount: errors.length,
+      createdQuestions,
+      errors,
+    };
+  }
 }
 export default QuestionExcelService;

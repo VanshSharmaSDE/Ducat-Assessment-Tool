@@ -175,13 +175,21 @@ export class ResultService {
       return {
         questionId,
         questionTitle: q ? q.title : 'Question',
+        questionType: q?.type || res?.questionType || 'CODING',
         questionDifficulty: q ? q.difficulty : 'MEDIUM',
+        options: q?.options || [],
+        correctAnswer: (isAdmin || (currentUser && ['ADMIN', 'FACULTY'].includes(currentUser.role))) ? q?.correctAnswer : undefined,
+        explanation: q?.explanation || '',
         maxMarks: questionMaxMarks,
         language: sub?.language || 'code',
         submittedCode: sub?.sourceCode || '',
+        selectedOption: sub?.selectedOption !== undefined && sub?.selectedOption !== null ? sub.selectedOption : res?.selectedOption,
         submissionStatus: sub ? sub.status : 'NOT_SUBMITTED',
         result: res
           ? {
+              questionType: res.questionType || q?.type || 'CODING',
+              selectedOption: res.selectedOption,
+              isCorrect: res.isCorrect,
               passedTests: res.passedTests,
               totalTests: res.totalTests,
               score: res.score,

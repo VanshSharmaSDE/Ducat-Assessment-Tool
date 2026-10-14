@@ -170,6 +170,9 @@ export class QuestionService {
     if (currentUser && currentUser.role === 'FACULTY') {
       filter.createdBy = currentUser._id;
     }
+    if (query.type) {
+      filter.type = query.type.toUpperCase();
+    }
     if (query.difficulty) {
       filter.difficulty = query.difficulty;
     }

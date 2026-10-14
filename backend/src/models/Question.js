@@ -22,6 +22,23 @@ const questionSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Question description is required'],
     },
+    type: {
+      type: String,
+      enum: ['CODING', 'MCQ'],
+      default: 'CODING',
+      index: true,
+    },
+    // MCQ specific fields
+    options: [
+      {
+        text: { type: String, required: true },
+      },
+    ],
+    correctAnswer: {
+      type: Number, // 0-indexed index of correct option in options array
+      default: null,
+    },
+    // Coding specific fields
     inputFormat: {
       type: String,
       default: '',
@@ -50,6 +67,10 @@ const questionSchema = new mongoose.Schema(
       required: true,
       default: 20,
       min: 1,
+    },
+    allowCodeRun: {
+      type: Boolean,
+      default: null, // null means inherit exam setting, true/false means per-question override
     },
     allowedLanguages: {
       type: [String],

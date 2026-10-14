@@ -13,7 +13,11 @@ import {
   Trash2,
   Plus,
   AlertCircle,
-  Save
+  Save,
+  CheckSquare,
+  Code2,
+  Terminal,
+  Filter
 } from 'lucide-react';
 
 const toLocalDatetimeInput = (dateVal) => {
@@ -41,6 +45,7 @@ export default function AdminExamWizardPage() {
 
   // Available questions from bank
   const [availableQuestions, setAvailableQuestions] = useState([]);
+  const [questionBankTab, setQuestionBankTab] = useState('ALL'); // 'ALL' | 'CODING' | 'MCQ'
 
   // Form State
   const [formData, setFormData] = useState({
@@ -84,11 +89,22 @@ export default function AdminExamWizardPage() {
               allowCodeRun: ex.allowCodeRun !== undefined ? Boolean(ex.allowCodeRun) : false,
               isPublished: ex.isPublished !== undefined ? Boolean(ex.isPublished) : true,
               questions: Array.isArray(ex.questions)
-                ? ex.questions.map((q) => ({
-                    questionId: q._id || q.questionId,
-                    marks: Number(q.marks) || 20,
-                    title: q.title || 'Question',
-                  }))
+                ? ex.questions.map((q) => {
+                    const qDoc = (qRes.data?.data?.questions || []).find(
+                      (item) => item._id === (q._id || q.questionId)
+                    );
+                    return {
+                      questionId: q._id || q.questionId,
+                      marks: Number(q.marks) || (qDoc?.marks || 20),
+                      title: q.title || qDoc?.title || 'Question',
+                      type: q.type || qDoc?.type || 'CODING',
+                      allowCodeRun: q.allowCodeRun !== undefined && q.allowCodeRun !== null
+                        ? Boolean(q.allowCodeRun)
+                        : (qDoc?.allowCodeRun !== undefined && qDoc?.allowCodeRun !== null
+                            ? Boolean(qDoc.allowCodeRun)
+                            : Boolean(ex.allowCodeRun)),
+                    };
+                  })
                 : [],
             });
           }
@@ -104,12 +120,17 @@ export default function AdminExamWizardPage() {
 
   const handleAddQuestion = (q) => {
     if (formData.questions.some((item) => item.questionId === q._id)) return;
+    const isCoding = (q.type || 'CODING') === 'CODING';
     const newQuestions = [
       ...formData.questions,
       {
         questionId: q._id,
-        marks: q.marks || 20,
+        marks: q.marks || (isCoding ? 20 : 5),
         title: q.title,
+        type: q.type || 'CODING',
+        allowCodeRun: isCoding
+          ? (q.allowCodeRun !== undefined && q.allowCodeRun !== null ? Boolean(q.allowCodeRun) : Boolean(formData.allowCodeRun))
+          : false,
       },
     ];
 
@@ -140,6 +161,16 @@ export default function AdminExamWizardPage() {
       ...formData,
       questions: newQuestions,
       totalMarks: total,
+    });
+  };
+
+  const handleQuestionCodeRunToggle = (qId) => {
+    const newQuestions = formData.questions.map((item) =>
+      item.questionId === qId ? { ...item, allowCodeRun: !item.allowCodeRun } : item
+    );
+    setFormData({
+      ...formData,
+      questions: newQuestions,
     });
   };
 
@@ -178,6 +209,7 @@ export default function AdminExamWizardPage() {
           questionId: q.questionId,
           marks: Number(q.marks),
           order: idx + 1,
+          allowCodeRun: q.type === 'MCQ' ? false : (q.allowCodeRun !== undefined ? Boolean(q.allowCodeRun) : null),
         })),
       };
 
@@ -436,7 +468,13 @@ export default function AdminExamWizardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-base font-bold text-slate-800">Step 3: Select Assessment Questions</h2>
-                <p className="text-xs text-slate-500 font-medium">Total Marks: {formData.totalMarks}</p>
+                <p className="text-xs text-slate-500 font-medium">
+                  Total Marks: <span className="font-bold text-blue-600">{formData.totalMarks}</span> •{' '}
+                  <span className="text-slate-600">
+                    {formData.questions.filter((q) => q.type === 'CODING').length} Coding,{' '}
+                    {formData.questions.filter((q) => q.type === 'MCQ').length} MCQ
+                  </span>
+                </p>
               </div>
             </div>
 
@@ -447,78 +485,194 @@ export default function AdminExamWizardPage() {
               </h4>
 
               {formData.questions.length === 0 ? (
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500 text-center">
-                  No questions selected yet. Choose from the question bank below.
+                <div className="p-5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500 text-center">
+                  No questions selected yet. Choose from the Coding or MCQ question banks below.
                 </div>
               ) : (
-                <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
-                  {formData.questions.map((q, idx) => (
-                    <div
-                      key={q.questionId}
-                      className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-4 text-xs"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="font-mono text-blue-600 font-bold">#{idx + 1}</span>
-                        <span className="font-semibold text-slate-800 truncate">{q.title}</span>
-                      </div>
+                <div className="max-h-72 overflow-y-auto space-y-2 pr-2">
+                  {formData.questions.map((q, idx) => {
+                    const isCoding = (q.type || 'CODING') === 'CODING';
+                    const hasCodeRun = Boolean(q.allowCodeRun);
 
-                      <div className="flex items-center gap-3 shrink-0">
-                        <div className="flex items-center gap-1.5">
-                          <label className="text-slate-500">Marks:</label>
-                          <input
-                            type="number"
-                            min={1}
-                            value={q.marks}
-                            onChange={(e) => handleQuestionMarksChange(q.questionId, e.target.value)}
-                            className="w-16 px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-800 text-center focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                          />
+                    return (
+                      <div
+                        key={q.questionId}
+                        className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:border-slate-300 transition-colors"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="font-mono text-blue-600 font-bold shrink-0">#{idx + 1}</span>
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${
+                              isCoding
+                                ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                                : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                            }`}
+                          >
+                            {isCoding ? 'Coding' : 'MCQ'}
+                          </span>
+                          <span className="font-semibold text-slate-800 truncate" title={q.title}>
+                            {q.title}
+                          </span>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveQuestion(q.questionId)}
-                          className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+
+                        <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
+                          {/* Per-Question Code Run Toggle for Coding Questions */}
+                          {isCoding && (
+                            <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-2 py-1 rounded-lg">
+                              <span className="text-[10px] font-semibold text-slate-600">Run Code:</span>
+                              <button
+                                type="button"
+                                onClick={() => handleQuestionCodeRunToggle(q.questionId)}
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                                  hasCodeRun
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : 'bg-slate-100 text-slate-400 border border-slate-200'
+                                }`}
+                                title={hasCodeRun ? 'Candidate can run test code' : 'Code run disabled for this question'}
+                              >
+                                {hasCodeRun ? 'Allowed' : 'Locked'}
+                              </button>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-1.5">
+                            <label className="text-slate-500 text-[11px]">Marks:</label>
+                            <input
+                              type="number"
+                              min={1}
+                              value={q.marks}
+                              onChange={(e) => handleQuestionMarksChange(q.questionId, e.target.value)}
+                              className="w-14 px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-800 text-center focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                            />
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveQuestion(q.questionId)}
+                            className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
+                            title="Remove Question"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
 
-            {/* Question Bank Picker */}
-            <div className="space-y-2 pt-4 border-t border-slate-200">
-              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Available In Question Bank
-              </h4>
-              <div className="max-h-60 overflow-y-auto space-y-1.5 pr-2">
-                {availableQuestions.map((q) => {
-                  const isAdded = formData.questions.some((item) => item.questionId === q._id);
-                  return (
-                    <div
-                      key={q._id}
-                      className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs hover:border-slate-300 transition-colors"
-                    >
-                      <div>
-                        <span className="font-semibold text-slate-800">{q.title}</span>
-                        <span className="ml-2 text-[10px] text-slate-500 font-mono">({q.difficulty} • {q.marks} Marks)</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleAddQuestion(q)}
-                        disabled={isAdded}
-                        className={`px-3 py-1 rounded-lg text-xs font-semibold ${
-                          isAdded
-                            ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                            : 'bg-blue-600 hover:bg-blue-500 text-white font-bold transition-colors'
-                        }`}
+            {/* Question Bank Picker with Filter Tabs */}
+            <div className="space-y-3 pt-4 border-t border-slate-200">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Available in Question Banks
+                </h4>
+
+                {/* Question Type Filter Tabs */}
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setQuestionBankTab('ALL')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      questionBankTab === 'ALL'
+                        ? 'bg-white text-blue-600 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    All ({availableQuestions.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuestionBankTab('CODING')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                      questionBankTab === 'CODING'
+                        ? 'bg-white text-blue-600 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <Code2 className="w-3.5 h-3.5" />
+                    Coding ({availableQuestions.filter((q) => (q.type || 'CODING') === 'CODING').length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuestionBankTab('MCQ')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                      questionBankTab === 'MCQ'
+                        ? 'bg-white text-blue-600 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <CheckSquare className="w-3.5 h-3.5" />
+                    MCQ ({availableQuestions.filter((q) => q.type === 'MCQ').length})
+                  </button>
+                </div>
+              </div>
+
+              <div className="max-h-64 overflow-y-auto space-y-2 pr-2">
+                {availableQuestions
+                  .filter((q) => {
+                    const qType = q.type || 'CODING';
+                    if (questionBankTab === 'CODING') return qType === 'CODING';
+                    if (questionBankTab === 'MCQ') return qType === 'MCQ';
+                    return true;
+                  })
+                  .map((q) => {
+                    const isAdded = formData.questions.some((item) => item.questionId === q._id);
+                    const isCoding = (q.type || 'CODING') === 'CODING';
+
+                    return (
+                      <div
+                        key={q._id}
+                        className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs hover:border-slate-300 transition-colors"
                       >
-                        {isAdded ? 'Added' : '+ Add'}
-                      </button>
-                    </div>
-                  );
-                })}
+                        <div className="min-w-0 pr-3">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase shrink-0 ${
+                                isCoding
+                                  ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                                  : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                              }`}
+                            >
+                              {isCoding ? 'Coding' : 'MCQ'}
+                            </span>
+                            <span className="font-semibold text-slate-800 truncate">{q.title}</span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
+                            <span>{q.difficulty}</span>
+                            <span>•</span>
+                            <span className="font-mono">{q.marks} Marks</span>
+                            {isCoding && q.testCaseCount !== undefined && (
+                              <>
+                                <span>•</span>
+                                <span>{q.testCaseCount} Test Cases</span>
+                              </>
+                            )}
+                            {!isCoding && q.options?.length > 0 && (
+                              <>
+                                <span>•</span>
+                                <span>{q.options.length} Options</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleAddQuestion(q)}
+                          disabled={isAdded}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${
+                            isAdded
+                              ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                              : 'bg-blue-600 hover:bg-blue-500 text-white font-bold transition-colors shadow-xs'
+                          }`}
+                        >
+                          {isAdded ? 'Added' : '+ Add Question'}
+                        </button>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           </div>
@@ -544,7 +698,9 @@ export default function AdminExamWizardPage() {
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200">
                 <span className="text-slate-500">Problems Selected:</span>
-                <span className="font-bold text-blue-600">{formData.questions.length} Questions</span>
+                <span className="font-bold text-blue-600">
+                  {formData.questions.length} Questions ({formData.questions.filter((q) => q.type === 'CODING').length} Coding, {formData.questions.filter((q) => q.type === 'MCQ').length} MCQ)
+                </span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200">
                 <span className="text-slate-500">Scheduled:</span>
@@ -553,11 +709,19 @@ export default function AdminExamWizardPage() {
                 </span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200">
-                <span className="text-slate-500">Candidate Code Testing:</span>
+                <span className="text-slate-500">Candidate Code Testing (Global):</span>
                 <span className={`font-semibold ${formData.allowCodeRun ? 'text-emerald-600' : 'text-slate-500'}`}>
-                  {formData.allowCodeRun ? 'Enabled (Run with custom input)' : 'Disabled'}
+                  {formData.allowCodeRun ? 'Enabled' : 'Disabled (Customized per question)'}
                 </span>
               </div>
+              {formData.questions.some((q) => q.type === 'CODING' && q.allowCodeRun) && (
+                <div className="flex justify-between py-1 border-b border-slate-200 text-emerald-700">
+                  <span className="text-slate-500">Questions with Code Run Allowed:</span>
+                  <span className="font-bold font-mono">
+                    {formData.questions.filter((q) => q.type === 'CODING' && q.allowCodeRun).length} / {formData.questions.filter((q) => q.type === 'CODING').length} Coding Problems
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">

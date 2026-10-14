@@ -27,14 +27,22 @@ const submissionSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    questionType: {
+      type: String,
+      enum: ['CODING', 'MCQ'],
+      default: 'CODING',
+    },
     language: {
       type: String,
-      enum: SUPPORTED_LANGUAGES,
-      required: true,
+      default: 'java',
     },
     sourceCode: {
       type: String,
-      required: true,
+      default: '',
+    },
+    selectedOption: {
+      type: Number, // 0-indexed choice selected by the candidate for MCQ
+      default: null,
     },
     status: {
       type: String,

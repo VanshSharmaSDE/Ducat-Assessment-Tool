@@ -183,10 +183,10 @@ export class ExamService {
     if (now < exam.startDate) computedStatus = 'UPCOMING';
     if (now > exam.endDate) computedStatus = 'EXPIRED';
 
-    // Fetch questions with only public fields (never hidden test cases!)
+    // Fetch questions with only public fields (never hidden test cases or correctAnswer!)
     const questionIds = exam.questions.map((q) => q.questionId);
     const questions = await Question.find({ _id: { $in: questionIds } }).select(
-      '_id title description inputFormat outputFormat constraints examples explanation difficulty marks allowedLanguages starterCode timeLimit memoryLimit comparisonMode'
+      '_id title description type options inputFormat outputFormat constraints examples explanation difficulty marks allowCodeRun allowedLanguages starterCode timeLimit memoryLimit comparisonMode'
     );
 
     // Map questions in configured order
@@ -196,6 +196,15 @@ export class ExamService {
         if (!qData) return null;
         const qObj = qData.toObject();
         qObj.marks = eq.marks || qObj.marks;
+
+        // Effective allowCodeRun: Check question-level override on exam item first, then question doc, then exam global
+        const examItemOverride = eq.allowCodeRun !== undefined && eq.allowCodeRun !== null ? Boolean(eq.allowCodeRun) : null;
+        const questionDocOverride = qObj.allowCodeRun !== undefined && qObj.allowCodeRun !== null ? Boolean(qObj.allowCodeRun) : null;
+        const effectiveAllowCodeRun = examItemOverride !== null 
+          ? examItemOverride 
+          : (questionDocOverride !== null ? questionDocOverride : Boolean(exam.allowCodeRun));
+
+        qObj.allowCodeRun = effectiveAllowCodeRun;
         return qObj;
       })
       .filter(Boolean);
@@ -444,10 +453,70 @@ export class ExamService {
         continue;
       }
 
-      // Find question to check allowed languages
       const question = await Question.findById(ans.questionId);
       if (!question) continue;
 
+      const qType = question.type || 'CODING';
+
+      // 1. Handle MCQ Questions: Immediate Synchronous Auto-Evaluation
+      if (qType === 'MCQ') {
+        const selectedOption = ans.selectedOption !== undefined && ans.selectedOption !== null && ans.selectedOption !== ''
+          ? Number(ans.selectedOption)
+          : null;
+
+        const isCorrect = selectedOption !== null && Number(selectedOption) === Number(question.correctAnswer);
+        
+        // Find assigned marks in this exam
+        const examQ = exam.questions.find((eq) => eq.questionId.toString() === question._id.toString());
+        const assignedMarks = Number(examQ?.marks || question.marks || 1);
+        const earnedScore = isCorrect ? assignedMarks : 0;
+        const mcqStatus = isCorrect ? 'PASSED' : 'WRONG_ANSWER';
+
+        // Upsert Submission
+        let submission = await Submission.findOne({ attemptId: attempt._id, questionId: ans.questionId });
+        if (!submission) {
+          submission = await Submission.create({
+            attemptId: attempt._id,
+            userId,
+            examId: exam._id,
+            questionId: ans.questionId,
+            questionType: 'MCQ',
+            selectedOption,
+            status: 'COMPLETED',
+            submittedAt: now,
+          });
+        } else {
+          submission.questionType = 'MCQ';
+          submission.selectedOption = selectedOption;
+          submission.status = 'COMPLETED';
+          submission.submittedAt = now;
+          await submission.save();
+        }
+
+        // Upsert SubmissionResult
+        await (await import('../models/SubmissionResult.js')).SubmissionResult.findOneAndUpdate(
+          { submissionId: submission._id },
+          {
+            submissionId: submission._id,
+            attemptId: attempt._id,
+            questionId: ans.questionId,
+            questionType: 'MCQ',
+            selectedOption,
+            isCorrect,
+            passedTests: isCorrect ? 1 : 0,
+            totalTests: 1,
+            score: earnedScore,
+            maxScore: assignedMarks,
+            status: mcqStatus,
+          },
+          { upsert: true, new: true }
+        );
+
+        createdSubmissions.push(submission);
+        continue;
+      }
+
+      // 2. Handle Coding Questions: Queue for Docker execution
       if (!question.allowedLanguages.includes(ans.language)) {
         logger.warn(`Language ${ans.language} not allowed for question ${question._id}`);
       }
@@ -460,13 +529,15 @@ export class ExamService {
           userId,
           examId: exam._id,
           questionId: ans.questionId,
-          language: ans.language,
+          questionType: 'CODING',
+          language: ans.language || 'java',
           sourceCode: ans.code || '',
           status: 'QUEUED',
           submittedAt: now,
         });
       } else {
-        submission.language = ans.language;
+        submission.questionType = 'CODING';
+        submission.language = ans.language || 'java';
         submission.sourceCode = ans.code || '';
         submission.status = 'QUEUED';
         submission.submittedAt = now;
@@ -488,18 +559,16 @@ export class ExamService {
         submissionId: submission._id.toString(),
         attemptId: attempt._id.toString(),
         questionId: ans.questionId.toString(),
-        language: ans.language,
+        language: ans.language || 'java',
         sourceCode: ans.code || '',
       });
 
       createdSubmissions.push(submission);
     }
 
-    // If answers was empty, immediately finalize with score 0
-    if (createdSubmissions.length === 0) {
-      const { checkAndFinalizeExamAttempt } = await import('../workers/evaluationWorker.js');
-      await checkAndFinalizeExamAttempt(attempt._id);
-    }
+    // Check if all submissions (e.g. all MCQ or empty) are already completed!
+    const { checkAndFinalizeExamAttempt } = await import('../workers/evaluationWorker.js');
+    await checkAndFinalizeExamAttempt(attempt._id);
 
     return {
       attemptId: attempt._id,
@@ -520,9 +589,28 @@ export class ExamService {
 
     const isPrivileged = currentUser && ['ADMIN', 'FACULTY'].includes(currentUser.role);
 
-    // If candidate, check if exam allows code run
-    if (!exam.allowCodeRun && !isPrivileged) {
-      const error = new Error('Code testing is disabled for this examination.');
+    // Fetch question to check question-level allowCodeRun override and limits
+    let question = null;
+    if (questionId) {
+      question = await Question.findById(questionId);
+    }
+
+    // Determine effective allowCodeRun for this question
+    let effectiveAllowCodeRun = Boolean(exam.allowCodeRun);
+    if (questionId) {
+      const examQuestion = (exam.questions || []).find(
+        (eq) => (eq.questionId?._id || eq.questionId || '').toString() === questionId.toString()
+      );
+      if (examQuestion && examQuestion.allowCodeRun !== undefined && examQuestion.allowCodeRun !== null) {
+        effectiveAllowCodeRun = Boolean(examQuestion.allowCodeRun);
+      } else if (question && question.allowCodeRun !== undefined && question.allowCodeRun !== null) {
+        effectiveAllowCodeRun = Boolean(question.allowCodeRun);
+      }
+    }
+
+    // If candidate, check if code run is permitted for this question
+    if (!effectiveAllowCodeRun && !isPrivileged) {
+      const error = new Error('Code testing is disabled for this question.');
       error.statusCode = 403;
       error.errorCode = 'CODE_RUN_DISABLED';
       throw error;

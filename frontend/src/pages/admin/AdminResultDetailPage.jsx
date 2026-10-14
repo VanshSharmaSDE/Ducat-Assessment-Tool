@@ -154,99 +154,232 @@ export default function AdminResultDetailPage() {
           {questionBreakdown.map((item, idx) => {
             const res = item.result;
             const status = res ? res.status : 'PENDING';
+            const isMcq = item.questionType === 'MCQ';
 
             return (
               <div key={item.questionId} className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-mono font-bold text-blue-600">#{idx + 1}</span>
-                    <span className="font-bold text-slate-800 text-base">{item.questionTitle}</span>
-                    <span className="text-xs font-mono uppercase text-blue-700 bg-blue-100 px-2 py-0.5 rounded border border-blue-200">
-                      {item.language}
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
+                        isMcq
+                          ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                          : 'bg-blue-100 text-blue-700 border border-blue-200'
+                      }`}
+                    >
+                      {isMcq ? 'MCQ' : 'Coding'}
                     </span>
+                    <span className="font-bold text-slate-800 text-base">{item.questionTitle}</span>
+                    {!isMcq && (
+                      <span className="text-xs font-mono uppercase text-blue-700 bg-blue-100 px-2 py-0.5 rounded border border-blue-200">
+                        {item.language}
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-200 text-slate-700">
-                      {status}
-                    </span>
-                    <button
-                      onClick={() => setActiveCodeModal(item)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg transition-colors shadow-xs cursor-pointer"
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                        isMcq
+                          ? status === 'PASSED'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : status === 'WRONG_ANSWER'
+                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                            : 'bg-slate-200 text-slate-700'
+                          : 'bg-slate-200 text-slate-700'
+                      }`}
                     >
-                      <Eye className="w-3.5 h-3.5" /> Inspect Code
-                    </button>
+                      {isMcq ? (status === 'PASSED' ? 'CORRECT' : status === 'WRONG_ANSWER' ? 'INCORRECT' : status) : status}
+                    </span>
+                    {!isMcq && (
+                      <button
+                        onClick={() => setActiveCodeModal(item)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg transition-colors shadow-xs cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> Inspect Code
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                  <div className="p-2.5 bg-white border border-slate-200 rounded-lg shadow-xs">
-                    <span className="text-slate-500 block">Score:</span>
-                    <span className="text-slate-800 font-mono font-bold">{res?.score || 0} / {item.maxMarks}</span>
-                  </div>
-                  <div className="p-2.5 bg-white border border-slate-200 rounded-lg shadow-xs">
-                    <span className="text-slate-500 block">Tests Passed:</span>
-                    <span className="text-slate-800 font-mono font-bold">{res?.passedTests || 0} / {res?.totalTests || 0}</span>
-                  </div>
-                  <div className="p-2.5 bg-white border border-slate-200 rounded-lg shadow-xs">
-                    <span className="text-slate-500 block">Execution Time:</span>
-                    <span className="text-slate-800 font-mono font-bold">{res?.executionTime || 0}s</span>
-                  </div>
-                  <div className="p-2.5 bg-white border border-slate-200 rounded-lg shadow-xs">
-                    <span className="text-slate-500 block">Memory Used:</span>
-                    <span className="text-slate-800 font-mono font-bold">{res?.memoryUsed || 0} MB</span>
-                  </div>
-                </div>
-
-                {/* Compiler Output if any */}
-                {res?.compileOutput && (
-                  <div className="p-3 rounded-lg bg-purple-50 border border-purple-200 text-xs font-mono text-purple-900">
-                    <p className="font-bold text-purple-700 mb-1">Compilation Output:</p>
-                    <pre className="whitespace-pre-wrap">{res.compileOutput}</pre>
-                  </div>
-                )}
-
-                {/* Admin view: Full test case execution breakdown (including hidden) */}
-                {res?.testResults?.length > 0 && (
-                  <div className="space-y-2 pt-2">
-                    <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      All Test Cases (Admin Full View)
-                    </h5>
-                    <div className="space-y-2">
-                      {res.testResults.map((tc, tcIdx) => (
-                        <div
-                          key={tcIdx}
-                          className="p-3 rounded-xl bg-white border border-slate-200 text-xs space-y-1.5 shadow-xs"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              {tc.passed ? <Check className="w-4 h-4 text-emerald-600" /> : <X className="w-4 h-4 text-rose-600" />}
-                              <span className="font-semibold text-slate-800">
-                                Test Case #{tcIdx + 1} {tc.isHidden ? '(Hidden)' : '(Public)'}
-                              </span>
-                            </div>
-                            <span className="font-mono text-slate-600 font-bold">{tc.status}</span>
-                          </div>
-
-                          {tc.input && (
-                            <div className="text-[11px] font-mono text-slate-500">
-                              <span>Input: </span><code className="text-slate-700 bg-slate-100 px-1 py-0.5 rounded">{tc.input}</code>
-                            </div>
-                          )}
-                          {tc.expectedOutput && (
-                            <div className="text-[11px] font-mono text-slate-500">
-                              <span>Expected: </span><code className="text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded">{tc.expectedOutput}</code>
-                            </div>
-                          )}
-                          {tc.actualOutput && (
-                            <div className="text-[11px] font-mono text-slate-500">
-                              <span>Actual: </span><code className="text-slate-700 bg-slate-100 px-1 py-0.5 rounded">{tc.actualOutput}</code>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                {/* MCQ Question View */}
+                {isMcq ? (
+                  <div className="space-y-4 pt-1">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                      <div className="p-2.5 bg-white border border-slate-200 rounded-lg shadow-xs">
+                        <span className="text-slate-500 block">Score:</span>
+                        <span className="text-slate-800 font-mono font-bold">
+                          {res?.score || 0} / {item.maxMarks}
+                        </span>
+                      </div>
+                      <div className="p-2.5 bg-white border border-slate-200 rounded-lg shadow-xs">
+                        <span className="text-slate-500 block">Candidate Answer:</span>
+                        <span className="text-slate-800 font-mono font-bold">
+                          {item.selectedOption !== null && item.selectedOption !== undefined
+                            ? `Option ${String.fromCharCode(65 + Number(item.selectedOption))}`
+                            : 'No Selection'}
+                        </span>
+                      </div>
+                      <div className="p-2.5 bg-white border border-slate-200 rounded-lg shadow-xs">
+                        <span className="text-slate-500 block">Correct Answer:</span>
+                        <span className="text-emerald-700 font-mono font-bold">
+                          {item.correctAnswer !== null && item.correctAnswer !== undefined
+                            ? `Option ${String.fromCharCode(65 + Number(item.correctAnswer))}`
+                            : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="p-2.5 bg-white border border-slate-200 rounded-lg shadow-xs">
+                        <span className="text-slate-500 block">Evaluation:</span>
+                        <span className={`font-mono font-bold ${status === 'PASSED' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {status === 'PASSED' ? 'Passed (+Full Marks)' : 'Wrong (0 Marks)'}
+                        </span>
+                      </div>
                     </div>
+
+                    {/* Options list showing candidate selection & correct answer */}
+                    {item.options?.length > 0 && (
+                      <div className="space-y-2">
+                        <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                          Options & Evaluation Breakdown
+                        </h5>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {item.options.map((opt, oIdx) => {
+                            const isSelected = item.selectedOption === oIdx;
+                            const isCorrect = item.correctAnswer === oIdx;
+
+                            let borderStyle = 'bg-white border-slate-200 text-slate-700';
+                            if (isCorrect) {
+                              borderStyle = 'bg-emerald-50/80 border-emerald-300 text-emerald-950 font-medium';
+                            } else if (isSelected && !isCorrect) {
+                              borderStyle = 'bg-rose-50/80 border-rose-300 text-rose-950 font-medium';
+                            }
+
+                            return (
+                              <div
+                                key={oIdx}
+                                className={`p-3 rounded-xl border text-xs flex items-center justify-between shadow-xs ${borderStyle}`}
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <span
+                                    className={`w-6 h-6 rounded flex items-center justify-center font-bold text-xs ${
+                                      isCorrect
+                                        ? 'bg-emerald-600 text-white'
+                                        : isSelected
+                                        ? 'bg-rose-600 text-white'
+                                        : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                    }`}
+                                  >
+                                    {String.fromCharCode(65 + oIdx)}
+                                  </span>
+                                  <span>{opt.text}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {isCorrect && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                      <Check className="w-3 h-3 text-emerald-700" /> Correct Answer
+                                    </span>
+                                  )}
+                                  {isSelected && (
+                                    <span
+                                      className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                        isCorrect
+                                          ? 'bg-emerald-200 text-emerald-900 border-emerald-300'
+                                          : 'bg-rose-100 text-rose-800 border-rose-200'
+                                      }`}
+                                    >
+                                      Candidate Selected
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Explanation */}
+                    {item.explanation && (
+                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs space-y-1">
+                        <span className="font-bold text-blue-900 block">Explanation / Rationale:</span>
+                        <p className="text-blue-800 whitespace-pre-wrap">{item.explanation}</p>
+                      </div>
+                    )}
                   </div>
+                ) : (
+                  /* Coding Question View */
+                  <>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                      <div className="p-2.5 bg-white border border-slate-200 rounded-lg shadow-xs">
+                        <span className="text-slate-500 block">Score:</span>
+                        <span className="text-slate-800 font-mono font-bold">{res?.score || 0} / {item.maxMarks}</span>
+                      </div>
+                      <div className="p-2.5 bg-white border border-slate-200 rounded-lg shadow-xs">
+                        <span className="text-slate-500 block">Tests Passed:</span>
+                        <span className="text-slate-800 font-mono font-bold">{res?.passedTests || 0} / {res?.totalTests || 0}</span>
+                      </div>
+                      <div className="p-2.5 bg-white border border-slate-200 rounded-lg shadow-xs">
+                        <span className="text-slate-500 block">Execution Time:</span>
+                        <span className="text-slate-800 font-mono font-bold">{res?.executionTime || 0}s</span>
+                      </div>
+                      <div className="p-2.5 bg-white border border-slate-200 rounded-lg shadow-xs">
+                        <span className="text-slate-500 block">Memory Used:</span>
+                        <span className="text-slate-800 font-mono font-bold">{res?.memoryUsed || 0} MB</span>
+                      </div>
+                    </div>
+
+                    {/* Compiler Output if any */}
+                    {res?.compileOutput && (
+                      <div className="p-3 rounded-lg bg-purple-50 border border-purple-200 text-xs font-mono text-purple-900">
+                        <p className="font-bold text-purple-700 mb-1">Compilation Output:</p>
+                        <pre className="whitespace-pre-wrap">{res.compileOutput}</pre>
+                      </div>
+                    )}
+
+                    {/* Admin view: Full test case execution breakdown (including hidden) */}
+                    {res?.testResults?.length > 0 && (
+                      <div className="space-y-2 pt-2">
+                        <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                          All Test Cases (Admin Full View)
+                        </h5>
+                        <div className="space-y-2">
+                          {res.testResults.map((tc, tcIdx) => (
+                            <div
+                              key={tcIdx}
+                              className="p-3 rounded-xl bg-white border border-slate-200 text-xs space-y-1.5 shadow-xs"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  {tc.passed ? <Check className="w-4 h-4 text-emerald-600" /> : <X className="w-4 h-4 text-rose-600" />}
+                                  <span className="font-semibold text-slate-800">
+                                    Test Case #{tcIdx + 1} {tc.isHidden ? '(Hidden)' : '(Public)'}
+                                  </span>
+                                </div>
+                                <span className="font-mono text-slate-600 font-bold">{tc.status}</span>
+                              </div>
+
+                              {tc.input && (
+                                <div className="text-[11px] font-mono text-slate-500">
+                                  <span>Input: </span><code className="text-slate-700 bg-slate-100 px-1 py-0.5 rounded">{tc.input}</code>
+                                </div>
+                              )}
+                              {tc.expectedOutput && (
+                                <div className="text-[11px] font-mono text-slate-500">
+                                  <span>Expected: </span><code className="text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded">{tc.expectedOutput}</code>
+                                </div>
+                              )}
+                              {tc.actualOutput && (
+                                <div className="text-[11px] font-mono text-slate-500">
+                                  <span>Actual: </span><code className="text-slate-700 bg-slate-100 px-1 py-0.5 rounded">{tc.actualOutput}</code>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             );

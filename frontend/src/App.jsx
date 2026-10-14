@@ -35,6 +35,8 @@ import AdminResultDetailPage from './pages/admin/AdminResultDetailPage';
 import AdminSubmissionsPage from './pages/admin/AdminSubmissionsPage';
 import AdminBatchesPage from './pages/admin/AdminBatchesPage';
 import AdminOrganizationsPage from './pages/admin/AdminOrganizationsPage';
+import AdminMcqQuestionsPage from './pages/admin/AdminMcqQuestionsPage';
+import AdminMcqQuestionEditorPage from './pages/admin/AdminMcqQuestionEditorPage';
 
 // Helper to determine destination by role
 export const getRoleHomeRoute = (role) => {
@@ -154,6 +156,9 @@ export default function App() {
         <Route path="questions" element={<AdminQuestionsPage />} />
         <Route path="questions/new" element={<AdminQuestionEditorPage />} />
         <Route path="questions/:id/edit" element={<AdminQuestionEditorPage />} />
+        <Route path="mcq-questions" element={<AdminMcqQuestionsPage />} />
+        <Route path="mcq-questions/new" element={<AdminMcqQuestionEditorPage />} />
+        <Route path="mcq-questions/:id/edit" element={<AdminMcqQuestionEditorPage />} />
         <Route path="users" element={<AdminUsersPage />} />
         <Route path="batches" element={<AdminBatchesPage />} />
         <Route path="organizations" element={<AdminOrganizationsPage />} />

@@ -101,6 +101,8 @@ router.get('/exams/:id/export-excel', exportResultsExcel);
 router.get('/questions', QuestionController.getAllQuestions);
 router.get('/questions/template-excel', QuestionController.downloadQuestionTemplate);
 router.post('/questions/upload-excel', upload.single('file'), QuestionController.uploadQuestionsExcel);
+router.get('/mcq-questions/template-excel', QuestionController.downloadMcqTemplate);
+router.post('/mcq-questions/upload-excel', upload.single('file'), QuestionController.uploadMcqQuestionsExcel);
 router.get('/questions/:id', QuestionController.getQuestionById);
 router.post('/questions', validate(questionSchema), QuestionController.createQuestion);
 router.post('/questions/bulk-delete', QuestionController.bulkDeleteQuestions);

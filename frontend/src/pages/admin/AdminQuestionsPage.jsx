@@ -38,11 +38,10 @@ export default function AdminQuestionsPage() {
 
   const loadQuestions = async () => {
     try {
-      let query = '';
-      const params = [];
+      const params = ['type=CODING'];
       if (searchTerm) params.push(`search=${encodeURIComponent(searchTerm)}`);
       if (difficultyFilter) params.push(`difficulty=${difficultyFilter}`);
-      if (params.length) query = `?${params.join('&')}`;
+      const query = `?${params.join('&')}`;
 
       const res = await api.get(`/admin/questions${query}`);
       setQuestions(res.data.data.questions || []);
@@ -245,7 +244,7 @@ export default function AdminQuestionsPage() {
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>Upload Questions (Excel)</span>
+            <span>Bulk Import via Excel</span>
           </button>
 
           <Link
@@ -363,7 +362,7 @@ export default function AdminQuestionsPage() {
                       <div className="flex items-center justify-end gap-1.5">
                         <Link
                           to={`/admin/questions/${q._id}/edit`}
-                          className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200 transition-colors"
+                          className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:text-blue-600 hover:bg-slate-200 transition-colors cursor-pointer"
                           title="Edit Question & Test Cases"
                         >
                           <Edit className="w-3.5 h-3.5" />
@@ -371,7 +370,7 @@ export default function AdminQuestionsPage() {
                         <button
                           onClick={() => handleDuplicate(q._id)}
                           disabled={actionLoading}
-                          className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:text-blue-600 hover:bg-slate-200 transition-colors"
+                          className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:text-blue-600 hover:bg-slate-200 transition-colors cursor-pointer"
                           title="Duplicate Question"
                         >
                           <Copy className="w-3.5 h-3.5" />
@@ -379,7 +378,7 @@ export default function AdminQuestionsPage() {
                         <button
                           onClick={() => handleDelete(q._id)}
                           disabled={actionLoading}
-                          className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                          className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                           title="Delete Question"
                         >
                           <Trash2 className="w-3.5 h-3.5" />

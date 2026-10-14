@@ -12,6 +12,7 @@ import {
   Edit,
   Trash2,
   FileSpreadsheet,
+  HelpCircle,
   X,
   FileText,
   Building2,
@@ -354,10 +355,10 @@ export default function AdminFacultyPage() {
               setUploadStatus(null);
               setShowExcelModal(true);
             }}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>Upload Faculty (Excel)</span>
+            <span>Bulk Import via Excel</span>
           </button>
 
           <button
@@ -799,7 +800,7 @@ export default function AdminFacultyPage() {
       {/* EXCEL BULK UPLOAD MODAL */}
       {showExcelModal && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-xl w-full p-6 space-y-4 max-h-[90vh] flex flex-col shadow-xl">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full p-6 space-y-4 max-h-[90vh] flex flex-col shadow-xl">
             <div className="flex justify-between items-center border-b border-slate-200 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
@@ -811,35 +812,57 @@ export default function AdminFacultyPage() {
                 </div>
               </div>
               <button
-                onClick={() => setShowExcelModal(false)}
-                className="text-slate-400 hover:text-slate-700"
+                onClick={() => {
+                  setShowExcelModal(false);
+                  setUploadStatus(null);
+                  setExcelFile(null);
+                }}
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg cursor-pointer transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-4">
+            <div className="flex-1 overflow-y-auto space-y-4 pr-0.5">
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-slate-700">Excel Column Guidelines:</span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 font-semibold text-slate-700">
+                    <HelpCircle className="w-4 h-4 text-blue-600" />
+                    <span>Faculty Excel Column Guidelines (7 Supported Fields):</span>
+                  </div>
                   <button
                     type="button"
                     onClick={handleDownloadTemplate}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 rounded-lg text-[11px] font-semibold transition-all cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shrink-0"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    <span>Download Sample Template</span>
+                    <span>Download Sample Template (.xlsx)</span>
                   </button>
                 </div>
-                <ul className="list-disc list-inside space-y-1 text-slate-500 text-[11px]">
-                  <li><strong className="text-slate-700">Faculty ID:</strong> Unique Faculty Identifier (Required, e.g. FAC2026001)</li>
-                  <li><strong className="text-slate-700">Full Name:</strong> Faculty name (Required)</li>
-                  <li><strong className="text-slate-700">Password:</strong> Initial password (Optional, default: Faculty@123)</li>
-                  <li><strong className="text-slate-700">Email:</strong> Email address (Optional)</li>
-                  <li><strong className="text-slate-700">Organization:</strong> Organization Name (Optional, e.g. Tech University)</li>
-                  <li><strong className="text-slate-700">Department:</strong> Department / Branch (Optional)</li>
-                  <li><strong className="text-slate-700">Phone:</strong> Contact phone number (Optional)</li>
-                </ul>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 font-mono text-[11px]">
+                  <div className="bg-white p-2 rounded border border-slate-200">
+                    <span className="text-emerald-600 font-bold">Faculty ID</span> (Req, Unique)
+                  </div>
+                  <div className="bg-white p-2 rounded border border-slate-200">
+                    <span className="text-emerald-600 font-bold">Full Name</span> (Req)
+                  </div>
+                  <div className="bg-white p-2 rounded border border-slate-200">
+                    <span className="text-slate-600">Password</span> (Opt)
+                  </div>
+                  <div className="bg-white p-2 rounded border border-slate-200">
+                    <span className="text-blue-600 font-bold">Email</span> (Optional)
+                  </div>
+                  <div className="bg-white p-2 rounded border border-slate-200">
+                    <span className="text-blue-600 font-bold">Organization</span> (Opt)
+                  </div>
+                  <div className="bg-white p-2 rounded border border-slate-200">
+                    <span className="text-slate-600">Department</span> (Opt)
+                  </div>
+                  <div className="bg-white p-2 rounded border border-slate-200">
+                    <span className="text-slate-600 font-bold">Phone</span> (Opt)
+                  </div>
+                </div>
               </div>
 
               <form onSubmit={handleExcelUpload} className="space-y-4">
@@ -855,6 +878,7 @@ export default function AdminFacultyPage() {
                         className="hidden"
                       />
                     </label>
+                    <p className="text-[11px] text-slate-400 mt-1">Microsoft Excel format (.xlsx / .xls)</p>
                   </div>
                   {excelFile && (
                     <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg text-xs font-medium">
@@ -864,20 +888,34 @@ export default function AdminFacultyPage() {
                   )}
                 </div>
 
-                <div className="flex justify-end gap-2.5">
+                <div className="flex justify-end gap-3 pt-2 border-t border-slate-200">
                   <button
                     type="button"
-                    onClick={() => setShowExcelModal(false)}
-                    className="px-4 py-2 border border-slate-200 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold cursor-pointer"
+                    onClick={() => {
+                      setShowExcelModal(false);
+                      setUploadStatus(null);
+                      setExcelFile(null);
+                    }}
+                    className="px-4 py-2 border border-slate-200 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold cursor-pointer transition-all"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={!excelFile || isUploading}
-                    className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+                    className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
                   >
-                    {isUploading ? 'Importing...' : 'Upload & Import Faculty'}
+                    {isUploading ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Importing Faculty...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Upload & Import Faculty</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </form>

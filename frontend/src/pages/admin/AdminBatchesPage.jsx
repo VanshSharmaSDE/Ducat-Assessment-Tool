@@ -329,16 +329,29 @@ export default function AdminBatchesPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setFormData({ name: '', department: '', description: '' });
-            setShowCreateModal(true);
-          }}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/15 transition-all shrink-0 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Create New Batch</span>
-        </button>
+        <div className="flex items-center gap-3 shrink-0">
+          {selectedBatches.length > 0 && (
+            <button
+              onClick={handleBulkDeleteBatches}
+              disabled={actionLoading}
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-md shadow-rose-600/20 transition-all cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Delete Selected ({selectedBatches.length})</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => {
+              setFormData({ name: '', department: '', description: '' });
+              setShowCreateModal(true);
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/15 transition-all shrink-0 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Create New Batch</span>
+          </button>
+        </div>
       </div>
 
       {/* Search & Actions Bar */}
@@ -353,17 +366,6 @@ export default function AdminBatchesPage() {
             className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-
-        {selectedBatches.length > 0 && (
-          <button
-            onClick={handleBulkDeleteBatches}
-            disabled={actionLoading}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Delete Selected ({selectedBatches.length})</span>
-          </button>
-        )}
       </div>
 
       {/* Batches Table */}
@@ -465,7 +467,7 @@ export default function AdminBatchesPage() {
                         <button
                           onClick={() => handleOpenEdit(b)}
                           disabled={actionLoading}
-                          className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:text-blue-600 hover:bg-slate-200 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:text-blue-600 hover:bg-slate-200 transition-colors cursor-pointer"
                           title="Edit Batch"
                         >
                           <Edit className="w-3.5 h-3.5" />
@@ -473,7 +475,7 @@ export default function AdminBatchesPage() {
                         <button
                           onClick={() => handleDeleteBatch(b)}
                           disabled={actionLoading}
-                          className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                           title="Delete Batch"
                         >
                           <Trash2 className="w-3.5 h-3.5" />

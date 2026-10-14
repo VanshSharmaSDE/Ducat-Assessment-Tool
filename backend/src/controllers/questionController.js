@@ -102,11 +102,14 @@ export class QuestionController {
       }
 
       const { QuestionExcelService } = await import('../services/questionExcelService.js');
-      const result = await QuestionExcelService.importQuestions(req.file.buffer, req.user._id);
+      const isMcq = req.query?.type === 'MCQ' || req.body?.type === 'MCQ';
+      const result = isMcq
+        ? await QuestionExcelService.importMcqQuestions(req.file.buffer, req.user._id)
+        : await QuestionExcelService.importQuestions(req.file.buffer, req.user._id);
 
       res.status(200).json({
         success: true,
-        message: `Successfully imported ${result.importedCount} questions.`,
+        message: `Successfully imported ${result.importedCount} ${isMcq ? 'MCQ questions' : 'questions'}.`,
         data: result,
       });
     } catch (err) {
@@ -117,13 +120,30 @@ export class QuestionController {
   static async downloadQuestionTemplate(req, res, next) {
     try {
       const { QuestionExcelService } = await import('../services/questionExcelService.js');
-      const buffer = QuestionExcelService.generateTemplate();
+      const isMcq = req.query?.type === 'MCQ';
+      const buffer = isMcq
+        ? QuestionExcelService.generateMcqTemplate()
+        : QuestionExcelService.generateTemplate();
 
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', 'attachment; filename="question_import_template.xlsx"');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${isMcq ? 'mcq_question_import_template.xlsx' : 'question_import_template.xlsx'}"`
+      );
       res.send(buffer);
     } catch (err) {
       next(err);
     }
   }
+
+  static async uploadMcqQuestionsExcel(req, res, next) {
+    req.query = { ...req.query, type: 'MCQ' };
+    return QuestionController.uploadQuestionsExcel(req, res, next);
+  }
+
+  static async downloadMcqTemplate(req, res, next) {
+    req.query = { ...req.query, type: 'MCQ' };
+    return QuestionController.downloadQuestionTemplate(req, res, next);
+  }
 }
+

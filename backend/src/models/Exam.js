@@ -16,6 +16,10 @@ const examQuestionSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    allowCodeRun: {
+      type: Boolean,
+      default: null, // null = inherit exam default, true/false = override for this question
+    },
   },
   { _id: false }
 );

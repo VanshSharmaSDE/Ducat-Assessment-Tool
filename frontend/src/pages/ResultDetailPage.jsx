@@ -16,7 +16,8 @@ import {
   Eye,
   FileCode,
   Check,
-  X
+  X,
+  CheckSquare
 } from 'lucide-react';
 
 export default function ResultDetailPage() {
@@ -189,6 +190,7 @@ export default function ResultDetailPage() {
           {questionBreakdown.map((item, idx) => {
             const res = item.result;
             const status = res ? res.status : 'PENDING';
+            const isMcq = item.questionType === 'MCQ';
 
             const statusColors = {
               PASSED: 'bg-emerald-50 text-emerald-600 border-emerald-200',
@@ -211,10 +213,21 @@ export default function ResultDetailPage() {
                     <span className="text-xs font-mono font-bold text-blue-600 px-2 py-0.5 rounded bg-blue-50 border border-blue-200">
                       Q{idx + 1}
                     </span>
-                    <h3 className="font-bold text-base text-slate-800">{item.questionTitle}</h3>
-                    <span className="text-[11px] font-semibold text-slate-600 px-2 py-0.5 rounded bg-slate-100 border border-slate-200">
-                      {(item.language || 'code').toUpperCase()}
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
+                        isMcq
+                          ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                          : 'bg-blue-100 text-blue-700 border border-blue-200'
+                      }`}
+                    >
+                      {isMcq ? 'MCQ' : 'Coding'}
                     </span>
+                    <h3 className="font-bold text-base text-slate-800">{item.questionTitle}</h3>
+                    {!isMcq && (
+                      <span className="text-[11px] font-semibold text-slate-600 px-2 py-0.5 rounded bg-slate-100 border border-slate-200">
+                        {(item.language || 'code').toUpperCase()}
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-3">
@@ -223,18 +236,92 @@ export default function ResultDetailPage() {
                         statusColors[status] || statusColors.PENDING
                       }`}
                     >
-                      {status.replace('_', ' ')}
+                      {status === 'PASSED' && isMcq ? 'CORRECT' : status === 'WRONG_ANSWER' && isMcq ? 'INCORRECT' : status.replace('_', ' ')}
                     </span>
 
-                    <button
-                      onClick={() => setActiveCodeModal(item)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg border border-slate-200 transition-colors"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>View Code</span>
-                    </button>
+                    {!isMcq && (
+                      <button
+                        onClick={() => setActiveCodeModal(item)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg border border-slate-200 transition-colors"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>View Code</span>
+                      </button>
+                    )}
                   </div>
                 </div>
+
+                {/* MCQ Question Detail View */}
+                {isMcq ? (
+                  <div className="space-y-3 pt-1">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs mb-3">
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <span className="text-slate-500 block">Score Earned:</span>
+                        <span className="text-slate-800 font-bold font-mono text-sm">
+                          {res ? res.score : 0} / {item.maxMarks}
+                        </span>
+                      </div>
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <span className="text-slate-500 block">Selected Option:</span>
+                        <span className="text-slate-800 font-bold font-mono text-sm">
+                          {item.selectedOption !== null && item.selectedOption !== undefined
+                            ? `Option ${String.fromCharCode(65 + Number(item.selectedOption))}`
+                            : 'No Selection'}
+                        </span>
+                      </div>
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <span className="text-slate-500 block">Result:</span>
+                        <span className={`font-bold text-sm ${status === 'PASSED' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {status === 'PASSED' ? 'Correct (+Full Marks)' : 'Incorrect (0 Marks)'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Options list showing candidate's choice */}
+                    {item.options?.length > 0 && (
+                      <div className="space-y-2">
+                        <h5 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                          Options & Your Choice
+                        </h5>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {item.options.map((opt, oIdx) => {
+                            const isChosen = item.selectedOption === oIdx;
+                            return (
+                              <div
+                                key={oIdx}
+                                className={`p-2.5 rounded-xl border text-xs flex items-center justify-between ${
+                                  isChosen
+                                    ? status === 'PASSED'
+                                      ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-medium'
+                                      : 'bg-rose-50 border-rose-300 text-rose-900 font-medium'
+                                    : 'bg-slate-50 border-slate-200 text-slate-700'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className={`w-5 h-5 rounded flex items-center justify-center font-bold text-[10px] ${
+                                    isChosen
+                                      ? status === 'PASSED' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+                                      : 'bg-white border border-slate-200 text-slate-700'
+                                  }`}>
+                                    {String.fromCharCode(65 + oIdx)}
+                                  </span>
+                                  <span>{opt.text}</span>
+                                </div>
+                                {isChosen && (
+                                  <span className="text-[10px] font-bold uppercase tracking-wider">
+                                    Your Answer
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* Coding Details View */
+                  <>
 
                 {/* Question Score & Test Case Counts */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
@@ -314,10 +401,12 @@ export default function ResultDetailPage() {
                     </div>
                   </div>
                 )}
-              </div>
-            );
-          })}
-        </div>
+              </>
+            )}
+          </div>
+        );
+      })}
+    </div>
       </div>
 
       {/* Code Inspection Modal */}

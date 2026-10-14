@@ -19,7 +19,8 @@ import {
   User,
   GraduationCap,
   Layers,
-  Building2
+  Building2,
+  CheckSquare
 } from 'lucide-react';
 
 export default function AdminLayout() {
@@ -37,7 +38,8 @@ export default function AdminLayout() {
   const navItems = [
     { label: isSuperAdmin ? 'Overview Analytics' : 'My Dashboard', path: '/admin', exact: true, icon: LayoutDashboard },
     { label: isSuperAdmin ? 'Examinations' : 'My Examinations', path: '/admin/exams', icon: FileCheck2 },
-    { label: isSuperAdmin ? 'Question Bank' : 'My Questions', path: '/admin/questions', icon: HelpCircle },
+    { label: isSuperAdmin ? 'Coding Questions' : 'My Coding Bank', path: '/admin/questions', icon: HelpCircle },
+    { label: isSuperAdmin ? 'MCQ Question Bank' : 'My MCQ Bank', path: '/admin/mcq-questions', icon: CheckSquare },
     { label: isSuperAdmin ? 'Candidates' : 'My Students', path: '/admin/users', icon: Users },
     { label: isSuperAdmin ? 'Batches' : 'My Batches', path: '/admin/batches', icon: Layers },
     ...(isSuperAdmin ? [{ label: 'Organizations', path: '/admin/organizations', icon: Building2 }] : []),

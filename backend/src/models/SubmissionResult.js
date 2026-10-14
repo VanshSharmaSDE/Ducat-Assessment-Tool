@@ -77,6 +77,19 @@ const submissionResultSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    questionType: {
+      type: String,
+      enum: ['CODING', 'MCQ'],
+      default: 'CODING',
+    },
+    selectedOption: {
+      type: Number,
+      default: null,
+    },
+    isCorrect: {
+      type: Boolean,
+      default: null,
+    },
     passedTests: {
       type: Number,
       default: 0,
