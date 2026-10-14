@@ -546,15 +546,25 @@ export default function CodingExamPage() {
     try {
       await exitFullscreenSafe();
 
-      const payloadAnswers = Object.entries(answersRef.current).map(
-        ([qId, ans]) => ({
+      const currentAnswers = answersRef.current || {};
+      const payloadAnswers = (exam?.questions || []).map((q) => {
+        const qId = (q._id || q.questionId?._id || q.questionId || '').toString();
+        const ans = currentAnswers[qId] || {};
+        const isMcq = (q.type || 'CODING') === 'MCQ';
+
+        const rawOpt = ans.selectedOption;
+        const selectedOption = rawOpt !== undefined && rawOpt !== null && rawOpt !== '' && !isNaN(Number(rawOpt))
+          ? Number(rawOpt)
+          : null;
+
+        return {
           questionId: qId,
-          type: ans.type || 'CODING',
-          language: ans.language || 'java',
+          type: isMcq ? 'MCQ' : 'CODING',
+          language: ans.language || (isMcq ? undefined : 'java'),
           code: ans.code || '',
-          selectedOption: ans.selectedOption !== undefined ? ans.selectedOption : null,
-        }),
-      );
+          selectedOption,
+        };
+      });
 
       const res = await api.post(`/exams/${id}/submit`, {
         attemptId: attemptRef.current._id,
@@ -1038,7 +1048,9 @@ export default function CodingExamPage() {
                 <div className="space-y-3">
                   {(currentQ.options || []).map((opt, optIdx) => {
                     const letter = String.fromCharCode(65 + optIdx);
-                    const isSelected = currentAnswer?.selectedOption === optIdx;
+                    const isSelected = currentAnswer?.selectedOption !== null &&
+                      currentAnswer?.selectedOption !== undefined &&
+                      Number(currentAnswer.selectedOption) === optIdx;
 
                     return (
                       <button
@@ -1077,7 +1089,7 @@ export default function CodingExamPage() {
                   <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs text-emerald-700">
                     <span className="flex items-center gap-1.5 font-semibold">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      Answer Recorded: Option {String.fromCharCode(65 + currentAnswer.selectedOption)}
+                      Answer Recorded: Option {String.fromCharCode(65 + Number(currentAnswer.selectedOption))}
                     </span>
                     <button
                       type="button"

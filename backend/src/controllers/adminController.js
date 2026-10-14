@@ -1141,7 +1141,7 @@ export const getStudentSubmissions = async (req, res) => {
     }
 
     const submissions = await Submission.find({ attemptId: attempt._id })
-      .populate('questionId', 'title marks difficulty inputFormat outputFormat constraints examples')
+      .populate('questionId', 'title type options correctAnswer marks difficulty explanation inputFormat outputFormat constraints examples')
       .sort({ createdAt: 1 });
 
     const { SubmissionResult } = await import('../models/SubmissionResult.js');

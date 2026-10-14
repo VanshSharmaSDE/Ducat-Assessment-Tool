@@ -34,7 +34,9 @@ const submissionSchema = new mongoose.Schema(
     },
     language: {
       type: String,
-      default: 'java',
+      default: function () {
+        return this.questionType === 'MCQ' ? 'MCQ' : 'java';
+      },
     },
     sourceCode: {
       type: String,

@@ -106,11 +106,13 @@ export const submitExamSchema = z.object({
   answers: z.array(
     z.object({
       questionId: z.string().min(1),
-      language: z.enum(SUPPORTED_LANGUAGES),
-      code: z.string().max(65536, 'Code exceeds 64KB maximum size'),
-    })
+      type: z.enum(['CODING', 'MCQ']).optional().default('CODING'),
+      language: z.enum(SUPPORTED_LANGUAGES).optional().nullable(),
+      code: z.string().max(65536, 'Code exceeds 64KB maximum size').optional().nullable().default(''),
+      selectedOption: z.union([z.number(), z.string(), z.null()]).optional().nullable(),
+    }).passthrough()
   ),
-});
+}).passthrough();
 
 export const examEventSchema = z.object({
   type: z.enum(['tab_switch', 'fullscreen_exit', 'page_refresh', 'exam_exit', 'blur', 'copy_paste']),

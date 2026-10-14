@@ -443,50 +443,64 @@ export class ExamService {
     attempt.submittedAt = now;
     await attempt.save();
 
-    const examQuestionIds = new Set(exam.questions.map((q) => q.questionId.toString()));
+    const examQuestionIds = new Set(
+      exam.questions.map((q) => (q.questionId?._id || q.questionId || '').toString()).filter(Boolean)
+    );
     const createdSubmissions = [];
 
-    // Process each question answer
+    // Map answers by questionId for fast and reliable lookup
+    const answersMap = new Map();
     for (const ans of answers) {
-      if (!examQuestionIds.has(ans.questionId.toString())) {
-        logger.warn(`Question ${ans.questionId} does not belong to exam ${exam._id}. Skipping.`);
-        continue;
+      if (ans?.questionId) {
+        answersMap.set(ans.questionId.toString(), ans);
       }
+    }
 
-      const question = await Question.findById(ans.questionId);
+    // Process every question in the exam
+    for (const eq of exam.questions) {
+      const qIdStr = (eq.questionId?._id || eq.questionId || '').toString();
+      if (!qIdStr) continue;
+
+      const question = await Question.findById(qIdStr);
       if (!question) continue;
 
+      const ans = answersMap.get(qIdStr) || {};
       const qType = question.type || 'CODING';
 
       // 1. Handle MCQ Questions: Immediate Synchronous Auto-Evaluation
       if (qType === 'MCQ') {
-        const selectedOption = ans.selectedOption !== undefined && ans.selectedOption !== null && ans.selectedOption !== ''
-          ? Number(ans.selectedOption)
+        const rawOpt = ans.selectedOption;
+        const selectedOption = rawOpt !== undefined && rawOpt !== null && rawOpt !== '' && !isNaN(Number(rawOpt))
+          ? Number(rawOpt)
           : null;
 
-        const isCorrect = selectedOption !== null && Number(selectedOption) === Number(question.correctAnswer);
+        const isCorrect = selectedOption !== null &&
+          question.correctAnswer !== null &&
+          question.correctAnswer !== undefined &&
+          Number(selectedOption) === Number(question.correctAnswer);
         
         // Find assigned marks in this exam
-        const examQ = exam.questions.find((eq) => eq.questionId.toString() === question._id.toString());
-        const assignedMarks = Number(examQ?.marks || question.marks || 1);
+        const assignedMarks = Number(eq?.marks || question.marks || 1);
         const earnedScore = isCorrect ? assignedMarks : 0;
         const mcqStatus = isCorrect ? 'PASSED' : 'WRONG_ANSWER';
 
         // Upsert Submission
-        let submission = await Submission.findOne({ attemptId: attempt._id, questionId: ans.questionId });
+        let submission = await Submission.findOne({ attemptId: attempt._id, questionId: question._id });
         if (!submission) {
           submission = await Submission.create({
             attemptId: attempt._id,
             userId,
             examId: exam._id,
-            questionId: ans.questionId,
+            questionId: question._id,
             questionType: 'MCQ',
+            language: 'MCQ',
             selectedOption,
             status: 'COMPLETED',
             submittedAt: now,
           });
         } else {
           submission.questionType = 'MCQ';
+          submission.language = 'MCQ';
           submission.selectedOption = selectedOption;
           submission.status = 'COMPLETED';
           submission.submittedAt = now;
@@ -494,12 +508,13 @@ export class ExamService {
         }
 
         // Upsert SubmissionResult
-        await (await import('../models/SubmissionResult.js')).SubmissionResult.findOneAndUpdate(
+        const { SubmissionResult } = await import('../models/SubmissionResult.js');
+        await SubmissionResult.findOneAndUpdate(
           { submissionId: submission._id },
           {
             submissionId: submission._id,
             attemptId: attempt._id,
-            questionId: ans.questionId,
+            questionId: question._id,
             questionType: 'MCQ',
             selectedOption,
             isCorrect,
@@ -517,28 +532,31 @@ export class ExamService {
       }
 
       // 2. Handle Coding Questions: Queue for Docker execution
-      if (!question.allowedLanguages.includes(ans.language)) {
-        logger.warn(`Language ${ans.language} not allowed for question ${question._id}`);
+      const sourceCode = ans.code || '';
+      const chosenLang = ans.language || question.allowedLanguages?.[0] || 'java';
+
+      if (!question.allowedLanguages.includes(chosenLang)) {
+        logger.warn(`Language ${chosenLang} not allowed for question ${question._id}`);
       }
 
       // Upsert submission
-      let submission = await Submission.findOne({ attemptId: attempt._id, questionId: ans.questionId });
+      let submission = await Submission.findOne({ attemptId: attempt._id, questionId: question._id });
       if (!submission) {
         submission = await Submission.create({
           attemptId: attempt._id,
           userId,
           examId: exam._id,
-          questionId: ans.questionId,
+          questionId: question._id,
           questionType: 'CODING',
-          language: ans.language || 'java',
-          sourceCode: ans.code || '',
+          language: chosenLang,
+          sourceCode,
           status: 'QUEUED',
           submittedAt: now,
         });
       } else {
         submission.questionType = 'CODING';
-        submission.language = ans.language || 'java';
-        submission.sourceCode = ans.code || '';
+        submission.language = chosenLang;
+        submission.sourceCode = sourceCode;
         submission.status = 'QUEUED';
         submission.submittedAt = now;
         await submission.save();
@@ -558,9 +576,9 @@ export class ExamService {
         jobId,
         submissionId: submission._id.toString(),
         attemptId: attempt._id.toString(),
-        questionId: ans.questionId.toString(),
-        language: ans.language || 'java',
-        sourceCode: ans.code || '',
+        questionId: question._id.toString(),
+        language: chosenLang,
+        sourceCode,
       });
 
       createdSubmissions.push(submission);
@@ -570,11 +588,18 @@ export class ExamService {
     const { checkAndFinalizeExamAttempt } = await import('../workers/evaluationWorker.js');
     await checkAndFinalizeExamAttempt(attempt._id);
 
+    const updatedAttempt = await ExamAttempt.findById(attempt._id);
+
     return {
       attemptId: attempt._id,
-      status: 'EVALUATING',
+      status: updatedAttempt?.status || 'EVALUATING',
+      totalScore: updatedAttempt?.totalScore,
+      percentage: updatedAttempt?.percentage,
+      resultStatus: updatedAttempt?.resultStatus,
       submissionCount: createdSubmissions.length,
-      message: 'Exam submitted successfully. Evaluation in progress.',
+      message: updatedAttempt?.status === 'EVALUATED'
+        ? 'Exam submitted and evaluated successfully.'
+        : 'Exam submitted successfully. Evaluation in progress.',
     };
   }
 

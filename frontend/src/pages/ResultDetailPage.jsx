@@ -53,7 +53,7 @@ export default function ResultDetailPage() {
     }
   }, []);
 
-  // Socket and Polling for live evaluation status
+  // Socket listeners for live evaluation updates
   useEffect(() => {
     if (!socket) return;
 
@@ -70,20 +70,23 @@ export default function ResultDetailPage() {
     socket.on('attempt:completed', handleCompleted);
     socket.on('submission:status', handleSubmissionStatus);
 
-    // Fallback polling if attempt is EVALUATING
-    const pollInterval = setInterval(() => {
-      if (data?.attempt?.status === 'EVALUATING') {
-        fetchResult();
-      }
-    }, 3000);
-
     return () => {
       socket.emit('leave-attempt', id);
       socket.off('attempt:completed', handleCompleted);
       socket.off('submission:status', handleSubmissionStatus);
-      clearInterval(pollInterval);
     };
-  }, [socket, id, data?.attempt?.status]);
+  }, [socket, id]);
+
+  // Robust fallback polling if attempt is still EVALUATING
+  useEffect(() => {
+    if (data?.attempt?.status !== 'EVALUATING') return;
+
+    const pollInterval = setInterval(() => {
+      fetchResult();
+    }, 2500);
+
+    return () => clearInterval(pollInterval);
+  }, [id, data?.attempt?.status]);
 
   if (loading) {
     return (
@@ -254,7 +257,7 @@ export default function ResultDetailPage() {
                 {/* MCQ Question Detail View */}
                 {isMcq ? (
                   <div className="space-y-3 pt-1">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs mb-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs mb-3">
                       <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
                         <span className="text-slate-500 dark:text-slate-400 block">Score Earned:</span>
                         <span className="text-slate-800 dark:text-slate-100 font-bold font-mono text-sm">
@@ -262,11 +265,19 @@ export default function ResultDetailPage() {
                         </span>
                       </div>
                       <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
-                        <span className="text-slate-500 dark:text-slate-400 block">Selected Option:</span>
+                        <span className="text-slate-500 dark:text-slate-400 block">Your Answer:</span>
                         <span className="text-slate-800 dark:text-slate-100 font-bold font-mono text-sm">
                           {item.selectedOption !== null && item.selectedOption !== undefined
                             ? `Option ${String.fromCharCode(65 + Number(item.selectedOption))}`
                             : 'No Selection'}
+                        </span>
+                      </div>
+                      <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <span className="text-slate-500 dark:text-slate-400 block">Correct Answer:</span>
+                        <span className="text-emerald-700 dark:text-emerald-300 font-bold font-mono text-sm">
+                          {item.correctAnswer !== null && item.correctAnswer !== undefined
+                            ? `Option ${String.fromCharCode(65 + Number(item.correctAnswer))}`
+                            : 'Evaluated'}
                         </span>
                       </div>
                       <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
@@ -277,45 +288,73 @@ export default function ResultDetailPage() {
                       </div>
                     </div>
 
-                    {/* Options list showing candidate's choice */}
+                    {/* Options list showing candidate's choice and correct answer */}
                     {item.options?.length > 0 && (
                       <div className="space-y-2">
                         <h5 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                          Options & Your Choice
+                          Options & Evaluation Breakdown
                         </h5>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {item.options.map((opt, oIdx) => {
-                            const isChosen = item.selectedOption === oIdx;
+                            const isSelected = item.selectedOption !== null &&
+                              item.selectedOption !== undefined &&
+                              Number(item.selectedOption) === oIdx;
+                            const isCorrect = item.correctAnswer !== null &&
+                              item.correctAnswer !== undefined &&
+                              Number(item.correctAnswer) === oIdx;
+
+                            let borderStyle = 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300';
+                            if (isCorrect) {
+                              borderStyle = 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 font-medium';
+                            } else if (isSelected && !isCorrect) {
+                              borderStyle = 'bg-rose-50 dark:bg-rose-950/50 border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 font-medium';
+                            }
+
                             return (
                               <div
                                 key={oIdx}
-                                className={`p-2.5 rounded-xl border text-xs flex items-center justify-between ${
-                                  isChosen
-                                    ? status === 'PASSED'
-                                      ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 font-medium'
-                                      : 'bg-rose-50 dark:bg-rose-950/50 border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 font-medium'
-                                    : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
-                                }`}
+                                className={`p-2.5 rounded-xl border text-xs flex items-center justify-between ${borderStyle}`}
                               >
                                 <div className="flex items-center gap-2">
                                   <span className={`w-5 h-5 rounded flex items-center justify-center font-bold text-[10px] ${
-                                    isChosen
-                                      ? status === 'PASSED' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+                                    isCorrect
+                                      ? 'bg-emerald-600 text-white'
+                                      : isSelected
+                                      ? 'bg-rose-600 text-white'
                                       : 'bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200'
                                   }`}>
                                     {String.fromCharCode(65 + oIdx)}
                                   </span>
                                   <span>{opt.text}</span>
                                 </div>
-                                {isChosen && (
-                                  <span className="text-[10px] font-bold uppercase tracking-wider">
-                                    Your Answer
-                                  </span>
-                                )}
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {isCorrect && (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                      <Check className="w-3 h-3 text-emerald-700 dark:text-emerald-400" /> Correct
+                                    </span>
+                                  )}
+                                  {isSelected && (
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${
+                                      isCorrect
+                                        ? 'bg-emerald-200 dark:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+                                        : 'bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+                                    }`}>
+                                      Your Answer
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             );
                           })}
                         </div>
+                      </div>
+                    )}
+
+                    {/* Explanation */}
+                    {item.explanation && (
+                      <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl text-xs space-y-1">
+                        <span className="font-bold text-blue-900 dark:text-blue-300 block">Explanation / Rationale:</span>
+                        <p className="text-blue-800 dark:text-blue-200 whitespace-pre-wrap">{item.explanation}</p>
                       </div>
                     )}
                   </div>

@@ -486,37 +486,38 @@ export default function AdminDashboardPage() {
       )}
 
       {/* Live Recent Submissions Table */}
-      <div className="p-6 rounded-2xl bg-white border border-slate-200 space-y-4 shadow-sm">
-        <div className="flex items-center justify-between">
+      <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+            <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
               <Clock className="w-4 h-4 text-blue-600" /> Live Submissions Feed
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Recent code executions processed by evaluation workers
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Recent examination solutions and candidate evaluations
             </p>
           </div>
           <Link
             to="/admin/submissions"
-            className="text-xs text-blue-600 hover:text-blue-500 font-semibold flex items-center gap-1"
+            className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-500 font-semibold flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 w-fit transition-colors"
           >
-            All Submissions <ArrowRight className="w-3.5 h-3.5" />
+            <span>View All Submissions</span>
+            <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[750px] text-left text-xs">
             <thead>
-              <tr className="border-b border-slate-200 text-slate-500 bg-slate-50">
-                <th className="py-3 px-4 font-semibold">Candidate</th>
+              <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60">
                 <th className="py-3 px-4 font-semibold">Examination</th>
-                <th className="py-3 px-4 font-semibold">Problem</th>
-                <th className="py-3 px-4 font-semibold">Language</th>
+                <th className="py-3 px-4 font-semibold">Student / Candidate</th>
+                <th className="py-3 px-4 font-semibold">Problem / Question</th>
+                <th className="py-3 px-4 font-semibold">Type / Language</th>
                 <th className="py-3 px-4 font-semibold">Evaluation Status</th>
                 <th className="py-3 px-4 font-semibold text-right">Timestamp</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {recentSubmissions.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-slate-400">
@@ -524,29 +525,69 @@ export default function AdminDashboardPage() {
                   </td>
                 </tr>
               ) : (
-                recentSubmissions.map((sub) => (
-                  <tr key={sub._id} className="text-slate-600 hover:bg-slate-50 transition-colors">
-                    <td className="py-3.5 px-4">
-                      <p className="font-semibold text-slate-800">{sub.userId?.name || 'Candidate'}</p>
-                      <p className="text-[11px] text-slate-400 font-mono">
-                        {sub.userId?.rollNumber || sub.userId?.email || 'N/A'}
-                      </p>
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-700 font-medium">{sub.examId?.title || 'Exam'}</td>
-                    <td className="py-3.5 px-4 text-slate-500">{sub.questionId?.title || 'Problem'}</td>
-                    <td className="py-3.5 px-4 font-mono text-[11px] uppercase font-bold text-blue-600">
-                      {sub.language}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">
-                        {sub.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-400 font-mono text-right">
-                      {new Date(sub.submittedAt || sub.createdAt).toLocaleTimeString()}
-                    </td>
-                  </tr>
-                ))
+                recentSubmissions.map((sub) => {
+                  const isMcq = sub.questionType === 'MCQ' || sub.questionId?.type === 'MCQ' || sub.language === 'MCQ';
+
+                  return (
+                    <tr key={sub._id} className="text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      {/* 1. Examination First */}
+                      <td className="py-3.5 px-4 font-medium text-slate-800 dark:text-slate-100">
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                          <span className="truncate max-w-[200px] font-semibold">{sub.examId?.title || 'Exam'}</span>
+                        </div>
+                      </td>
+
+                      {/* 2. Student / Candidate Second */}
+                      <td className="py-3.5 px-4">
+                        <p className="font-semibold text-slate-800 dark:text-slate-100">{sub.userId?.name || 'Candidate'}</p>
+                        <p className="text-[11px] text-slate-400 font-mono">
+                          {sub.userId?.rollNumber || sub.userId?.email || 'N/A'}
+                        </p>
+                      </td>
+
+                      {/* 3. Problem / Question */}
+                      <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300">
+                        <div className="flex items-center gap-1.5">
+                          <span className="truncate max-w-[170px] block font-medium">
+                            {sub.questionId?.title || 'Question'}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* 4. Type / Language (MCQ vs Programming Language) */}
+                      <td className="py-3.5 px-4">
+                        {isMcq ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                            MCQ
+                          </span>
+                        ) : (
+                          <span className="font-mono text-[11px] uppercase font-bold text-blue-600 dark:text-blue-400">
+                            {sub.language}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* 5. Evaluation Status */}
+                      <td className="py-3.5 px-4">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                          sub.status === 'COMPLETED' || sub.status === 'PASSED'
+                            ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                            : sub.status === 'FAILED' || sub.status === 'WRONG_ANSWER'
+                            ? 'bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800'
+                            : 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800'
+                        }`}>
+                          {sub.status}
+                        </span>
+                      </td>
+
+                      {/* 6. Timestamp */}
+                      <td className="py-3.5 px-4 text-slate-400 font-mono text-right">
+                        {new Date(sub.submittedAt || sub.createdAt).toLocaleTimeString()}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

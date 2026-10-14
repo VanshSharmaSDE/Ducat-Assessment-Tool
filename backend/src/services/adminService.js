@@ -70,6 +70,7 @@ export class AdminService {
       ExamAttempt.find(attemptFilter).populate('examId', 'title totalMarks passingMarks'),
       Submission.aggregate([
         ...(isFaculty ? [{ $match: subFilter }] : []),
+        { $match: { questionType: { $ne: 'MCQ' }, language: { $nin: ['MCQ', 'mcq', null, ''] } } },
         { $group: { _id: '$language', count: { $sum: 1 } } },
         { $sort: { count: -1 } },
       ]),
@@ -152,13 +153,19 @@ export class AdminService {
       .sort((a, b) => b.attempts - a.attempts)
       .slice(0, 5);
 
-    // Recent 6 submissions with full context
+    // Self-heal any legacy MCQ submissions where language was saved as 'java'
+    Submission.updateMany(
+      { questionType: 'MCQ', language: 'java' },
+      { $set: { language: 'MCQ' } }
+    ).exec().catch(() => {});
+
+    // Recent submissions with full context
     const recentSubmissions = await Submission.find(subFilter)
       .populate('userId', 'name email rollNumber')
       .populate('examId', 'title')
-      .populate('questionId', 'title')
+      .populate('questionId', 'title type marks')
       .sort({ createdAt: -1 })
-      .limit(6);
+      .limit(8);
 
     const outcomeDistribution = [
       { name: 'Passed', count: passedCount, color: '#10b981' },

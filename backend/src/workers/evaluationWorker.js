@@ -172,7 +172,8 @@ export async function checkAndFinalizeExamAttempt(attemptId) {
       totalScore += res.score || 0;
     }
 
-    const maxScore = exam.totalMarks || 100;
+    const questionMarksSum = (exam.questions || []).reduce((acc, q) => acc + Number(q.marks || 0), 0);
+    const maxScore = exam.totalMarks || questionMarksSum || 100;
     const percentage = maxScore > 0 ? +((totalScore / maxScore) * 100).toFixed(2) : 0;
     const resultStatus = totalScore >= (exam.passingMarks || 0) ? 'PASS' : 'FAIL';
 

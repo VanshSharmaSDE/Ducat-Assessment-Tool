@@ -178,17 +178,19 @@ export class ResultService {
         questionType: q?.type || res?.questionType || 'CODING',
         questionDifficulty: q ? q.difficulty : 'MEDIUM',
         options: q?.options || [],
-        correctAnswer: (isAdmin || (currentUser && ['ADMIN', 'FACULTY'].includes(currentUser.role))) ? q?.correctAnswer : undefined,
+        correctAnswer: (isAdmin || (currentUser && ['ADMIN', 'FACULTY'].includes(currentUser.role)) || attempt.status === 'EVALUATED') ? q?.correctAnswer : undefined,
         explanation: q?.explanation || '',
         maxMarks: questionMaxMarks,
         language: sub?.language || 'code',
         submittedCode: sub?.sourceCode || '',
-        selectedOption: sub?.selectedOption !== undefined && sub?.selectedOption !== null ? sub.selectedOption : res?.selectedOption,
+        selectedOption: (sub?.selectedOption !== undefined && sub?.selectedOption !== null)
+          ? Number(sub.selectedOption)
+          : (res?.selectedOption !== undefined && res?.selectedOption !== null ? Number(res.selectedOption) : null),
         submissionStatus: sub ? sub.status : 'NOT_SUBMITTED',
         result: res
           ? {
               questionType: res.questionType || q?.type || 'CODING',
-              selectedOption: res.selectedOption,
+              selectedOption: res.selectedOption !== undefined && res.selectedOption !== null ? Number(res.selectedOption) : null,
               isCorrect: res.isCorrect,
               passedTests: res.passedTests,
               totalTests: res.totalTests,

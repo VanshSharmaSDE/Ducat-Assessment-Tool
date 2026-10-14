@@ -295,8 +295,12 @@ export default function AdminResultDetailPage() {
                         </h5>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {item.options.map((opt, oIdx) => {
-                            const isSelected = item.selectedOption === oIdx;
-                            const isCorrect = item.correctAnswer === oIdx;
+                            const isSelected = item.selectedOption !== null &&
+                              item.selectedOption !== undefined &&
+                              Number(item.selectedOption) === oIdx;
+                            const isCorrect = item.correctAnswer !== null &&
+                              item.correctAnswer !== undefined &&
+                              Number(item.correctAnswer) === oIdx;
 
                             let borderStyle = 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300';
                             if (isCorrect) {
