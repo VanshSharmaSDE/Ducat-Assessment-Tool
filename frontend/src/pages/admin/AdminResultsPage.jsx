@@ -119,13 +119,17 @@ export default function AdminResultsPage() {
     try {
       setExporting(true);
       const targetId = specificExamId || examFilter || (selectedExam ? selectedExam._id : '');
-      let query = '';
-      if (targetId) query += `&examId=${targetId}`;
-      if (technologyFilter) query += `&technology=${encodeURIComponent(technologyFilter)}`;
-      if (batchFilter) query += `&batch=${encodeURIComponent(batchFilter)}`;
-      if (genderFilter) query += `&gender=${encodeURIComponent(genderFilter)}`;
-      if (languageFilter) query += `&language=${encodeURIComponent(languageFilter)}`;
-      if (query.startsWith('&')) query = '?' + query.slice(1);
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata';
+      const params = [`timezone=${encodeURIComponent(tz)}`];
+      if (targetId) params.push(`examId=${targetId}`);
+      if (resultStatusFilter) params.push(`resultStatus=${encodeURIComponent(resultStatusFilter)}`);
+      if (technologyFilter) params.push(`technology=${encodeURIComponent(technologyFilter)}`);
+      if (batchFilter) params.push(`batch=${encodeURIComponent(batchFilter)}`);
+      if (genderFilter) params.push(`gender=${encodeURIComponent(genderFilter)}`);
+      if (languageFilter) params.push(`language=${encodeURIComponent(languageFilter)}`);
+      if (candidateSearch && candidateSearch.trim()) params.push(`search=${encodeURIComponent(candidateSearch.trim())}`);
+      if (selectedResults && selectedResults.length > 0) params.push(`attemptIds=${encodeURIComponent(selectedResults.join(','))}`);
+      const query = `?${params.join('&')}`;
 
       const response = await api.get(`/admin/results/export-excel${query}`, {
         responseType: 'blob',

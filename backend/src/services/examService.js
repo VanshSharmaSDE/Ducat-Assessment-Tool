@@ -434,6 +434,8 @@ export class ExamService {
     let terminated = false;
     if (attempt.violationCount >= maxViolations) {
       attempt.status = 'TERMINATED';
+      attempt.resultStatus = 'FAIL';
+      attempt.submittedAt = attempt.submittedAt || new Date();
       terminated = true;
       logger.warn(`Attempt ${attempt._id} terminated due to excessive violations (${attempt.violationCount}/${maxViolations})`);
     }
@@ -496,6 +498,8 @@ export class ExamService {
     const now = new Date();
     if (now.getTime() > new Date(attempt.endTime).getTime() + graceMs) {
       attempt.status = 'EXPIRED';
+      attempt.resultStatus = attempt.resultStatus === 'PASS' ? 'PASS' : 'FAIL';
+      attempt.submittedAt = attempt.submittedAt || now;
       await attempt.save();
       const error = new Error('Exam deadline has passed. Late submissions are not accepted.');
       error.statusCode = 400;

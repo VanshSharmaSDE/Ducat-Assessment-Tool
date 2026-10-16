@@ -644,7 +644,7 @@ export const importSharedStudents = async (req, res) => {
 export const exportResultsExcel = async (req, res) => {
   try {
     const examId = req.params.id || req.query.examId;
-    const { batch, technology, organization, gender, language } = req.query;
+    const { batch, technology, organization, gender, language, resultStatus, search, attemptIds, timezone } = req.query;
 
     const filter = { 
       status: { $in: ['EVALUATED', 'SUBMITTED', 'COMPLETED', 'EXPIRED', 'TERMINATED'] } 
@@ -652,6 +652,17 @@ export const exportResultsExcel = async (req, res) => {
 
     if (examId) {
       filter.examId = examId;
+    }
+
+    if (resultStatus) {
+      filter.resultStatus = resultStatus;
+    }
+
+    if (attemptIds) {
+      const ids = String(attemptIds).split(',').map((s) => s.trim()).filter(Boolean);
+      if (ids.length > 0) {
+        filter._id = { $in: ids };
+      }
     }
 
     // Role check: Faculty can export results for their students (created, assigned, or institutional) or their exams
@@ -683,7 +694,7 @@ export const exportResultsExcel = async (req, res) => {
       }
     }
 
-    // Filter by student organization, technology, batch, or gender
+    // Filter by student organization, technology, batch, gender, or search keyword
     const userFilter = {};
     if (req.user?.role === 'FACULTY') {
       const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
@@ -700,6 +711,19 @@ export const exportResultsExcel = async (req, res) => {
     if (technology) userFilter.technology = technology;
     if (batch) userFilter.batch = batch;
     if (gender) userFilter.gender = gender;
+    if (search && search.trim()) {
+      const s = search.trim();
+      const sRegex = new RegExp(s.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&'), 'i');
+      userFilter.$and = userFilter.$and || [];
+      userFilter.$and.push({
+        $or: [
+          { name: sRegex },
+          { email: sRegex },
+          { rollNumber: sRegex },
+          { studentId: sRegex },
+        ],
+      });
+    }
 
     if (Object.keys(userFilter).length > 0) {
       const userIds = await User.find(userFilter).distinct('_id');
@@ -739,8 +763,8 @@ export const exportResultsExcel = async (req, res) => {
     }
 
     // Fetch languages used for each attempt
-    const attemptIds = attempts.map((a) => a._id);
-    const submissions = await Submission.find({ attemptId: { $in: attemptIds } }, 'attemptId language');
+    const attemptIdsList = attempts.map((a) => a._id);
+    const submissions = await Submission.find({ attemptId: { $in: attemptIdsList } }, 'attemptId language');
     const attemptLangMap = {};
     submissions.forEach((sub) => {
       const idStr = sub.attemptId.toString();
@@ -750,11 +774,78 @@ export const exportResultsExcel = async (req, res) => {
       attemptLangMap[idStr].add(sub.language);
     });
 
+    const clientTimezone = timezone || 'Asia/Kolkata';
+
+    const formatDateTime = (dateVal, tz) => {
+      if (!dateVal) return '—';
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return '—';
+      try {
+        return d.toLocaleString('en-IN', {
+          timeZone: tz,
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+        });
+      } catch (e) {
+        return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true });
+      }
+    };
+
+    const formatDateOnly = (dateVal, tz) => {
+      if (!dateVal) return '—';
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return '—';
+      try {
+        return d.toLocaleDateString('en-IN', {
+          timeZone: tz,
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+        });
+      } catch (e) {
+        return d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' });
+      }
+    };
+
+    const formatTimeOnly = (dateVal, tz) => {
+      if (!dateVal) return '—';
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return '—';
+      try {
+        return d.toLocaleTimeString('en-IN', {
+          timeZone: tz,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+        });
+      } catch (e) {
+        return d.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true });
+      }
+    };
+
     const rows = attempts.length > 0 ? attempts.map((att, idx) => {
       const score = att.totalScore ?? att.totalScoreObtained ?? 0;
       const max = att.maxScore || att.examId?.totalMarks || 100;
-      const passMarks = att.examId?.passingMarks || 40;
-      const passed = att.resultStatus === 'PASS' || score >= passMarks;
+      const passMarks = att.examId?.passingMarks ?? 40;
+
+      // Pass/Fail status MUST strictly reflect ground truth from evaluation/dashboard
+      let outcome = att.resultStatus;
+      if (!outcome || outcome === 'PENDING') {
+        if (att.status === 'TERMINATED' || att.status === 'EXPIRED') {
+          outcome = 'FAIL';
+        } else if (att.status === 'EVALUATED') {
+          outcome = score >= passMarks ? 'PASS' : 'FAIL';
+        } else {
+          outcome = att.resultStatus || 'PENDING';
+        }
+      }
+
       const langs = Array.from(attemptLangMap[att._id.toString()] || []).join(', ') || 'N/A';
       const studentCreator = att.userId?.createdBy?.name 
         ? `${att.userId.createdBy.name} (${att.userId.createdBy.role})` 
@@ -762,6 +853,15 @@ export const exportResultsExcel = async (req, res) => {
       const examCreator = att.examId?.createdBy?.name
         ? `${att.examId.createdBy.name} (${att.examId.createdBy.role})`
         : 'System';
+
+      const submissionDateObj = att.submittedAt || att.startedAt || att.createdAt;
+      const formattedDateTime = formatDateTime(submissionDateObj, clientTimezone);
+      const formattedDate = formatDateOnly(submissionDateObj, clientTimezone);
+      const formattedTime = formatTimeOnly(submissionDateObj, clientTimezone);
+
+      const percentageVal = typeof att.percentage === 'number'
+        ? `${att.percentage}%`
+        : (max > 0 ? `${((score / max) * 100).toFixed(2)}%` : '0%');
 
       return {
         'S.No': idx + 1,
@@ -779,15 +879,40 @@ export const exportResultsExcel = async (req, res) => {
         'Violations': att.violationCount || 0,
         'Score Obtained': score,
         'Max Marks': max,
-        'Percentage (%)': max > 0 ? ((score / max) * 100).toFixed(2) + '%' : '0%',
-        'Status': passed ? 'PASSED' : 'FAILED',
-        'Submission Date': new Date(att.submittedAt || att.createdAt).toLocaleString()
+        'Percentage (%)': percentageVal,
+        'Status': outcome,
+        'Submitted Date & Time': formattedDateTime,
+        'Submission Date': formattedDate,
+        'Submission Time': formattedTime,
       };
     }) : [{
       'Status': 'No student exam results found matching the selected filters'
     }];
 
     const worksheet = XLSX.utils.json_to_sheet(rows);
+    worksheet['!cols'] = [
+      { wch: 6 },  // S.No
+      { wch: 22 }, // Student Name
+      { wch: 20 }, // Student ID / Roll No
+      { wch: 26 }, // Email
+      { wch: 18 }, // Organization
+      { wch: 16 }, // Technology
+      { wch: 16 }, // Batch
+      { wch: 10 }, // Gender
+      { wch: 24 }, // Created By (Faculty)
+      { wch: 26 }, // Exam Title
+      { wch: 20 }, // Exam Created By
+      { wch: 16 }, // Languages Used
+      { wch: 10 }, // Violations
+      { wch: 14 }, // Score Obtained
+      { wch: 12 }, // Max Marks
+      { wch: 14 }, // Percentage (%)
+      { wch: 10 }, // Status
+      { wch: 24 }, // Submitted Date & Time
+      { wch: 16 }, // Submission Date
+      { wch: 16 }, // Submission Time
+    ];
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Exam Results');
 

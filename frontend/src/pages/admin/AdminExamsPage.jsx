@@ -107,7 +107,8 @@ export default function AdminExamsPage() {
   const handleExportExamExcel = async (exam) => {
     try {
       setActionLoading(true);
-      const response = await api.get(`/admin/exams/${exam._id}/export-excel`, {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata';
+      const response = await api.get(`/admin/exams/${exam._id}/export-excel?timezone=${encodeURIComponent(tz)}`, {
         responseType: 'blob',
       });
       const blob = new Blob([response.data], {
