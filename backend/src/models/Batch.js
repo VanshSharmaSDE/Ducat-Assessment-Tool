@@ -6,8 +6,6 @@ const batchSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Batch name is required'],
       trim: true,
-      unique: true,
-      index: true,
     },
     description: {
       type: String,
@@ -35,5 +33,20 @@ const batchSchema = new mongoose.Schema(
   }
 );
 
+// Compound unique index: batch name is unique per instructor/creator
+batchSchema.index({ name: 1, createdBy: 1 }, { unique: true });
+
 export const Batch = mongoose.model('Batch', batchSchema);
+
+// Self-healing: Ensure legacy global unique index on name is dropped
+const dropLegacyIndex = async () => {
+  try {
+    await Batch.collection.dropIndex('name_1');
+  } catch (_) {
+    // Ignore if index not present
+  }
+};
+dropLegacyIndex();
+Batch.on('index', dropLegacyIndex);
+
 export default Batch;

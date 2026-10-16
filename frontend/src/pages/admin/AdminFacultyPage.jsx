@@ -37,11 +37,15 @@ export default function AdminFacultyPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showEditPassword, setShowEditPassword] = useState(false);
+  const [technologiesList, setTechnologiesList] = useState([]);
+  const [newTechInput, setNewTechInput] = useState('');
+  const [editTechInput, setEditTechInput] = useState('');
   const [createFormData, setCreateFormData] = useState({
     facultyId: '',
     name: '',
     email: '',
     password: '',
+    technologies: [],
     department: '',
     organization: '',
     phone: '',
@@ -54,6 +58,7 @@ export default function AdminFacultyPage() {
     facultyId: '',
     name: '',
     email: '',
+    technologies: [],
     department: '',
     organization: '',
     phone: '',
@@ -76,6 +81,13 @@ export default function AdminFacultyPage() {
     } catch (_) {}
   };
 
+  const loadTechnologies = async () => {
+    try {
+      const res = await api.get('/admin/batches');
+      setTechnologiesList(res.data.data.batches || []);
+    } catch (_) {}
+  };
+
   const loadFaculty = async () => {
     try {
       let query = '';
@@ -95,6 +107,7 @@ export default function AdminFacultyPage() {
 
   useEffect(() => {
     loadOrganizations();
+    loadTechnologies();
   }, []);
 
   useEffect(() => {
@@ -104,16 +117,35 @@ export default function AdminFacultyPage() {
   // Create Faculty Member
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
+    if (!createFormData.organization) {
+      await showAlert({
+        title: 'Validation Error',
+        message: 'Organization is mandatory for faculty.',
+        type: 'warning',
+      });
+      return;
+    }
+    if (!createFormData.technologies || createFormData.technologies.length === 0) {
+      await showAlert({
+        title: 'Validation Error',
+        message: 'At least one Technology is mandatory for faculty.',
+        type: 'warning',
+      });
+      return;
+    }
     try {
       setActionLoading(true);
-      await api.post('/admin/faculty', createFormData);
+      await api.post('/admin/faculty', {
+        ...createFormData,
+        department: createFormData.technologies.join(', '),
+      });
       await showAlert({
         title: 'Faculty Created',
         message: 'Faculty account created successfully!',
         type: 'success',
       });
       setShowCreateModal(false);
-      setCreateFormData({ facultyId: '', name: '', email: '', password: '', department: '', organization: '', phone: '' });
+      setCreateFormData({ facultyId: '', name: '', email: '', password: '', technologies: [], department: '', organization: '', phone: '' });
       loadFaculty();
     } catch (err) {
       await showAlert({
@@ -129,10 +161,14 @@ export default function AdminFacultyPage() {
   // Open Edit Modal
   const handleOpenEdit = (f) => {
     setEditingFaculty(f);
+    const existingTechs = f.technologies && f.technologies.length > 0
+      ? f.technologies
+      : (f.department ? f.department.split(',').map((s) => s.trim()).filter(Boolean) : []);
     setEditFormData({
       facultyId: f.facultyId || '',
       name: f.name || '',
       email: f.email || '',
+      technologies: existingTechs,
       department: f.department || '',
       organization: f.organization || '',
       phone: f.phone || '',
@@ -145,9 +181,28 @@ export default function AdminFacultyPage() {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!editingFaculty) return;
+    if (!editFormData.organization) {
+      await showAlert({
+        title: 'Validation Error',
+        message: 'Organization is mandatory for faculty.',
+        type: 'warning',
+      });
+      return;
+    }
+    if (!editFormData.technologies || editFormData.technologies.length === 0) {
+      await showAlert({
+        title: 'Validation Error',
+        message: 'At least one Technology is mandatory for faculty.',
+        type: 'warning',
+      });
+      return;
+    }
     try {
       setActionLoading(true);
-      await api.put(`/admin/faculty/${editingFaculty._id}`, editFormData);
+      await api.put(`/admin/faculty/${editingFaculty._id}`, {
+        ...editFormData,
+        department: editFormData.technologies.join(', '),
+      });
       await showAlert({
         title: 'Faculty Updated',
         message: 'Faculty account updated successfully!',
@@ -164,6 +219,54 @@ export default function AdminFacultyPage() {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const handleToggleCreateTech = (techName) => {
+    setCreateFormData((prev) => {
+      const exists = prev.technologies?.includes(techName);
+      return {
+        ...prev,
+        technologies: exists
+          ? prev.technologies.filter((t) => t !== techName)
+          : [...(prev.technologies || []), techName],
+      };
+    });
+  };
+
+  const handleAddCustomCreateTech = () => {
+    const val = newTechInput.trim();
+    if (!val) return;
+    if (!createFormData.technologies?.includes(val)) {
+      setCreateFormData((prev) => ({
+        ...prev,
+        technologies: [...(prev.technologies || []), val],
+      }));
+    }
+    setNewTechInput('');
+  };
+
+  const handleToggleEditTech = (techName) => {
+    setEditFormData((prev) => {
+      const exists = prev.technologies?.includes(techName);
+      return {
+        ...prev,
+        technologies: exists
+          ? prev.technologies.filter((t) => t !== techName)
+          : [...(prev.technologies || []), techName],
+      };
+    });
+  };
+
+  const handleAddCustomEditTech = () => {
+    const val = editTechInput.trim();
+    if (!val) return;
+    if (!editFormData.technologies?.includes(val)) {
+      setEditFormData((prev) => ({
+        ...prev,
+        technologies: [...(prev.technologies || []), val],
+      }));
+    }
+    setEditTechInput('');
   };
 
   // Toggle Active/Inactive Status
@@ -438,7 +541,7 @@ export default function AdminFacultyPage() {
                   <th className="py-3 px-4 font-semibold">Faculty ID</th>
                   <th className="py-3 px-4 font-semibold">Email</th>
                   <th className="py-3 px-4 font-semibold">Organization</th>
-                  <th className="py-3 px-4 font-semibold">Department</th>
+                  <th className="py-3 px-4 font-semibold">Technologies</th>
                   <th className="py-3 px-4 font-semibold">Phone</th>
                   <th className="py-3 px-4 font-semibold">Status</th>
                   <th className="py-3 px-4 font-semibold">Created Date</th>
@@ -492,8 +595,22 @@ export default function AdminFacultyPage() {
                         <span className="text-slate-400 italic text-[11px]">Unassigned</span>
                       )}
                     </td>
-                    <td className="py-3 px-4 font-mono text-slate-700 font-semibold whitespace-nowrap">
-                      {f.department || 'General Faculty'}
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      {f.technologies && f.technologies.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 max-w-xs">
+                          {f.technologies.map((t, idx) => (
+                            <span key={idx} className="px-2 py-0.5 rounded-md text-[10px] bg-slate-100 text-slate-700 font-semibold border border-slate-200">
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      ) : f.department ? (
+                        <span className="px-2 py-0.5 rounded-md text-[10px] bg-slate-100 text-slate-700 font-semibold border border-slate-200">
+                          {f.department}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 italic text-[11px]">—</span>
+                      )}
                     </td>
                     <td className="py-3 px-4 font-mono text-slate-500 whitespace-nowrap">
                       {f.phone || '—'}
@@ -629,13 +746,16 @@ export default function AdminFacultyPage() {
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Assigned Organization</label>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Assigned Organization <span className="text-rose-500">*</span>
+                </label>
                 <select
+                  required
                   value={createFormData.organization}
                   onChange={(e) => setCreateFormData({ ...createFormData, organization: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="">Select Organization (Optional)</option>
+                  <option value="">Select Organization *</option>
                   {organizations.map((org) => (
                     <option key={org._id} value={org.name}>
                       {org.name} {org.code ? `(${org.code})` : ''}
@@ -644,27 +764,88 @@ export default function AdminFacultyPage() {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Department</label>
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Technologies Taught <span className="text-rose-500">*</span>
+                </label>
+                <p className="text-[11px] text-slate-500 mb-1.5">
+                  Click to select one or more technologies, or type a new one:
+                </p>
+                <div className="flex flex-wrap gap-1.5 mb-2 max-h-28 overflow-y-auto p-1.5 bg-slate-50 border border-slate-200 rounded-xl">
+                  {technologiesList.length === 0 && (
+                    <span className="text-xs text-slate-400 p-1">No predefined technologies found</span>
+                  )}
+                  {technologiesList.map((tech) => {
+                    const isSelected = createFormData.technologies?.includes(tech.name);
+                    return (
+                      <button
+                        type="button"
+                        key={tech._id || tech.name}
+                        onClick={() => handleToggleCreateTech(tech.name)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                          isSelected
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {isSelected ? '✓ ' : '+ '}{tech.name}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex gap-1.5">
                   <input
                     type="text"
-                    value={createFormData.department}
-                    onChange={(e) => setCreateFormData({ ...createFormData, department: e.target.value })}
-                    placeholder="e.g. Computer Science"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={newTechInput}
+                    onChange={(e) => setNewTechInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddCustomCreateTech();
+                      }
+                    }}
+                    placeholder="Add custom technology..."
+                    className="flex-1 px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                  <button
+                    type="button"
+                    onClick={handleAddCustomCreateTech}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-lg transition-colors"
+                  >
+                    Add
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Phone Number</label>
-                  <input
-                    type="text"
-                    value={createFormData.phone}
-                    onChange={(e) => setCreateFormData({ ...createFormData, phone: e.target.value })}
-                    placeholder="+91-..."
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+                {createFormData.technologies?.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    <span className="text-[11px] text-slate-500 self-center mr-1">Selected:</span>
+                    {createFormData.technologies.map((t) => (
+                      <span
+                        key={t}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-xs font-semibold"
+                      >
+                        {t}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleCreateTech(t)}
+                          className="hover:text-rose-600"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Phone Number (Optional)</label>
+                <input
+                  type="text"
+                  value={createFormData.phone}
+                  onChange={(e) => setCreateFormData({ ...createFormData, phone: e.target.value })}
+                  placeholder="+91-..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
 
               <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-200">
@@ -741,13 +922,16 @@ export default function AdminFacultyPage() {
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Assigned Organization</label>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Assigned Organization <span className="text-rose-500">*</span>
+                </label>
                 <select
+                  required
                   value={editFormData.organization}
                   onChange={(e) => setEditFormData({ ...editFormData, organization: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="">Select Organization (Optional)</option>
+                  <option value="">Select Organization *</option>
                   {organizations.map((org) => (
                     <option key={org._id} value={org.name}>
                       {org.name} {org.code ? `(${org.code})` : ''}
@@ -756,25 +940,88 @@ export default function AdminFacultyPage() {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Department</label>
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Technologies Taught <span className="text-rose-500">*</span>
+                </label>
+                <p className="text-[11px] text-slate-500 mb-1.5">
+                  Click to select one or more technologies, or type a new one:
+                </p>
+                <div className="flex flex-wrap gap-1.5 mb-2 max-h-28 overflow-y-auto p-1.5 bg-slate-50 border border-slate-200 rounded-xl">
+                  {technologiesList.length === 0 && (
+                    <span className="text-xs text-slate-400 p-1">No predefined technologies found</span>
+                  )}
+                  {technologiesList.map((tech) => {
+                    const isSelected = editFormData.technologies?.includes(tech.name);
+                    return (
+                      <button
+                        type="button"
+                        key={tech._id || tech.name}
+                        onClick={() => handleToggleEditTech(tech.name)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                          isSelected
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {isSelected ? '✓ ' : '+ '}{tech.name}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex gap-1.5">
                   <input
                     type="text"
-                    value={editFormData.department}
-                    onChange={(e) => setEditFormData({ ...editFormData, department: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={editTechInput}
+                    onChange={(e) => setEditTechInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddCustomEditTech();
+                      }
+                    }}
+                    placeholder="Add custom technology..."
+                    className="flex-1 px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                  <button
+                    type="button"
+                    onClick={handleAddCustomEditTech}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-lg transition-colors"
+                  >
+                    Add
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Phone</label>
-                  <input
-                    type="text"
-                    value={editFormData.phone}
-                    onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+                {editFormData.technologies?.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    <span className="text-[11px] text-slate-500 self-center mr-1">Selected:</span>
+                    {editFormData.technologies.map((t) => (
+                      <span
+                        key={t}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-xs font-semibold"
+                      >
+                        {t}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleEditTech(t)}
+                          className="hover:text-rose-600"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Phone Number (Optional)</label>
+                <input
+                  type="text"
+                  value={editFormData.phone}
+                  onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                  placeholder="+91-..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
 
               <div>

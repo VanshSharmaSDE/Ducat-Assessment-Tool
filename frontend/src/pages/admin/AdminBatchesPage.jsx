@@ -73,15 +73,15 @@ export default function AdminBatchesPage() {
       setShowCreateModal(false);
       setFormData({ name: '', department: '', description: '' });
       await showAlert({
-        title: 'Batch Created',
-        message: `Batch "${formData.name}" created successfully!`,
+        title: 'Technology Created',
+        message: `Technology "${formData.name}" created successfully!`,
         type: 'success',
       });
       await loadBatches();
     } catch (err) {
       await showAlert({
         title: 'Creation Failed',
-        message: err.response?.data?.message || 'Failed to create batch',
+        message: err.response?.data?.message || 'Failed to create technology',
         type: 'error',
       });
     } finally {
@@ -108,15 +108,15 @@ export default function AdminBatchesPage() {
       setShowEditModal(false);
       setSelectedBatch(null);
       await showAlert({
-        title: 'Batch Updated',
-        message: `Batch "${formData.name}" updated successfully!`,
+        title: 'Technology Updated',
+        message: `Technology "${formData.name}" updated successfully!`,
         type: 'success',
       });
       await loadBatches();
     } catch (err) {
       await showAlert({
         title: 'Update Failed',
-        message: err.response?.data?.message || 'Failed to update batch',
+        message: err.response?.data?.message || 'Failed to update technology',
         type: 'error',
       });
     } finally {
@@ -126,9 +126,9 @@ export default function AdminBatchesPage() {
 
   const handleDeleteBatch = async (b) => {
     const confirmed = await showConfirm({
-      title: 'Delete Batch',
-      message: `Are you sure you want to delete batch "${b.name}"? Assigned students will have their batch cleared.`,
-      confirmText: 'Delete Batch',
+      title: 'Delete Technology',
+      message: `Are you sure you want to delete technology "${b.name}"? Assigned students will have their technology unassigned.`,
+      confirmText: 'Delete Technology',
       isDanger: true,
     });
     if (!confirmed) return;
@@ -138,15 +138,15 @@ export default function AdminBatchesPage() {
       await api.delete(`/admin/batches/${b._id}`);
       setSelectedBatches((prev) => prev.filter((id) => id !== b._id));
       await showAlert({
-        title: 'Batch Deleted',
-        message: `Batch "${b.name}" deleted successfully!`,
+        title: 'Technology Deleted',
+        message: `Technology "${b.name}" deleted successfully!`,
         type: 'success',
       });
       await loadBatches();
     } catch (err) {
       await showAlert({
         title: 'Delete Failed',
-        message: err.response?.data?.message || 'Failed to delete batch',
+        message: err.response?.data?.message || 'Failed to delete technology',
         type: 'error',
       });
     } finally {
@@ -221,7 +221,7 @@ export default function AdminBatchesPage() {
     } catch (err) {
       await showAlert({
         title: 'Loading Failed',
-        message: 'Failed to load batch students',
+        message: 'Failed to load technology students',
         type: 'error',
       });
     } finally {
@@ -232,8 +232,8 @@ export default function AdminBatchesPage() {
   const handleRemoveStudent = async (studentId) => {
     if (!selectedBatch) return;
     const confirmed = await showConfirm({
-      title: 'Remove Candidate from Batch',
-      message: `Are you sure you want to remove this candidate from batch "${selectedBatch.name}"?`,
+      title: 'Remove Candidate from Technology',
+      message: `Are you sure you want to remove this candidate from technology "${selectedBatch.name}"?`,
       confirmText: 'Remove Candidate',
       isDanger: true,
     });
@@ -245,7 +245,7 @@ export default function AdminBatchesPage() {
       setBatchStudents((prev) => prev.filter((s) => s._id !== studentId));
       await showAlert({
         title: 'Candidate Removed',
-        message: 'Candidate was successfully removed from batch.',
+        message: 'Candidate was successfully removed from technology.',
         type: 'success',
       });
       await loadBatches();
@@ -269,7 +269,7 @@ export default function AdminBatchesPage() {
       });
       await showAlert({
         title: 'Candidates Added',
-        message: res.data?.message || 'Candidates added to batch successfully!',
+        message: res.data?.message || 'Candidates assigned to technology successfully!',
         type: 'success',
       });
       setSelectedStudentIds([]);
@@ -320,12 +320,12 @@ export default function AdminBatchesPage() {
         <div>
           <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2.5">
             <Layers className="w-6 h-6 text-blue-600" />
-            {isAdmin ? 'Batch Management' : 'My Batches'}
+            {isAdmin ? 'Technology Management' : 'My Technologies'}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             {isAdmin
-              ? 'Organize students into batches, track faculty attribution, and bulk manage enrollments'
-              : 'Create cohorts for your students and assign candidates into dedicated batches'}
+              ? 'Organize students into technologies, track faculty attribution, and bulk manage enrollments'
+              : 'Create cohorts for your students and assign candidates into dedicated technologies'}
           </p>
         </div>
 
@@ -349,7 +349,7 @@ export default function AdminBatchesPage() {
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/15 transition-all shrink-0 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Create New Batch</span>
+            <span>Create New Technology</span>
           </button>
         </div>
       </div>
@@ -362,7 +362,7 @@ export default function AdminBatchesPage() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search batches by name, department, or description..."
+            placeholder="Search technologies by name, department, or description..."
             className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -372,9 +372,9 @@ export default function AdminBatchesPage() {
       {batches.length === 0 ? (
         <div className="p-12 text-center rounded-2xl bg-white border border-slate-200 text-slate-500 shadow-sm">
           <Layers className="w-12 h-12 mx-auto text-slate-400 mb-3" />
-          <h3 className="text-base font-semibold text-slate-800">No batches created yet</h3>
+          <h3 className="text-base font-semibold text-slate-800">No technologies created yet</h3>
           <p className="text-xs text-slate-500 mt-1">
-            Click "Create New Batch" to set up your first student batch or cohort.
+            Click "Create New Technology" to set up your first student technology or cohort.
           </p>
         </div>
       ) : (
@@ -389,10 +389,10 @@ export default function AdminBatchesPage() {
                       checked={batches.length > 0 && selectedBatches.length === batches.length}
                       onChange={handleSelectAll}
                       className="w-4 h-4 rounded bg-white border-slate-300 text-blue-600 accent-blue-600 focus:ring-0 cursor-pointer"
-                      title="Select All Batches"
+                      title="Select All Technologies"
                     />
                   </th>
-                  <th className="py-3 px-4 font-semibold">Batch Name</th>
+                  <th className="py-3 px-4 font-semibold">Technology Name</th>
                   <th className="py-3 px-4 font-semibold">Department</th>
                   <th className="py-3 px-4 font-semibold">Description</th>
                   <th className="py-3 px-4 font-semibold">Students Enrolled</th>
@@ -468,7 +468,7 @@ export default function AdminBatchesPage() {
                           onClick={() => handleOpenEdit(b)}
                           disabled={actionLoading}
                           className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:text-blue-600 hover:bg-slate-200 transition-colors cursor-pointer"
-                          title="Edit Batch"
+                          title="Edit Technology"
                         >
                           <Edit className="w-3.5 h-3.5" />
                         </button>
@@ -476,7 +476,7 @@ export default function AdminBatchesPage() {
                           onClick={() => handleDeleteBatch(b)}
                           disabled={actionLoading}
                           className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                          title="Delete Batch"
+                          title="Delete Technology"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -491,14 +491,14 @@ export default function AdminBatchesPage() {
         </div>
       )}
 
-      {/* Create Batch Modal */}
+      {/* Create Technology Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white border border-slate-200 rounded-2xl shadow-xl w-full max-w-md p-6 text-slate-700">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                 <Layers className="w-5 h-5 text-blue-600" />
-                Create New Batch
+                Create New Technology
               </h2>
               <button
                 onClick={() => setShowCreateModal(false)}
@@ -511,17 +511,17 @@ export default function AdminBatchesPage() {
             <form onSubmit={handleCreateSubmit} className="space-y-4 text-xs">
               <div>
                 <label className="block font-medium text-slate-700 mb-1">
-                  Batch Name / Identifier *
+                  Technology Name / Identifier *
                 </label>
                 <input
                   type="text"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. 2026-CSE-Section-A"
+                  placeholder="e.g. Java Full Stack, React, Python, Data Science"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <p className="text-[11px] text-slate-500 mt-1">This will be assigned to students as their batch identifier.</p>
+                <p className="text-[11px] text-slate-500 mt-1">This will be assigned to students as their technology identifier.</p>
               </div>
 
               <div>
@@ -545,7 +545,7 @@ export default function AdminBatchesPage() {
                   rows={3}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Optional notes or details regarding this cohort..."
+                  placeholder="Optional notes or details regarding this technology..."
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -563,7 +563,7 @@ export default function AdminBatchesPage() {
                   disabled={actionLoading}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl cursor-pointer disabled:opacity-50 shadow-md shadow-blue-600/15 transition-all"
                 >
-                  {actionLoading ? 'Creating...' : 'Create Batch'}
+                  {actionLoading ? 'Creating...' : 'Create Technology'}
                 </button>
               </div>
             </form>
@@ -571,14 +571,14 @@ export default function AdminBatchesPage() {
         </div>
       )}
 
-      {/* Edit Batch Modal */}
+      {/* Edit Technology Modal */}
       {showEditModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white border border-slate-200 rounded-2xl shadow-xl w-full max-w-md p-6 text-slate-700">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                 <Edit className="w-5 h-5 text-blue-600" />
-                Edit Batch Details
+                Edit Technology Details
               </h2>
               <button
                 onClick={() => setShowEditModal(false)}
@@ -591,7 +591,7 @@ export default function AdminBatchesPage() {
             <form onSubmit={handleEditSubmit} className="space-y-4 text-xs">
               <div>
                 <label className="block font-medium text-slate-700 mb-1">
-                  Batch Name *
+                  Technology Name *
                 </label>
                 <input
                   type="text"
@@ -660,7 +660,7 @@ export default function AdminBatchesPage() {
                   Manage Students: <span className="text-blue-600">{selectedBatch.name}</span>
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  {batchStudents.length} student(s) currently enrolled in this batch
+                  {batchStudents.length} student(s) currently enrolled in this technology
                 </p>
               </div>
               <button
@@ -677,7 +677,7 @@ export default function AdminBatchesPage() {
                 onClick={() => setActiveTab('enrolled')}
                 className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors cursor-pointer ${
                   activeTab === 'enrolled'
-                    ? 'border-blue-600 text-blue-600'
+                     ? 'border-blue-600 text-blue-600'
                     : 'border-transparent text-slate-500 hover:text-slate-700'
                 }`}
               >
@@ -691,7 +691,7 @@ export default function AdminBatchesPage() {
                     : 'border-transparent text-slate-500 hover:text-slate-700'
                 }`}
               >
-                + Add Students to Batch
+                + Add Students to Technology
               </button>
             </div>
 
@@ -706,7 +706,7 @@ export default function AdminBatchesPage() {
                   {batchStudents.length === 0 ? (
                     <div className="text-center py-8 text-slate-500">
                       <Users className="w-8 h-8 mx-auto text-slate-400 mb-2" />
-                      <p className="text-xs">No students currently enrolled in this batch.</p>
+                      <p className="text-xs">No students currently enrolled in this technology.</p>
                       <button
                         onClick={() => setActiveTab('add')}
                         className="mt-3 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold cursor-pointer transition-colors"
@@ -811,7 +811,7 @@ export default function AdminBatchesPage() {
                       className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-40 shadow-md shadow-blue-600/15 transition-all"
                     >
                       <UserPlus className="w-3.5 h-3.5" />
-                      <span>{actionLoading ? 'Assigning...' : `Add Selected to Batch`}</span>
+                      <span>{actionLoading ? 'Assigning...' : `Add Selected to Technology`}</span>
                     </button>
                   </div>
                 </div>

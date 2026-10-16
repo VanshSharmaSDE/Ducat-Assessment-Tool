@@ -15,8 +15,20 @@ export class QuestionService {
       starterCodeMap.set(lang, customCode || DEFAULT_STARTER_CODE[lang] || '');
     });
 
+    const cleanedExamples = Array.isArray(data.examples)
+      ? data.examples.filter(
+          (ex) =>
+            ex &&
+            ((ex.input && String(ex.input).trim()) ||
+             (ex.output && String(ex.output).trim()) ||
+             (ex.explanation && String(ex.explanation).trim()))
+        )
+      : [];
+
     const question = await Question.create({
       ...data,
+      type: data.type || 'CODING',
+      examples: cleanedExamples,
       starterCode: starterCodeMap,
       createdBy: userId,
     });
@@ -38,6 +50,16 @@ export class QuestionService {
       error.statusCode = 403;
       error.errorCode = 'FORBIDDEN';
       throw error;
+    }
+
+    if (data.examples && Array.isArray(data.examples)) {
+      data.examples = data.examples.filter(
+        (ex) =>
+          ex &&
+          ((ex.input && String(ex.input).trim()) ||
+           (ex.output && String(ex.output).trim()) ||
+           (ex.explanation && String(ex.explanation).trim()))
+      );
     }
 
     if (data.starterCode) {

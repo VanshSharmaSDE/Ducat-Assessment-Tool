@@ -245,14 +245,14 @@ export default function AdminDashboardPage() {
           <span className="text-[11px] text-teal-700/80 dark:text-emerald-400/80 mt-1 block font-medium">Candidate average marks</span>
         </div>
 
-        {/* Batches - Pastel Purple */}
+        {/* Technologies - Pastel Purple */}
         <Link
-          to="/admin/batches"
+          to="/admin/technologies"
           className="group p-5 rounded-2xl bg-[#f5f3ff] dark:bg-purple-950/30 border border-[#ede9fe] dark:border-purple-800/40 hover:border-purple-300 dark:hover:border-purple-700/60 transition-all shadow-sm hover:shadow-md block"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-purple-800 dark:text-purple-300 uppercase tracking-wider group-hover:text-purple-900 dark:group-hover:text-purple-200 transition-colors">
-              Batches & Cohorts
+              Technologies
             </span>
             <div className="w-9 h-9 rounded-xl bg-white dark:bg-purple-900/40 border border-transparent dark:border-purple-700/50 text-purple-600 dark:text-purple-400 flex items-center justify-center shadow-xs">
               <Layers className="w-4 h-4" />
@@ -260,7 +260,7 @@ export default function AdminDashboardPage() {
           </div>
           <p className="text-3xl font-extrabold text-purple-900 dark:text-purple-200 mt-3 font-mono">{stats.totalBatches}</p>
           <span className="text-[11px] text-purple-700/80 dark:text-purple-400/80 mt-1 block flex items-center justify-between font-medium">
-            <span>Student cohorts</span>
+            <span>Specializations & tracks</span>
             <ChevronRight className="w-3.5 h-3.5 text-purple-400 group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors" />
           </span>
         </Link>

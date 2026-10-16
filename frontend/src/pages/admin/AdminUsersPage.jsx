@@ -83,6 +83,7 @@ export default function AdminUsersPage() {
   const [showExcelModal, setShowExcelModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showEditPassword, setShowEditPassword] = useState(false);
+  const [showOldPassword, setShowOldPassword] = useState(false);
   const [excelFile, setExcelFile] = useState(null);
   const [uploadStatus, setUploadStatus] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -109,6 +110,7 @@ export default function AdminUsersPage() {
     rollNumber: '',
     phone: '',
     batch: '',
+    technology: '',
     gender: '',
     age: '',
   });
@@ -120,10 +122,12 @@ export default function AdminUsersPage() {
     studentId: '',
     email: '',
     password: '',
+    oldPassword: '',
     organization: '',
     rollNumber: '',
     phone: '',
     batch: '',
+    technology: '',
     gender: '',
     age: '',
   });
@@ -312,27 +316,43 @@ export default function AdminUsersPage() {
 
   const handleOpenEdit = (user) => {
     setEditingUser(user);
+    const techVal = user.technology || user.batch || '';
     setEditFormData({
       name: user.name || '',
       studentId: user.studentId || user.rollNumber || '',
       email: user.email || '',
       password: '',
+      oldPassword: '',
       organization: user.organization || '',
       rollNumber: user.rollNumber || user.studentId || '',
       phone: user.phone || '',
-      batch: user.batch || '',
+      batch: techVal,
+      technology: techVal,
       gender: user.gender || '',
       age: user.age !== undefined && user.age !== null ? user.age : '',
     });
+    setShowOldPassword(false);
+    setShowEditPassword(false);
     setShowEditModal(true);
   };
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
+    const techVal = (editFormData.technology || editFormData.batch || '').trim();
+    if (!techVal) {
+      await showAlert({
+        title: 'Validation Error',
+        message: 'Technology is mandatory for students.',
+        type: 'warning',
+      });
+      return;
+    }
     try {
       setActionLoading(true);
       await api.put(`/admin/students/${editingUser._id}`, {
         ...editFormData,
+        batch: techVal,
+        technology: techVal,
         studentId: editFormData.studentId || editFormData.rollNumber,
       });
       await showAlert({
@@ -377,6 +397,7 @@ export default function AdminUsersPage() {
       rollNumber: '',
       phone: '',
       batch: '',
+      technology: '',
       gender: '',
       age: '',
     });
@@ -385,9 +406,20 @@ export default function AdminUsersPage() {
 
   const handleManualSubmit = async (e) => {
     e.preventDefault();
+    const techVal = (formData.technology || formData.batch || '').trim();
+    if (!techVal) {
+      await showAlert({
+        title: 'Validation Error',
+        message: 'Technology is mandatory for students.',
+        type: 'warning',
+      });
+      return;
+    }
     try {
       await api.post('/admin/students/create', {
         ...formData,
+        batch: techVal,
+        technology: techVal,
         studentId: formData.studentId || formData.rollNumber,
       });
       await showAlert({
@@ -405,6 +437,7 @@ export default function AdminUsersPage() {
         rollNumber: '',
         phone: '',
         batch: '',
+        technology: '',
         gender: '',
         age: '',
       });
@@ -427,7 +460,7 @@ export default function AdminUsersPage() {
         'Password': 'Password@123',
         'Email': 'amit.verma@example.com',
         'Organization': 'Tech University',
-        'Batch': 'Batch-2026-A',
+        'Technology': 'Java Fullstack',
         'Phone': '9876543210',
         'Gender': 'Male',
         'Age': 21,
@@ -438,7 +471,7 @@ export default function AdminUsersPage() {
         'Password': 'Password@123',
         'Email': '', // Optional
         'Organization': 'Tech University',
-        'Batch': 'Batch-2026-A',
+        'Technology': 'Python Development',
         'Phone': '9876543211',
         'Gender': 'Female',
         'Age': 20,
@@ -865,7 +898,7 @@ export default function AdminUsersPage() {
               }}
               className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">All Batches</option>
+              <option value="">All Technologies</option>
               {Array.from(new Set([...definedBatches.map((b) => b.name), ...availableBatches]))
                 .filter(Boolean)
                 .map((b) => (
@@ -938,7 +971,7 @@ export default function AdminUsersPage() {
                       <th className="py-3 px-4 font-semibold">Organization</th>
                       {isAdmin && <th className="py-3 px-4 font-semibold">Created By</th>}
                       <th className="py-3 px-4 font-semibold">Student ID</th>
-                      <th className="py-3 px-4 font-semibold">Batch</th>
+                      <th className="py-3 px-4 font-semibold">Technology</th>
                       <th className="py-3 px-4 font-semibold">Gender</th>
                       <th className="py-3 px-4 font-semibold">Age</th>
                       <th className="py-3 px-4 font-semibold">Exams Taken</th>
@@ -977,8 +1010,17 @@ export default function AdminUsersPage() {
                                 {u.name?.charAt(0) || 'U'}
                               </div>
                               <div className="flex flex-col">
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="font-bold">{u.name}</span>
+                                  {(u.isImported || (u.importedBy && u.importedBy.length > 0)) && (
+                                    <span
+                                      className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-300 font-bold"
+                                      title={`Imported into: ${u.importedBy?.[0]?.organization || u.organization || 'Organization'}`}
+                                    >
+                                      <span className="text-amber-500">⭐</span>
+                                      <span>Imported{u.importedBy?.[0]?.organization ? ` (${u.importedBy[0].organization})` : ''}</span>
+                                    </span>
+                                  )}
                                   {u.assignedFaculties?.length > 1 && (
                                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-medium">
                                       Shared ({u.assignedFaculties.length})
@@ -1022,7 +1064,7 @@ export default function AdminUsersPage() {
                           )}
 
                           <td className="py-3 px-4 font-mono text-slate-600 whitespace-nowrap">{u.studentId || u.rollNumber || '—'}</td>
-                          <td className="py-3 px-4 font-medium text-blue-600 whitespace-nowrap">{u.batch || '—'}</td>
+                          <td className="py-3 px-4 font-medium text-blue-600 whitespace-nowrap">{u.technology || u.batch || '—'}</td>
                           <td className="py-3 px-4 text-slate-500 whitespace-nowrap">{u.gender || '—'}</td>
                           <td className="py-3 px-4 font-mono text-slate-600 whitespace-nowrap">{u.age || '—'}</td>
 
@@ -1470,14 +1512,22 @@ export default function AdminUsersPage() {
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block font-medium text-slate-700 mb-1">Batch</label>
+                  <label className="block font-medium text-slate-700 mb-1">
+                    Technology <span className="text-rose-500">*</span>
+                  </label>
                   <select
+                    required
                     value={formData.batch}
-                    onChange={(e) => setFormData({ ...formData, batch: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, batch: e.target.value, technology: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                   >
-                    <option value="">-- No Batch (Unassigned) --</option>
-                    {allBatchesList.map((b) => (
+                    <option value="">-- Select Technology * --</option>
+                    {definedBatches.map((b) => (
+                      <option key={b._id} value={b.name}>
+                        {b.name} {isAdmin && b.createdBy ? `(${b.createdBy.name || 'Admin'} • ${b.createdBy.role || 'ADMIN'})` : ''}
+                      </option>
+                    ))}
+                    {allBatchesList.filter((bName) => !definedBatches.some((db) => db.name === bName)).map((b) => (
                       <option key={b} value={b}>
                         {b}
                       </option>
@@ -1629,14 +1679,22 @@ export default function AdminUsersPage() {
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block font-medium text-slate-700 mb-1">Batch</label>
+                  <label className="block font-medium text-slate-700 mb-1">
+                    Technology <span className="text-rose-500">*</span>
+                  </label>
                   <select
+                    required
                     value={editFormData.batch}
-                    onChange={(e) => setEditFormData({ ...editFormData, batch: e.target.value })}
+                    onChange={(e) => setEditFormData({ ...editFormData, batch: e.target.value, technology: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                   >
-                    <option value="">-- No Batch (Unassigned) --</option>
-                    {allBatchesList.map((b) => (
+                    <option value="">-- Select Technology * --</option>
+                    {definedBatches.map((b) => (
+                      <option key={b._id} value={b.name}>
+                        {b.name} {isAdmin && b.createdBy ? `(${b.createdBy.name || 'Admin'} • ${b.createdBy.role || 'ADMIN'})` : ''}
+                      </option>
+                    ))}
+                    {allBatchesList.filter((bName) => !definedBatches.some((db) => db.name === bName)).map((b) => (
                       <option key={b} value={b}>
                         {b}
                       </option>
@@ -1666,6 +1724,29 @@ export default function AdminUsersPage() {
                     onChange={(e) => setEditFormData({ ...editFormData, age: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-medium text-slate-700 dark:text-slate-200 mb-1">
+                  Old / Current Password <span className="text-slate-400 font-normal">(Required if changing password)</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showOldPassword ? 'text' : 'password'}
+                    placeholder="Enter current password"
+                    value={editFormData.oldPassword || ''}
+                    onChange={(e) => setEditFormData({ ...editFormData, oldPassword: e.target.value })}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 pr-10 text-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowOldPassword(!showOldPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                    title={showOldPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showOldPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
@@ -1759,7 +1840,7 @@ export default function AdminUsersPage() {
 
                 <p className="text-slate-500 text-[11px]">
                   <strong>Profile Auto-Update:</strong> Student ID is the primary unique identifier. If a Student ID already exists, their profile details
-                  (Full Name, Batch, Organization, Phone, Gender, Age) will be updated automatically and linked to your account. Email is optional.
+                  (Full Name, Technology, Organization, Phone, Gender, Age) will be updated automatically and linked to your account. Email is optional.
                 </p>
 
                 <div className="grid grid-cols-3 gap-2 font-mono text-[11px]">
@@ -1779,7 +1860,7 @@ export default function AdminUsersPage() {
                     <span className="text-blue-600 font-bold">Organization</span> (Opt)
                   </div>
                   <div className="bg-white p-2 rounded border border-slate-200">
-                    <span className="text-blue-600 font-bold">Batch</span> (Opt)
+                    <span className="text-emerald-600 font-bold">Technology</span> (Req)
                   </div>
                   <div className="bg-white p-2 rounded border border-slate-200">
                     <span className="text-slate-600 font-bold">Phone</span> (Opt)

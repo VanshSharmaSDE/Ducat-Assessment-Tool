@@ -160,9 +160,9 @@ export default function App() {
         <Route path="questions/:id/edit" element={<AdminQuestionEditorPage />} />
         <Route path="mcq-questions" element={<AdminMcqQuestionsPage />} />
         <Route path="mcq-questions/new" element={<AdminMcqQuestionEditorPage />} />
-        <Route path="mcq-questions/:id/edit" element={<AdminMcqQuestionEditorPage />} />
         <Route path="users" element={<AdminUsersPage />} />
-        <Route path="batches" element={<AdminBatchesPage />} />
+        <Route path="technologies" element={<AdminBatchesPage />} />
+        <Route path="batches" element={<Navigate to="/admin/technologies" replace />} />
         <Route path="organizations" element={<AdminOrganizationsPage />} />
         <Route path="faculty" element={<AdminFacultyPage />} />
         <Route path="results" element={<AdminResultsPage />} />

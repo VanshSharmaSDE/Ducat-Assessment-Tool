@@ -107,6 +107,7 @@ router.get('/questions/:id', QuestionController.getQuestionById);
 router.post('/questions', validate(questionSchema), QuestionController.createQuestion);
 router.post('/questions/bulk-delete', QuestionController.bulkDeleteQuestions);
 router.put('/questions/:id', validate(questionSchema.partial()), QuestionController.updateQuestion);
+router.patch('/questions/:id', validate(questionSchema.partial()), QuestionController.updateQuestion);
 router.delete('/questions/:id', QuestionController.deleteQuestion);
 router.post('/questions/:id/duplicate', QuestionController.duplicateQuestion);
 

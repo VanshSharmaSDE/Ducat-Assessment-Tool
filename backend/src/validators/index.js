@@ -60,35 +60,46 @@ export const examSchema = z.object({
       questionId: z.string(),
       marks: z.number().min(1),
       order: z.number().optional(),
-    })
+      allowCodeRun: z.boolean().nullable().optional(),
+    }).passthrough()
   ).optional(),
   randomizeQuestions: z.boolean().optional(),
   maxViolations: z.number().int().min(1).max(20).optional(),
   allowCodeRun: z.boolean().optional(),
-});
+  technology: z.string().optional(),
+  targetTechnologies: z.array(z.string()).optional(),
+}).passthrough();
 
 export const questionSchema = z.object({
-  title: z.string().min(3).max(200),
-  description: z.string().min(10),
-  inputFormat: z.string().optional(),
-  outputFormat: z.string().optional(),
-  constraints: z.string().optional(),
-  examples: z.array(
+  title: z.string().min(1).max(300),
+  description: z.string().min(1),
+  type: z.enum(['CODING', 'MCQ']).optional().default('CODING'),
+  allowCodeRun: z.boolean().nullable().optional(),
+  options: z.array(
     z.object({
-      input: z.string(),
-      output: z.string(),
-      explanation: z.string().optional(),
+      text: z.string(),
     })
   ).optional(),
-  explanation: z.string().optional(),
-  difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).optional(),
-  marks: z.number().min(1).default(20),
-  allowedLanguages: z.array(z.enum(SUPPORTED_LANGUAGES)).min(1).optional(),
+  correctAnswer: z.number().nullable().optional(),
+  inputFormat: z.string().optional().default(''),
+  outputFormat: z.string().optional().default(''),
+  constraints: z.string().optional().default(''),
+  examples: z.array(
+    z.object({
+      input: z.string().optional().default(''),
+      output: z.string().optional().default(''),
+      explanation: z.string().optional().default(''),
+    })
+  ).optional().default([]),
+  explanation: z.string().optional().default(''),
+  difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).optional().default('MEDIUM'),
+  marks: z.number().min(0).default(20),
+  allowedLanguages: z.array(z.string()).optional(),
   starterCode: z.record(z.string()).optional(),
-  timeLimit: z.number().min(0.5).max(15).optional(),
-  memoryLimit: z.number().min(32).max(1024).optional(),
-  comparisonMode: z.enum(['EXACT', 'TRIMMED', 'WHITESPACE_INSENSITIVE']).optional(),
-});
+  timeLimit: z.number().min(0.1).max(30).optional().default(2),
+  memoryLimit: z.number().min(16).max(2048).optional().default(256),
+  comparisonMode: z.enum(['EXACT', 'TRIMMED', 'WHITESPACE_INSENSITIVE']).optional().default('TRIMMED'),
+}).passthrough();
 
 export const testCaseSchema = z.object({
   questionId: z.string().optional(),

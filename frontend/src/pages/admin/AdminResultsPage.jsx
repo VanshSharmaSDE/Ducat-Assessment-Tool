@@ -654,7 +654,7 @@ export default function AdminResultsPage() {
                 }}
                 className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
               >
-                <option value="">All Batches</option>
+                <option value="">All Technologies</option>
                 {availableBatches.map((b) => (
                   <option key={b} value={b}>
                     {b}
@@ -721,7 +721,7 @@ export default function AdminResultsPage() {
                       <th className="py-3 px-4 font-semibold">Roll Number</th>
                       {isAdmin && <th className="py-3 px-4 font-semibold">Faculty / Added By</th>}
                       {!selectedExam && <th className="py-3 px-4 font-semibold">Examination</th>}
-                      <th className="py-3 px-4 font-semibold">Batch</th>
+                      <th className="py-3 px-4 font-semibold">Technology</th>
                       <th className="py-3 px-4 font-semibold">Gender</th>
                       <th className="py-3 px-4 font-semibold">Language(s)</th>
                       <th className="py-3 px-4 font-semibold">Violations</th>
@@ -791,7 +791,7 @@ export default function AdminResultsPage() {
                           )}
 
                           <td className="py-3 px-4 text-blue-700 dark:text-blue-400 font-medium whitespace-nowrap">
-                            {att.userId?.batch || '—'}
+                            {att.userId?.technology || att.userId?.batch || '—'}
                           </td>
                           <td className="py-3 px-4 text-slate-500 dark:text-slate-400 whitespace-nowrap">
                             {att.userId?.gender || '—'}

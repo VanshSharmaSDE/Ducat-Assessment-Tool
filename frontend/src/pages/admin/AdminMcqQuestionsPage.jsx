@@ -453,7 +453,7 @@ export default function AdminMcqQuestionsPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-500">
                   <div className="p-2.5 rounded-lg bg-white border border-slate-200 space-y-1">
-                    <p className="font-semibold text-slate-700">Required Problem Fields:</p>
+                    <p className="font-semibold text-rose-500">Required Problem Fields:</p>
                     <ul className="list-disc list-inside space-y-0.5 text-slate-500">
                       <li><strong className="text-slate-700">Question Title:</strong> Question statement (Required)</li>
                       <li><strong className="text-slate-700">Option A & Option B:</strong> Minimum 2 options required</li>
@@ -463,7 +463,7 @@ export default function AdminMcqQuestionsPage() {
                   </div>
 
                   <div className="p-2.5 rounded-lg bg-white border border-slate-200 space-y-1">
-                    <p className="font-semibold text-slate-700">Optional Evaluation Fields:</p>
+                    <p className="font-semibold text-blue-600">Optional Evaluation Fields:</p>
                     <ul className="list-disc list-inside space-y-0.5 text-slate-500">
                       <li><strong className="text-slate-700">Description:</strong> Additional code snippet or problem context</li>
                       <li><strong className="text-slate-700">Marks:</strong> Points awarded for correct answer (default: 1)</li>

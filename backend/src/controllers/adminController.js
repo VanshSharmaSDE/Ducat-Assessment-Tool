@@ -8,17 +8,23 @@ import { config } from '../config/index.js';
 import User from '../models/User.js';
 import ExamAttempt from '../models/ExamAttempt.js';
 import { Exam } from '../models/Exam.js';
+import { Batch } from '../models/Batch.js';
 
 /**
  * 1. Manually Create a Single Student
  */
 export const createStudent = async (req, res) => {
   try {
-    const { name, email, studentId, rollNumber, password, phone, batch, organization, gender, age } = req.body;
+    const { name, email, studentId, rollNumber, password, phone, batch, technology, organization, gender, age } = req.body;
     const finalStudentId = (studentId || rollNumber || '').trim();
 
     if (!name || !name.trim() || !finalStudentId || !password) {
       return res.status(400).json({ success: false, message: 'Student ID, Name, and password are required' });
+    }
+
+    const cleanTech = (technology || batch || '').trim();
+    if (!cleanTech) {
+      return res.status(400).json({ success: false, message: 'Technology is mandatory for students.' });
     }
 
     // Role check: Faculty must belong to an organization and can only create students in their organization
@@ -52,6 +58,15 @@ export const createStudent = async (req, res) => {
       }
     }
 
+    let batchDoc = null;
+    if (cleanTech) {
+      const escapedBatch = cleanTech.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      batchDoc = await Batch.findOne({
+        name: { $regex: new RegExp(`^${escapedBatch}$`, 'i') },
+        createdBy: req.user._id,
+      });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const studentPayload = {
       name: name.trim(),
@@ -60,7 +75,9 @@ export const createStudent = async (req, res) => {
       passwordHash: hashedPassword,
       role: 'USER',
       phone: phone ? String(phone).trim() : '',
-      batch: batch ? String(batch).trim() : '',
+      technology: batchDoc ? batchDoc.name : cleanTech,
+      batch: batchDoc ? batchDoc.name : cleanTech,
+      batchId: batchDoc ? batchDoc._id : null,
       organization: studentOrg,
       gender: gender ? String(gender).trim() : '',
       age: age ? Number(age) : null,
@@ -84,6 +101,7 @@ export const createStudent = async (req, res) => {
         studentId: newStudent.studentId,
         rollNumber: newStudent.rollNumber,
         email: newStudent.email || '',
+        technology: newStudent.technology || newStudent.batch,
         batch: newStudent.batch,
         organization: newStudent.organization,
         gender: newStudent.gender,
@@ -186,13 +204,26 @@ export const uploadStudentsExcel = async (req, res) => {
           }
         }
 
+        let batchDoc = null;
+        const cleanRowBatch = batch ? String(batch).trim() : '';
+        if (cleanRowBatch) {
+          const escapedBatch = cleanRowBatch.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+          batchDoc = await Batch.findOne({
+            name: { $regex: new RegExp(`^${escapedBatch}$`, 'i') },
+            createdBy: existing.createdBy || req.user._id,
+          });
+        }
+
         // Update existing student profile information
         if (name) existing.name = String(name).trim();
         existing.studentId = studentId;
         existing.rollNumber = studentId;
         if (cleanEmail) existing.email = cleanEmail;
         if (phone) existing.phone = phone.trim();
-        if (batch) existing.batch = batch.trim();
+        if (cleanRowBatch) {
+          existing.batch = batchDoc ? batchDoc.name : cleanRowBatch;
+          existing.batchId = batchDoc ? batchDoc._id : null;
+        }
         if (effectiveOrg) existing.organization = effectiveOrg;
         if (gender) existing.gender = gender.trim();
         if (age !== null && !isNaN(age)) existing.age = age;
@@ -213,6 +244,16 @@ export const uploadStudentsExcel = async (req, res) => {
         continue;
       }
 
+      let newBatchDoc = null;
+      const cleanNewBatch = batch ? String(batch).trim() : '';
+      if (cleanNewBatch) {
+        const escapedBatch = cleanNewBatch.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        newBatchDoc = await Batch.findOne({
+          name: { $regex: new RegExp(`^${escapedBatch}$`, 'i') },
+          createdBy: req.user._id,
+        });
+      }
+
       const hashedPassword = await bcrypt.hash(password, 10);
       const studentPayload = {
         name: String(name).trim(),
@@ -221,7 +262,8 @@ export const uploadStudentsExcel = async (req, res) => {
         passwordHash: hashedPassword,
         role: 'USER',
         phone: phone.trim(),
-        batch: batch.trim(),
+        batch: newBatchDoc ? newBatchDoc.name : cleanNewBatch,
+        batchId: newBatchDoc ? newBatchDoc._id : null,
         organization: effectiveOrg,
         gender: gender.trim(),
         age: age,
@@ -439,13 +481,32 @@ export const importSharedStudents = async (req, res) => {
 
     let linkedCount = 0;
     for (const student of students) {
+      let changed = false;
+      student.isImported = true;
+      if (!student.importedBy) student.importedBy = [];
+      const alreadyLogged = student.importedBy.some(
+        (ib) => String(ib.user) === String(req.user._id) && ib.organization === decoded.organization
+      );
+      if (!alreadyLogged) {
+        student.importedBy.push({
+          user: req.user._id,
+          organization: decoded.organization,
+          at: new Date(),
+        });
+        changed = true;
+      }
+
       if (String(student.createdBy) !== String(req.user._id)) {
         if (!student.assignedFaculties) student.assignedFaculties = [];
         if (!student.assignedFaculties.some((fId) => String(fId) === String(req.user._id))) {
           student.assignedFaculties.push(req.user._id);
-          await student.save();
-          linkedCount++;
+          changed = true;
         }
+      }
+
+      if (changed) {
+        await student.save();
+        linkedCount++;
       }
     }
 
@@ -920,7 +981,7 @@ export class AdminController {
 export const updateStudent = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, studentId, rollNumber, phone, batch, organization, gender, age, password } = req.body;
+    const { name, email, studentId, rollNumber, phone, batch, technology, organization, gender, age, password, oldPassword } = req.body;
 
     const user = await User.findById(id);
     if (!user) {
@@ -966,7 +1027,24 @@ export const updateStudent = async (req, res) => {
 
     if (name) user.name = name.trim();
     if (phone !== undefined) user.phone = String(phone).trim();
-    if (batch !== undefined) user.batch = String(batch).trim();
+    if (batch !== undefined || technology !== undefined) {
+      const cleanBatch = String(technology !== undefined ? technology : batch).trim();
+      if (!cleanBatch) {
+        return res.status(400).json({ success: false, message: 'Technology cannot be empty for students.' });
+      }
+      user.batch = cleanBatch;
+      user.technology = cleanBatch;
+      const escapedBatch = cleanBatch.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const batchDoc = await Batch.findOne({
+        name: { $regex: new RegExp(`^${escapedBatch}$`, 'i') },
+        createdBy: user.createdBy || req.user._id,
+      });
+      user.batchId = batchDoc ? batchDoc._id : null;
+      if (batchDoc) {
+        user.batch = batchDoc.name;
+        user.technology = batchDoc.name;
+      }
+    }
     if (organization !== undefined) {
       if (req.user?.role === 'FACULTY') {
         user.organization = req.user.organization ? req.user.organization.trim() : '';
@@ -978,6 +1056,12 @@ export const updateStudent = async (req, res) => {
     if (age !== undefined) user.age = age === '' || age === null ? null : Number(age);
 
     if (password && password.trim().length >= 6) {
+      if (oldPassword && String(oldPassword).trim()) {
+        const isOldMatch = await user.comparePassword(String(oldPassword).trim());
+        if (!isOldMatch) {
+          return res.status(400).json({ success: false, message: 'Old password is incorrect.' });
+        }
+      }
       user.passwordHash = await bcrypt.hash(password.trim(), 10);
     }
 
@@ -1191,6 +1275,8 @@ export const getFacultyList = async (req, res) => {
         { facultyId: { $regex: req.query.search, $options: 'i' } },
         { email: { $regex: req.query.search, $options: 'i' } },
         { batch: { $regex: req.query.search, $options: 'i' } },
+        { technology: { $regex: req.query.search, $options: 'i' } },
+        { technologies: { $in: [new RegExp(req.query.search, 'i')] } },
         { organization: { $regex: req.query.search, $options: 'i' } },
         { phone: { $regex: req.query.search, $options: 'i' } },
       ];
@@ -1217,6 +1303,8 @@ export const getFacultyList = async (req, res) => {
           email: f.email || '',
           phone: f.phone || '',
           department: f.batch || '',
+          technology: f.technology || (f.technologies?.[0] || ''),
+          technologies: f.technologies && f.technologies.length > 0 ? f.technologies : (f.batch ? f.batch.split(',').map(s=>s.trim()).filter(Boolean) : []),
           organization: f.organization || '',
           isActive: f.isActive,
           createdAt: f.createdAt,
@@ -1236,11 +1324,25 @@ export const getFacultyList = async (req, res) => {
 
 export const createFaculty = async (req, res) => {
   try {
-    const { facultyId, name, email, password, department, organization, phone } = req.body;
+    const { facultyId, name, email, password, department, technologies, technology, organization, phone } = req.body;
 
     const finalFacultyId = facultyId ? String(facultyId).trim() : '';
     if (!name || !password || !finalFacultyId) {
       return res.status(400).json({ success: false, message: 'Faculty ID, Name, and Password are required.' });
+    }
+
+    const finalOrg = organization ? String(organization).trim() : '';
+    if (!finalOrg) {
+      return res.status(400).json({ success: false, message: 'Organization is mandatory for faculty.' });
+    }
+
+    const rawTechs = technologies || (department ? [department] : (technology ? [technology] : []));
+    const cleanTechs = Array.isArray(rawTechs)
+      ? rawTechs.map((t) => String(t).trim()).filter(Boolean)
+      : String(rawTechs).split(',').map((t) => t.trim()).filter(Boolean);
+
+    if (cleanTechs.length === 0) {
+      return res.status(400).json({ success: false, message: 'At least one Technology is mandatory for faculty.' });
     }
 
     const existingById = await User.findOne({
@@ -1264,8 +1366,10 @@ export const createFaculty = async (req, res) => {
       name: name.trim(),
       passwordHash: hashedPassword,
       role: 'FACULTY',
-      batch: department ? String(department).trim() : '',
-      organization: organization ? String(organization).trim() : '',
+      technologies: cleanTechs,
+      technology: cleanTechs[0] || '',
+      batch: cleanTechs.join(', '),
+      organization: finalOrg,
       phone: phone ? String(phone).trim() : '',
       createdBy: req.user._id,
       isActive: true,
@@ -1287,6 +1391,8 @@ export const createFaculty = async (req, res) => {
           email: newFaculty.email || '',
           phone: newFaculty.phone,
           department: newFaculty.batch,
+          technology: newFaculty.technology,
+          technologies: newFaculty.technologies,
           organization: newFaculty.organization,
           isActive: newFaculty.isActive,
         },
@@ -1300,7 +1406,7 @@ export const createFaculty = async (req, res) => {
 export const updateFaculty = async (req, res) => {
   try {
     const { id } = req.params;
-    const { facultyId, name, email, phone, department, organization, password } = req.body;
+    const { facultyId, name, email, phone, department, technologies, technology, organization, password } = req.body;
 
     const faculty = await User.findOne({ _id: id, role: 'FACULTY' });
     if (!faculty) {
@@ -1336,8 +1442,28 @@ export const updateFaculty = async (req, res) => {
 
     if (name) faculty.name = name.trim();
     if (phone !== undefined) faculty.phone = String(phone).trim();
-    if (department !== undefined) faculty.batch = String(department).trim();
-    if (organization !== undefined) faculty.organization = organization ? String(organization).trim() : '';
+
+    if (organization !== undefined) {
+      const finalOrg = String(organization).trim();
+      if (!finalOrg) {
+        return res.status(400).json({ success: false, message: 'Organization is mandatory for faculty.' });
+      }
+      faculty.organization = finalOrg;
+    }
+
+    if (technologies !== undefined || department !== undefined || technology !== undefined) {
+      const rawTechs = technologies !== undefined ? technologies : (department ? [department] : (technology ? [technology] : []));
+      const cleanTechs = Array.isArray(rawTechs)
+        ? rawTechs.map((t) => String(t).trim()).filter(Boolean)
+        : String(rawTechs).split(',').map((t) => t.trim()).filter(Boolean);
+
+      if (cleanTechs.length === 0) {
+        return res.status(400).json({ success: false, message: 'At least one Technology is mandatory for faculty.' });
+      }
+      faculty.technologies = cleanTechs;
+      faculty.technology = cleanTechs[0] || '';
+      faculty.batch = cleanTechs.join(', ');
+    }
 
     if (password && password.trim().length >= 6) {
       faculty.passwordHash = await bcrypt.hash(password.trim(), 10);
@@ -1356,6 +1482,8 @@ export const updateFaculty = async (req, res) => {
           email: faculty.email || '',
           phone: faculty.phone,
           department: faculty.batch,
+          technology: faculty.technology,
+          technologies: faculty.technologies,
           organization: faculty.organization,
           isActive: faculty.isActive,
         },

@@ -142,6 +142,15 @@ export class AuthService {
       throw error;
     }
 
+    // Enforce single active device session for students within 2-hour window
+    if (user.role === 'USER' && user.currentSessionId && user.sessionExpiresAt && user.sessionExpiresAt > new Date()) {
+      const remainingMinutes = Math.ceil((user.sessionExpiresAt.getTime() - Date.now()) / (60 * 1000));
+      const error = new Error(`This student account is already active on another device. Simultaneous logins are blocked. Please wait for the existing session to expire (in approx ${remainingMinutes} min) or log out from the other device.`);
+      error.statusCode = 403;
+      error.errorCode = 'CONCURRENT_LOGIN_BLOCKED';
+      throw error;
+    }
+
     // Invalidate previous device/session by emitting socket event to existing connections
     try {
       const io = getIO();
@@ -156,6 +165,7 @@ export class AuthService {
 
     const sessionId = uuidv4();
     user.currentSessionId = sessionId;
+    user.sessionExpiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
     await user.save();
 
     const accessToken = AuthService.generateAccessToken(user, sessionId);
@@ -197,11 +207,15 @@ export class AuthService {
   }
 
   static async logout(token, userId = null) {
+    let resolvedUserId = userId;
     if (token) {
-      await RefreshToken.findOneAndUpdate({ token }, { revoked: true });
+      const doc = await RefreshToken.findOneAndUpdate({ token }, { revoked: true });
+      if (!resolvedUserId && doc?.userId) {
+        resolvedUserId = doc.userId;
+      }
     }
-    if (userId) {
-      await User.findByIdAndUpdate(userId, { currentSessionId: null });
+    if (resolvedUserId) {
+      await User.findByIdAndUpdate(resolvedUserId, { currentSessionId: null, sessionExpiresAt: null });
     }
     return { success: true };
   }

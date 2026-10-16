@@ -46,6 +46,8 @@ export default function AdminExamWizardPage() {
   // Available questions from bank
   const [availableQuestions, setAvailableQuestions] = useState([]);
   const [questionBankTab, setQuestionBankTab] = useState('ALL'); // 'ALL' | 'CODING' | 'MCQ'
+  const [technologiesList, setTechnologiesList] = useState([]);
+  const [customTechInput, setCustomTechInput] = useState('');
 
   // Form State
   const [formData, setFormData] = useState({
@@ -61,20 +63,29 @@ export default function AdminExamWizardPage() {
     maxViolations: 5,
     allowCodeRun: false,
     isPublished: true,
+    technology: '',
+    targetTechnologies: [],
     questions: [], // [{ questionId, marks, order, title }]
   });
 
   useEffect(() => {
     async function loadInitial() {
       try {
-        const qRes = await api.get('/admin/questions');
+        const [qRes, tRes] = await Promise.all([
+          api.get('/admin/questions'),
+          api.get('/admin/batches').catch(() => ({ data: { data: { batches: [] } } })),
+        ]);
         setAvailableQuestions(qRes.data?.data?.questions || []);
+        setTechnologiesList(tRes.data?.data?.batches || []);
 
         if (isEditing) {
           const eRes = await api.get(`/admin/exams/${id}`);
           const ex = eRes.data?.data?.exam || eRes.data?.data;
 
           if (ex) {
+            const rawTargetTechs = Array.isArray(ex.targetTechnologies) && ex.targetTechnologies.length > 0
+              ? ex.targetTechnologies
+              : (ex.technology ? [ex.technology] : []);
             setFormData({
               title: ex.title || '',
               description: ex.description || '',
@@ -88,6 +99,8 @@ export default function AdminExamWizardPage() {
               maxViolations: ex.maxViolations !== undefined ? Number(ex.maxViolations) : 5,
               allowCodeRun: ex.allowCodeRun !== undefined ? Boolean(ex.allowCodeRun) : false,
               isPublished: ex.isPublished !== undefined ? Boolean(ex.isPublished) : true,
+              technology: ex.technology || rawTargetTechs[0] || '',
+              targetTechnologies: rawTargetTechs,
               questions: Array.isArray(ex.questions)
                 ? ex.questions.map((q) => {
                     const qDoc = (qRes.data?.data?.questions || []).find(
@@ -174,6 +187,21 @@ export default function AdminExamWizardPage() {
     });
   };
 
+  const handleNextStep = () => {
+    if (step === 1) {
+      if (!formData.title?.trim()) {
+        setError('Assessment Title is required.');
+        return;
+      }
+      if (!formData.targetTechnologies || formData.targetTechnologies.length === 0) {
+        setError('Please select at least one Target Technology for this examination.');
+        return;
+      }
+    }
+    setError('');
+    setStep(step + 1);
+  };
+
   const handleSubmit = async () => {
     if (!formData.title.trim()) {
       setError('Please provide an assessment title.');
@@ -181,8 +209,14 @@ export default function AdminExamWizardPage() {
       return;
     }
 
+    if (!formData.targetTechnologies || formData.targetTechnologies.length === 0) {
+      setError('Please select at least one Target Technology for this examination.');
+      setStep(1);
+      return;
+    }
+
     if (formData.questions.length === 0) {
-      setError('Please add at least one coding question.');
+      setError('Please add at least one question.');
       setStep(3);
       return;
     }
@@ -205,6 +239,8 @@ export default function AdminExamWizardPage() {
         allowCodeRun: Boolean(formData.allowCodeRun),
         isPublished: formData.isPublished,
         status: formData.isPublished ? 'ACTIVE' : 'DRAFT',
+        technology: formData.targetTechnologies[0] || formData.technology || '',
+        targetTechnologies: formData.targetTechnologies || [],
         questions: formData.questions.map((q, idx) => ({
           questionId: q.questionId,
           marks: Number(q.marks),
@@ -315,6 +351,104 @@ export default function AdminExamWizardPage() {
                 placeholder="e.g. Standard Algorithmic Assessment 2026"
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                Target Technologies *
+              </label>
+              <p className="text-[11px] text-slate-500 mb-2">
+                Select which technology students can see and take this exam. Only students with matching technologies will be eligible.
+              </p>
+              <div className="flex flex-wrap gap-1.5 mb-2 max-h-32 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-xl">
+                {technologiesList.length === 0 && (
+                  <span className="text-xs text-slate-400 p-1">No predefined technologies available</span>
+                )}
+                {technologiesList.map((tech) => {
+                  const isSelected = formData.targetTechnologies?.includes(tech.name);
+                  return (
+                    <button
+                      type="button"
+                      key={tech._id || tech.name}
+                      onClick={() => {
+                        const exists = formData.targetTechnologies?.includes(tech.name);
+                        const next = exists
+                          ? formData.targetTechnologies.filter((t) => t !== tech.name)
+                          : [...(formData.targetTechnologies || []), tech.name];
+                        setFormData({
+                          ...formData,
+                          targetTechnologies: next,
+                          technology: next[0] || '',
+                        });
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-blue-600 text-white shadow-sm font-bold'
+                          : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {isSelected ? '✓ ' : '+ '}{tech.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={customTechInput}
+                  onChange={(e) => setCustomTechInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const val = customTechInput.trim();
+                      if (val && !formData.targetTechnologies?.includes(val)) {
+                        const next = [...(formData.targetTechnologies || []), val];
+                        setFormData({ ...formData, targetTechnologies: next, technology: next[0] || '' });
+                        setCustomTechInput('');
+                      }
+                    }
+                  }}
+                  placeholder="Or type a custom technology and click Add..."
+                  className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const val = customTechInput.trim();
+                    if (val && !formData.targetTechnologies?.includes(val)) {
+                      const next = [...(formData.targetTechnologies || []), val];
+                      setFormData({ ...formData, targetTechnologies: next, technology: next[0] || '' });
+                      setCustomTechInput('');
+                    }
+                  }}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                >
+                  Add
+                </button>
+              </div>
+              {formData.targetTechnologies?.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5 items-center">
+                  <span className="text-[11px] font-semibold text-slate-500">Selected:</span>
+                  {formData.targetTechnologies.map((t) => (
+                    <span
+                      key={t}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold"
+                    >
+                      {t}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = formData.targetTechnologies.filter((item) => item !== t);
+                          setFormData({ ...formData, targetTechnologies: next, technology: next[0] || '' });
+                        }}
+                        className="hover:text-rose-600 font-bold ml-0.5 cursor-pointer"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div>
@@ -689,6 +823,12 @@ export default function AdminExamWizardPage() {
                 <span className="font-bold text-slate-800 dark:text-slate-100">{formData.title || 'Untitled'}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
+                <span className="text-slate-500 dark:text-slate-400">Target Technologies:</span>
+                <span className="font-semibold text-blue-600 dark:text-blue-400">
+                  {formData.targetTechnologies?.length > 0 ? formData.targetTechnologies.join(', ') : 'All Students'}
+                </span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
                 <span className="text-slate-500 dark:text-slate-400">Duration:</span>
                 <span className="font-mono text-slate-800 dark:text-slate-100">{formData.duration} Minutes</span>
               </div>
@@ -753,7 +893,7 @@ export default function AdminExamWizardPage() {
           {step < 4 ? (
             <button
               type="button"
-              onClick={() => setStep(step + 1)}
+              onClick={handleNextStep}
               className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-sm shadow-blue-600/15 cursor-pointer"
             >
               Next Step <ChevronRight className="w-4 h-4" />

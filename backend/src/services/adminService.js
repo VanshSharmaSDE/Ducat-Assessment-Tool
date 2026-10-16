@@ -229,8 +229,17 @@ export class AdminService {
     if (query.status !== undefined && query.status !== '') {
       conditions.push({ isActive: query.status === 'active' });
     }
-    if (query.batch) {
-      conditions.push({ batch: query.batch });
+    if (query.batch || query.technology) {
+      const techVal = query.technology || query.batch;
+      conditions.push({
+        $or: [
+          { batch: techVal },
+          { technology: techVal },
+        ],
+      });
+    }
+    if (query.creatorId) {
+      conditions.push({ createdBy: query.creatorId });
     }
     if (query.gender) {
       conditions.push({ gender: query.gender });
@@ -360,9 +369,12 @@ export class AdminService {
 
         return {
           ...u.toJSON(),
+          technology: u.technology || u.batch || '',
           organization: u.organization || '',
           createdBy: u.createdBy,
           assignedFaculties: u.assignedFaculties,
+          isImported: Boolean(u.isImported || (u.importedBy && u.importedBy.length > 0)),
+          importedBy: u.importedBy || [],
           examsAttempted: attempts.length,
           averageScore: avgScore,
         };
@@ -372,6 +384,7 @@ export class AdminService {
     return {
       users: usersWithStats,
       availableBatches,
+      availableTechnologies: availableBatches,
       availableGenders,
       availableOrganizations,
       organizationsSummary,

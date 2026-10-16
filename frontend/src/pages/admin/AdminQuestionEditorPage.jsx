@@ -42,6 +42,7 @@ export default function AdminQuestionEditorPage() {
     timeLimit: 2,
     memoryLimit: 256,
     comparisonMode: 'TRIMMED',
+    allowCodeRun: true,
     allowedLanguages: ALL_LANGUAGES,
     examples: [{ input: '', output: '', explanation: '' }],
   });
@@ -73,6 +74,7 @@ export default function AdminQuestionEditorPage() {
           timeLimit: q.timeLimit || 2,
           memoryLimit: q.memoryLimit || 256,
           comparisonMode: q.comparisonMode || 'TRIMMED',
+          allowCodeRun: q.allowCodeRun !== undefined && q.allowCodeRun !== null ? Boolean(q.allowCodeRun) : true,
           allowedLanguages: q.allowedLanguages || ALL_LANGUAGES,
           examples: q.examples?.length ? q.examples : [{ input: '', output: '', explanation: '' }],
         });
@@ -120,19 +122,63 @@ export default function AdminQuestionEditorPage() {
     setError('');
     setSuccess('');
 
+    if (!formData.title?.trim()) {
+      setError('Problem Title is required');
+      setSaving(false);
+      return;
+    }
+
+    if (!formData.description?.trim()) {
+      setError('Problem Description is required');
+      setSaving(false);
+      return;
+    }
+
     try {
+      // Clean up examples: filter out completely empty example objects
+      const sanitizedExamples = (formData.examples || [])
+        .filter(
+          (ex) =>
+            ex &&
+            ((ex.input && String(ex.input).trim()) ||
+             (ex.output && String(ex.output).trim()) ||
+             (ex.explanation && String(ex.explanation).trim()))
+        )
+        .map((ex) => ({
+          input: (ex.input || '').trim(),
+          output: (ex.output || '').trim(),
+          explanation: (ex.explanation || '').trim(),
+        }));
+
+      const payload = {
+        ...formData,
+        type: 'CODING',
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        examples: sanitizedExamples,
+        marks: Number(formData.marks) || 20,
+        timeLimit: Number(formData.timeLimit) || 2,
+        memoryLimit: Number(formData.memoryLimit) || 256,
+      };
+
       let savedQId = id;
       if (isEditing) {
-        await api.put(`/admin/questions/${id}`, formData);
+        await api.put(`/admin/questions/${id}`, payload);
         setSuccess('Question updated successfully');
       } else {
-        const res = await api.post('/admin/questions', formData);
-        savedQId = res.data.data.question._id;
-        setSuccess('Question created successfully! You can now manage test cases.');
+        const res = await api.post('/admin/questions', payload);
+        savedQId = res.data?.data?.question?._id;
+        setSuccess('Question created successfully! You can now configure test cases.');
         navigate(`/admin/questions/${savedQId}/edit`);
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to save question');
+      const respData = err.response?.data;
+      if (respData?.errors && Array.isArray(respData.errors) && respData.errors.length > 0) {
+        const errDetails = respData.errors.map((item) => `${item.field}: ${item.message}`).join(', ');
+        setError(`Validation error (${errDetails})`);
+      } else {
+        setError(respData?.message || err.message || 'Failed to save question');
+      }
     } finally {
       setSaving(false);
     }
@@ -410,6 +456,31 @@ export default function AdminQuestionEditorPage() {
               })}
             </div>
           </div>
+
+          {/* Allow Code Run Toggle */}
+          <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+            <div>
+              <label className="text-xs font-semibold text-slate-800 block">
+                Allow Code Execution (Run Code Button)
+              </label>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Enable this to allow candidates to run and test their code with custom input on this problem, even when the overall exam-level toggle is disabled.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, allowCodeRun: !formData.allowCodeRun })}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                formData.allowCodeRun ? 'bg-blue-600' : 'bg-slate-300'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  formData.allowCodeRun ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
         </div>
 
         {/* Public Examples */}
@@ -444,20 +515,26 @@ export default function AdminQuestionEditorPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-600 block mb-1">Example Input:</label>
+                  <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                    Example Input (stdin):
+                  </label>
                   <textarea
                     rows={2}
                     value={ex.input}
                     onChange={(e) => handleExampleChange(idx, 'input', e.target.value)}
+                    placeholder="Input provided to program (optional)..."
                     className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-600 block mb-1">Expected Output:</label>
+                  <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                    Expected Output (stdout):
+                  </label>
                   <textarea
                     rows={2}
                     value={ex.output}
                     onChange={(e) => handleExampleChange(idx, 'output', e.target.value)}
+                    placeholder="Expected output of program (optional)..."
                     className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-mono text-emerald-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -492,20 +569,49 @@ export default function AdminQuestionEditorPage() {
       {/* Test Case Management Section (Only active when editing an existing problem) */}
       {isEditing && (
         <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-6">
-          <div>
-            <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-              <Shield className="w-4 h-4 text-blue-600" /> Test Suite Management (Hidden & Private Cases)
-            </h2>
-            <p className="text-xs text-slate-500 mt-1">
-              Hidden test cases are strictly executed inside Docker containers and never sent to candidate browsers.
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                <Shield className="w-4 h-4 text-blue-600" /> Test Suite Management (Unhidden & Hidden Cases)
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Configure test cases for code execution. Exactly at least 1 Unhidden (Public) test case and 1 Hidden (Private) test case are required.
+              </p>
+            </div>
+
+            {/* Test Case Requirement Badges */}
+            <div className="flex flex-wrap items-center gap-2">
+              {testCases.filter((tc) => !tc.isHidden).length > 0 ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  Public Case Added ({testCases.filter((tc) => !tc.isHidden).length})
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-300 animate-pulse">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                  1 Public Case Required *
+                </span>
+              )}
+
+              {testCases.filter((tc) => tc.isHidden).length > 0 ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  Hidden Case Added ({testCases.filter((tc) => tc.isHidden).length})
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-300 animate-pulse">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                  1 Hidden Case Required *
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Existing Test Cases Table */}
           <div className="space-y-3">
             {testCases.length === 0 ? (
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500 text-center">
-                No test cases configured yet. Add test cases below.
+                No test cases configured yet. Add at least one public and one hidden test case below.
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -528,11 +634,11 @@ export default function AdminQuestionEditorPage() {
                           <span
                             className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                               tc.isHidden
-                                ? 'bg-blue-50 text-blue-600 border border-blue-200'
-                                : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                                ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                             }`}
                           >
-                            {tc.isHidden ? 'HIDDEN' : 'PUBLIC'}
+                            {tc.isHidden ? '🔒 HIDDEN (Private)' : '👁 UNHIDDEN (Public)'}
                           </span>
                         </td>
                         <td className="py-2.5 px-3 max-w-[200px] truncate text-slate-500">
@@ -562,6 +668,62 @@ export default function AdminQuestionEditorPage() {
           <form onSubmit={handleAddTestCase} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-4">
             <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">+ Add New Test Case</h4>
 
+            {/* Test Case Type Selection: Public vs Hidden */}
+            <div>
+              <label className="text-[11px] font-semibold text-slate-700 block mb-1.5">
+                Test Case Visibility <span className="text-rose-500">*</span>:
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label
+                  className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                    !newTc.isHidden
+                      ? 'bg-emerald-50/70 border-emerald-400 text-emerald-950 ring-1 ring-emerald-400'
+                      : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="tcType"
+                    checked={!newTc.isHidden}
+                    onChange={() => setNewTc({ ...newTc, isHidden: false })}
+                    className="mt-0.5 text-emerald-600 focus:ring-0 cursor-pointer"
+                  />
+                  <div>
+                    <span className="text-xs font-bold flex items-center gap-1.5 text-emerald-800">
+                      👁 Unhidden (Public Test Case)
+                    </span>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Visible to student in testcase console. Student can run code against this testcase like LeetCode.
+                    </p>
+                  </div>
+                </label>
+
+                <label
+                  className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                    newTc.isHidden
+                      ? 'bg-purple-50/70 border-purple-400 text-purple-950 ring-1 ring-purple-400'
+                      : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="tcType"
+                    checked={newTc.isHidden}
+                    onChange={() => setNewTc({ ...newTc, isHidden: true })}
+                    className="mt-0.5 text-purple-600 focus:ring-0 cursor-pointer"
+                  />
+                  <div>
+                    <span className="text-xs font-bold flex items-center gap-1.5 text-purple-800">
+                      🔒 Hidden (Private Test Case)
+                    </span>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Confidential. Evaluated strictly during exam final submission to compute student marks.
+                    </p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-[11px] font-semibold text-slate-600 block mb-1">Standard Input (stdin):</label>
@@ -588,30 +750,15 @@ export default function AdminQuestionEditorPage() {
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <label className="text-xs text-slate-600 font-semibold">Marks:</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={newTc.marks}
-                    onChange={(e) => setNewTc({ ...newTc, marks: Number(e.target.value) })}
-                    className="w-16 px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-800 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="newTcHidden"
-                    checked={newTc.isHidden}
-                    onChange={(e) => setNewTc({ ...newTc, isHidden: e.target.checked })}
-                    className="w-4 h-4 rounded text-blue-600 bg-white border-slate-300 accent-blue-600 focus:ring-0 cursor-pointer"
-                  />
-                  <label htmlFor="newTcHidden" className="text-xs text-slate-700 font-semibold select-none cursor-pointer">
-                    Hidden Test Case (Confidential)
-                  </label>
-                </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-slate-600 font-semibold">Marks Allocated:</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={newTc.marks}
+                  onChange={(e) => setNewTc({ ...newTc, marks: Number(e.target.value) })}
+                  className="w-20 px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-800 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
 
               <button
@@ -622,6 +769,16 @@ export default function AdminQuestionEditorPage() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {!isEditing && (
+        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm text-center py-8 space-y-2">
+          <Shield className="w-8 h-8 text-blue-600 mx-auto" />
+          <h3 className="text-sm font-bold text-slate-800">Test Cases Configuration</h3>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
+            Test cases (at least 1 public and 1 hidden) can be added immediately after saving problem specifications above. Click "Create Problem" above to save and proceed.
+          </p>
         </div>
       )}
     </div>

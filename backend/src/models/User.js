@@ -56,6 +56,22 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    technology: {
+      type: String,
+      trim: true,
+      default: '',
+      index: true,
+    },
+    technologies: {
+      type: [String],
+      default: [],
+    },
+    batchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Batch',
+      default: null,
+      index: true,
+    },
     gender: {
       type: String,
       trim: true,
@@ -71,6 +87,18 @@ const userSchema = new mongoose.Schema(
       default: '',
       index: true,
     },
+    isImported: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    importedBy: [
+      {
+        user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        organization: { type: String, default: '' },
+        at: { type: Date, default: Date.now },
+      },
+    ],
     assignedFaculties: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -79,6 +107,10 @@ const userSchema = new mongoose.Schema(
     ],
     currentSessionId: {
       type: String,
+      default: null,
+    },
+    sessionExpiresAt: {
+      type: Date,
       default: null,
     },
     createdBy: {

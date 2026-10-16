@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { Exam } from '../models/Exam.js';
 import { ExamAttempt } from '../models/ExamAttempt.js';
 import { Question } from '../models/Question.js';
+import { TestCase } from '../models/TestCase.js';
 import { Submission } from '../models/Submission.js';
 import { ExecutionJob } from '../models/ExecutionJob.js';
 import { addSubmissionJob, runCustomCodeInPool } from '../queues/queueManager.js';
@@ -29,16 +30,6 @@ export class ExamService {
     // Admins and faculty have privileged access
     if (['ADMIN', 'FACULTY'].includes(studentUser.role)) return true;
 
-    // Determine who created this student
-    let studentCreator = studentUser.createdBy;
-    if (studentCreator && typeof studentCreator === 'object' && !studentCreator.role) {
-      studentCreator = await User.findById(studentCreator._id || studentCreator).select('role');
-    } else if (studentCreator && typeof studentCreator !== 'object') {
-      studentCreator = await User.findById(studentCreator).select('role');
-    }
-
-    const isStudentOfAdmin = !studentCreator || studentCreator.role === 'ADMIN';
-
     // Determine who created this exam
     const examCreatorId = String(exam.createdBy?._id || exam.createdBy);
     let examCreator = exam.populated?.('createdBy') ? exam.createdBy : null;
@@ -47,24 +38,40 @@ export class ExamService {
     }
     const isExamByAdmin = examCreator?.role === 'ADMIN';
 
+    // Determine who created this student
+    const studentCreatorId = String(studentUser.createdBy?._id || studentUser.createdBy || '');
+
     // Check if the student is assigned to / imported by the faculty who created this exam
     const isAssignedToExamCreator = (studentUser.assignedFaculties || []).some(
       (fId) => String(fId?._id || fId) === examCreatorId
     );
-    const studentFacultyId = String(studentCreator?._id || studentCreator || '');
-    const isCreatedByExamCreator = studentFacultyId === examCreatorId;
+    const isCreatedByExamCreator = studentCreatorId === examCreatorId;
 
-    // If exam was created by Admin: accessible if student was created by Admin or unassigned
-    if (isExamByAdmin) {
-      return isStudentOfAdmin;
+    // Creator isolation check:
+    // If exam was created by Admin: accessible by all students across the institution
+    // If exam was created by Faculty: accessible ONLY if student was created or imported by that faculty
+    if (!isExamByAdmin && !isCreatedByExamCreator && !isAssignedToExamCreator) {
+      return false;
     }
 
-    // If exam was created by Faculty: accessible if student was created by that Faculty OR assigned/imported by that Faculty
-    if (isCreatedByExamCreator || isAssignedToExamCreator) {
-      return true;
+    // Technology Matching Check:
+    // An exam may be conducted for specific technologies (e.g. React, Java).
+    // Students can only access exams configured for their assigned technology.
+    const examTechs = [
+      ...(Array.isArray(exam.targetTechnologies) ? exam.targetTechnologies : []),
+      exam.technology,
+    ]
+      .filter(Boolean)
+      .map((t) => String(t).trim().toLowerCase());
+
+    if (examTechs.length > 0) {
+      const studentTech = String(studentUser.technology || studentUser.batch || '').trim().toLowerCase();
+      if (!studentTech || !examTechs.includes(studentTech)) {
+        return false;
+      }
     }
 
-    return false;
+    return true;
   }
 
   static async getAvailableExams(userId, query = {}) {
@@ -72,28 +79,38 @@ export class ExamService {
 
     const student = await User.findById(userId).populate('createdBy', 'role name email');
     if (student && student.role === 'USER') {
-      const isStudentOfAdmin = !student.createdBy || student.createdBy.role === 'ADMIN';
       const assignedIds = (student.assignedFaculties || []).map((f) => String(f._id || f));
 
-      const allowedCreatorIds = [];
+      // Admin exams are institution-wide and accessible to all eligible students
+      const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
+      const allowedCreatorIds = [...adminIds.map(String)];
 
-      if (isStudentOfAdmin) {
-        const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
-        allowedCreatorIds.push(...adminIds.map(String));
-      } else if (student.createdBy && student.createdBy.role === 'FACULTY') {
+      if (student.createdBy && student.createdBy.role === 'FACULTY') {
         allowedCreatorIds.push(String(student.createdBy._id || student.createdBy));
-      } else {
-        const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
-        allowedCreatorIds.push(...adminIds.map(String));
       }
 
-      // Imported / Assigned faculties: student can see all published exams created by faculties who imported them
+      // Imported / Assigned faculties: student can see exams created by faculties who imported them
       if (assignedIds.length > 0) {
         allowedCreatorIds.push(...assignedIds);
       }
 
       const uniqueCreatorIds = Array.from(new Set(allowedCreatorIds.filter(Boolean)));
       filter.createdBy = { $in: uniqueCreatorIds };
+
+      // Filter by student's technology
+      const studentTech = String(student.technology || student.batch || '').trim();
+      const techConditions = [
+        { targetTechnologies: { $size: 0 }, technology: '' },
+        { targetTechnologies: { $exists: false }, technology: { $exists: false } },
+        { targetTechnologies: null, technology: null },
+      ];
+      if (studentTech) {
+        const escapedTech = studentTech.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        const techRegex = new RegExp(`^${escapedTech}$`, 'i');
+        techConditions.push({ targetTechnologies: techRegex });
+        techConditions.push({ technology: techRegex });
+      }
+      filter.$or = techConditions;
     } else if (student && student.role === 'FACULTY') {
       // Faculty previewing exams
       filter.createdBy = student._id;
@@ -185,9 +202,15 @@ export class ExamService {
 
     // Fetch questions with only public fields (never hidden test cases or correctAnswer!)
     const questionIds = exam.questions.map((q) => q.questionId);
-    const questions = await Question.find({ _id: { $in: questionIds } }).select(
-      '_id title description type options inputFormat outputFormat constraints examples explanation difficulty marks allowCodeRun allowedLanguages starterCode timeLimit memoryLimit comparisonMode'
-    );
+    const [questions, unhiddenTestCases] = await Promise.all([
+      Question.find({ _id: { $in: questionIds } }).select(
+        '_id title description type options inputFormat outputFormat constraints examples explanation difficulty marks allowCodeRun allowedLanguages starterCode timeLimit memoryLimit comparisonMode'
+      ),
+      TestCase.find({
+        questionId: { $in: questionIds },
+        isHidden: false,
+      }).sort({ order: 1 }),
+    ]);
 
     // Map questions in configured order
     const orderedQuestions = exam.questions
@@ -204,7 +227,17 @@ export class ExamService {
           ? examItemOverride 
           : (questionDocOverride !== null ? questionDocOverride : Boolean(exam.allowCodeRun));
 
-        qObj.allowCodeRun = effectiveAllowCodeRun;
+        qObj.allowCodeRun = qObj.type === 'MCQ' ? false : effectiveAllowCodeRun;
+
+        // Attach unhidden testcases so student can test with public cases in LeetCode style
+        qObj.sampleTestCases = unhiddenTestCases
+          .filter((tc) => tc.questionId.toString() === qObj._id.toString())
+          .map((tc) => ({
+            _id: tc._id,
+            input: tc.input,
+            expectedOutput: tc.expectedOutput,
+          }));
+
         return qObj;
       })
       .filter(Boolean);
@@ -631,6 +664,9 @@ export class ExamService {
       } else if (question && question.allowCodeRun !== undefined && question.allowCodeRun !== null) {
         effectiveAllowCodeRun = Boolean(question.allowCodeRun);
       }
+    }
+    if (question && question.type === 'MCQ') {
+      effectiveAllowCodeRun = false;
     }
 
     // If candidate, check if code run is permitted for this question

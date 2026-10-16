@@ -284,8 +284,26 @@ export default function AdminExamsPage() {
                           className="w-4 h-4 rounded bg-white border-slate-300 text-blue-600 accent-blue-600 focus:ring-0 cursor-pointer"
                         />
                       </td>
-                      <td className="py-3 px-4 font-bold text-slate-800 text-xs whitespace-nowrap max-w-xs truncate" title={exam.title}>
-                        {exam.title}
+                      <td className="py-3 px-4 whitespace-nowrap max-w-xs">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-bold text-slate-800 text-xs truncate" title={exam.title}>
+                            {exam.title}
+                          </span>
+                          {((exam.targetTechnologies?.length > 0 ? exam.targetTechnologies : (exam.technology ? [exam.technology] : []))).length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1">
+                              {((exam.targetTechnologies?.length > 0 ? exam.targetTechnologies : [exam.technology])).slice(0, 3).map((tech) => (
+                                <span key={tech} className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                                  {tech}
+                                </span>
+                              ))}
+                              {((exam.targetTechnologies?.length > 0 ? exam.targetTechnologies : [exam.technology])).length > 3 && (
+                                <span className="text-[9px] text-slate-400">
+                                  +{((exam.targetTechnologies?.length > 0 ? exam.targetTechnologies : [exam.technology])).length - 3}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-4 text-slate-500 text-xs whitespace-nowrap max-w-[220px] truncate" title={exam.description || ''}>
                         {exam.description || '—'}

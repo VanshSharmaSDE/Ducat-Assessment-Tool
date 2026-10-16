@@ -93,6 +93,16 @@ const examSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    technology: {
+      type: String,
+      default: '',
+      index: true,
+    },
+    targetTechnologies: {
+      type: [String],
+      default: [],
+      index: true,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

@@ -13,38 +13,38 @@ export class QuestionExcelService {
     // Sheet 1: Template data with examples
     const sampleRows = [
       {
-        'Title': 'Reverse String',
-        'Description': 'Given a single line string s, print the reverse of the string.',
+        'Title *': 'Reverse String',
+        'Description *': 'Given a single line string s, print the reverse of the string.',
+        'SampleInput1 *': 'hello',
+        'SampleOutput1 *': 'olleh',
+        'HiddenInput1 *': 'world',
+        'HiddenOutput1 *': 'dlrow',
         'Difficulty': 'EASY',
         'Marks': 10,
         'AllowedLanguages': 'java, python, javascript',
         'InputFormat': 'Single string without spaces',
         'OutputFormat': 'The reversed string',
         'Constraints': '1 <= length <= 1000',
-        'SampleInput1': 'hello',
-        'SampleOutput1': 'olleh',
         'Explanation1': 'Reversing "hello" produces "olleh".',
-        'HiddenInput1': 'world',
-        'HiddenOutput1': 'dlrow',
         'HiddenInput2': 'programming',
         'HiddenOutput2': 'gnimmargorp',
         'HiddenInput3': '12345',
         'HiddenOutput3': '54321',
       },
       {
-        'Title': 'Find Maximum Number',
-        'Description': 'Given an array of n integers, find and print the maximum integer in the array.',
+        'Title *': 'Find Maximum Number',
+        'Description *': 'Given an array of n integers, find and print the maximum integer in the array.',
+        'SampleInput1 *': '5\n1 9 3 7 4',
+        'SampleOutput1 *': '9',
+        'HiddenInput1 *': '3\n-10 -5 -20',
+        'HiddenOutput1 *': '-5',
         'Difficulty': 'EASY',
         'Marks': 15,
         'AllowedLanguages': 'java, python, javascript',
         'InputFormat': 'First line contains n. Second line contains n space-separated integers.',
         'OutputFormat': 'Print the maximum integer.',
         'Constraints': '1 <= n <= 10^5, -10^9 <= arr[i] <= 10^9',
-        'SampleInput1': '5\n1 9 3 7 4',
-        'SampleOutput1': '9',
         'Explanation1': 'The maximum element among 1, 9, 3, 7, 4 is 9.',
-        'HiddenInput1': '3\n-10 -5 -20',
-        'HiddenOutput1': '-5',
         'HiddenInput2': '1\n100',
         'HiddenOutput2': '100',
         'HiddenInput3': '4\n50 50 50 50',
@@ -55,21 +55,25 @@ export class QuestionExcelService {
     const wsTemplate = XLSX.utils.json_to_sheet(sampleRows);
     XLSX.utils.book_append_sheet(wb, wsTemplate, 'Questions_Template');
 
-    // Sheet 2: Guidelines
+    // Sheet 2: Guidelines (Mandatory vs Optional)
     const guidelines = [
-      { 'Field': 'Title', 'Required': 'YES', 'Description': 'Problem statement title (e.g. Two Sum, Palindrome Check)' },
-      { 'Field': 'Description', 'Required': 'YES', 'Description': 'Full problem description and instructions for candidates' },
-      { 'Field': 'Difficulty', 'Required': 'NO', 'Description': 'EASY, MEDIUM, or HARD (default: MEDIUM)' },
-      { 'Field': 'Marks', 'Required': 'NO', 'Description': 'Integer points awarded for this problem (default: 10)' },
-      { 'Field': 'AllowedLanguages', 'Required': 'NO', 'Description': 'Comma-separated (java, python, javascript)' },
-      { 'Field': 'InputFormat', 'Required': 'NO', 'Description': 'Explanation of standard input format' },
-      { 'Field': 'OutputFormat', 'Required': 'NO', 'Description': 'Explanation of expected stdout format' },
-      { 'Field': 'Constraints', 'Required': 'NO', 'Description': 'Data type ranges and problem limits' },
-      { 'Field': 'SampleInput1', 'Required': 'NO', 'Description': 'Public sample input visible to candidate in problem description' },
-      { 'Field': 'SampleOutput1', 'Required': 'NO', 'Description': 'Public sample expected output' },
-      { 'Field': 'Explanation1', 'Required': 'NO', 'Description': 'Optional explanation for Sample 1' },
-      { 'Field': 'HiddenInput1..5', 'Required': 'RECOMMENDED', 'Description': 'Hidden test case input used during Docker evaluation' },
-      { 'Field': 'HiddenOutput1..5', 'Required': 'RECOMMENDED', 'Description': 'Hidden test case expected output used during evaluation' },
+      { 'Field Name': 'Title *', 'Status': 'MANDATORY (*)', 'Description': 'Problem statement title (e.g. Reverse String, Two Sum)' },
+      { 'Field Name': 'Description *', 'Status': 'MANDATORY (*)', 'Description': 'Full problem description and instructions for candidates' },
+      { 'Field Name': 'SampleInput1 *', 'Status': 'MANDATORY (*)', 'Description': 'Public / Unhidden Test Case 1 input visible to candidate in test cases console' },
+      { 'Field Name': 'SampleOutput1 *', 'Status': 'MANDATORY (*)', 'Description': 'Public / Unhidden Test Case 1 expected output' },
+      { 'Field Name': 'HiddenInput1 *', 'Status': 'MANDATORY (*)', 'Description': 'Hidden / Private Test Case 1 input used for final evaluation and marks' },
+      { 'Field Name': 'HiddenOutput1 *', 'Status': 'MANDATORY (*)', 'Description': 'Hidden / Private Test Case 1 expected output' },
+      { 'Field Name': 'Difficulty', 'Status': 'OPTIONAL', 'Description': 'EASY, MEDIUM, or HARD (default: MEDIUM if blank)' },
+      { 'Field Name': 'Marks', 'Status': 'OPTIONAL', 'Description': 'Integer points awarded for this problem (default: 10 if blank)' },
+      { 'Field Name': 'AllowedLanguages', 'Status': 'OPTIONAL', 'Description': 'Comma-separated (java, python, javascript). Default: all allowed' },
+      { 'Field Name': 'InputFormat', 'Status': 'OPTIONAL', 'Description': 'Explanation of standard input format' },
+      { 'Field Name': 'OutputFormat', 'Status': 'OPTIONAL', 'Description': 'Explanation of expected stdout format' },
+      { 'Field Name': 'Constraints', 'Status': 'OPTIONAL', 'Description': 'Data type ranges and problem limits' },
+      { 'Field Name': 'Explanation1', 'Status': 'OPTIONAL', 'Description': 'Optional explanation for Sample 1' },
+      { 'Field Name': 'SampleInput2..N', 'Status': 'OPTIONAL', 'Description': 'Additional public unhidden test case input' },
+      { 'Field Name': 'SampleOutput2..N', 'Status': 'OPTIONAL', 'Description': 'Additional public unhidden test case output' },
+      { 'Field Name': 'HiddenInput2..10', 'Status': 'OPTIONAL', 'Description': 'Additional hidden test case input' },
+      { 'Field Name': 'HiddenOutput2..10', 'Status': 'OPTIONAL', 'Description': 'Additional hidden test case expected output' },
     ];
 
     const wsGuidelines = XLSX.utils.json_to_sheet(guidelines);
@@ -98,8 +102,12 @@ export class QuestionExcelService {
       const row = rows[i];
       const rowNum = i + 2;
 
-      const title = String(row['Title'] || row['title'] || row['Question Title'] || '').trim();
-      const description = String(row['Description'] || row['description'] || '').trim();
+      const title = String(
+        row['Title *'] || row['Title'] || row['title'] || row['Question Title'] || ''
+      ).trim();
+      const description = String(
+        row['Description *'] || row['Description'] || row['description'] || ''
+      ).trim();
 
       if (!title || !description) {
         errors.push(`Row ${rowNum}: Title and Description are required.`);
@@ -127,17 +135,28 @@ export class QuestionExcelService {
         if (parsed.length > 0) allowedLanguages = parsed;
       }
 
-      // Build examples
-      const examples = [];
-      const sampleIn1 = row['SampleInput1'] || row['SampleInput'] || row['sample_input'];
-      const sampleOut1 = row['SampleOutput1'] || row['SampleOutput'] || row['sample_output'];
-      if (sampleIn1 !== undefined && sampleOut1 !== undefined) {
-        examples.push({
-          input: String(sampleIn1),
-          output: String(sampleOut1),
-          explanation: String(row['Explanation1'] || row['Explanation'] || ''),
-        });
+      // Build examples & public test cases
+      const sampleIn1 = row['SampleInput1 *'] ?? row['SampleInput1'] ?? row['SampleInput'] ?? row['sample_input'];
+      const sampleOut1 = row['SampleOutput1 *'] ?? row['SampleOutput1'] ?? row['SampleOutput'] ?? row['sample_output'];
+      const hiddenIn1 = row['HiddenInput1 *'] ?? row['HiddenInput1'] ?? row['HiddenInput'] ?? row['hidden_input'];
+      const hiddenOut1 = row['HiddenOutput1 *'] ?? row['HiddenOutput1'] ?? row['HiddenOutput'] ?? row['hidden_output'];
+
+      if (sampleIn1 === undefined || sampleOut1 === undefined) {
+        errors.push(`Row ${rowNum}: Public unhidden test case (SampleInput1 * and SampleOutput1 *) is mandatory.`);
+        continue;
       }
+
+      if (hiddenIn1 === undefined || hiddenOut1 === undefined) {
+        errors.push(`Row ${rowNum}: Hidden test case (HiddenInput1 * and HiddenOutput1 *) is mandatory.`);
+        continue;
+      }
+
+      const examples = [];
+      examples.push({
+        input: String(sampleIn1),
+        output: String(sampleOut1),
+        explanation: String(row['Explanation1'] || row['Explanation'] || ''),
+      });
 
       const sampleIn2 = row['SampleInput2'];
       const sampleOut2 = row['SampleOutput2'];
@@ -168,7 +187,7 @@ export class QuestionExcelService {
         // Create Test Cases
         const testCasesToCreate = [];
 
-        // 1. If sample test case exists, add as public test case
+        // 1. If sample test case exists, add as public unhidden test case(s)
         if (sampleIn1 !== undefined && sampleOut1 !== undefined) {
           testCasesToCreate.push({
             questionId: question._id,
@@ -180,15 +199,36 @@ export class QuestionExcelService {
           });
         }
 
-        // 2. Collect hidden test cases (HiddenInput1..5)
+        for (let s = 2; s <= 5; s++) {
+          const sIn = row[`SampleInput${s} *`] ?? row[`SampleInput${s}`];
+          const sOut = row[`SampleOutput${s} *`] ?? row[`SampleOutput${s}`];
+          if (sIn !== undefined && sOut !== undefined) {
+            testCasesToCreate.push({
+              questionId: question._id,
+              input: String(sIn),
+              expectedOutput: String(sOut),
+              isHidden: false,
+              marks: 0,
+              order: s - 1,
+            });
+          }
+        }
+
+        // 2. Collect hidden test cases (HiddenInput1..10)
         const hiddenCases = [];
-        for (let h = 1; h <= 10; h++) {
-          const inKey = `HiddenInput${h}`;
-          const outKey = `HiddenOutput${h}`;
-          if (row[inKey] !== undefined && row[outKey] !== undefined) {
+        if (hiddenIn1 !== undefined && hiddenOut1 !== undefined) {
+          hiddenCases.push({
+            input: String(hiddenIn1),
+            expectedOutput: String(hiddenOut1),
+          });
+        }
+        for (let h = 2; h <= 10; h++) {
+          const inKey = row[`HiddenInput${h} *`] ?? row[`HiddenInput${h}`];
+          const outKey = row[`HiddenOutput${h} *`] ?? row[`HiddenOutput${h}`];
+          if (inKey !== undefined && outKey !== undefined) {
             hiddenCases.push({
-              input: String(row[inKey]),
-              expectedOutput: String(row[outKey]),
+              input: String(inKey),
+              expectedOutput: String(outKey),
             });
           }
         }

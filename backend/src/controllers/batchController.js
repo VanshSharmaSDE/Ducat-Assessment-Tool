@@ -28,21 +28,22 @@ export class BatchController {
         .populate('createdBy', 'name email role')
         .sort({ createdAt: -1 });
 
-      // Compute student count for each batch
+      // Compute student count for each batch scoped to this batch
       const batchesWithCounts = await Promise.all(
         batches.map(async (batch) => {
-          const studentFilter = { role: 'USER', batch: batch.name };
-          if (!isSuperAdmin) {
-            // Count students in this batch created by this faculty
-            studentFilter.createdBy = req.user._id;
-          }
+          const studentFilter = {
+            role: 'USER',
+            $or: [
+              { batchId: batch._id },
+              { batch: batch.name, createdBy: batch.createdBy },
+            ],
+          };
           const studentCount = await User.countDocuments(studentFilter);
-          const totalBatchStudents = await User.countDocuments({ role: 'USER', batch: batch.name });
 
           return {
             ...batch.toObject(),
             studentCount,
-            totalBatchStudents,
+            totalBatchStudents: studentCount,
           };
         })
       );
@@ -68,14 +69,21 @@ export class BatchController {
       }
 
       const isSuperAdmin = req.user?.role === 'ADMIN';
-      const studentFilter = { role: 'USER', batch: batch.name };
-      if (!isSuperAdmin) {
-        studentFilter.createdBy = req.user._id;
+      if (!isSuperAdmin && String(batch.createdBy?._id || batch.createdBy) !== String(req.user._id)) {
+        return res.status(403).json({ success: false, message: 'Access denied to this batch.' });
       }
+
+      const studentFilter = {
+        role: 'USER',
+        $or: [
+          { batchId: batch._id },
+          { batch: batch.name, createdBy: batch.createdBy?._id || batch.createdBy },
+        ],
+      };
 
       const students = await User.find(studentFilter)
         .populate('createdBy', 'name email role')
-        .select('name email rollNumber phone batch gender isActive createdAt createdBy')
+        .select('name email rollNumber phone batch batchId gender isActive createdAt createdBy')
         .sort({ name: 1 });
 
       res.status(200).json({
@@ -94,7 +102,7 @@ export class BatchController {
   }
 
   /**
-   * Create a new batch
+   * Create a new batch (scoped uniquely to creator)
    */
   static async createBatch(req, res, next) {
     try {
@@ -104,9 +112,14 @@ export class BatchController {
       }
 
       const cleanName = name.trim();
-      const existing = await Batch.findOne({ name: { $regex: new RegExp(`^${cleanName}$`, 'i') } });
+      const escapedName = cleanName.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      // Uniqueness is scoped to the current user (faculty or admin)
+      const existing = await Batch.findOne({
+        name: { $regex: new RegExp(`^${escapedName}$`, 'i') },
+        createdBy: req.user._id,
+      });
       if (existing) {
-        return res.status(409).json({ success: false, message: `Batch "${cleanName}" already exists.` });
+        return res.status(409).json({ success: false, message: `You already have a batch named "${cleanName}".` });
       }
 
       const batch = await Batch.create({
@@ -155,17 +168,28 @@ export class BatchController {
       const oldName = batch.name;
       if (name && name.trim() && name.trim() !== oldName) {
         const cleanName = name.trim();
+        const escapedName = cleanName.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
         const existing = await Batch.findOne({
-          name: { $regex: new RegExp(`^${cleanName}$`, 'i') },
+          name: { $regex: new RegExp(`^${escapedName}$`, 'i') },
+          createdBy: batch.createdBy,
           _id: { $ne: id },
         });
         if (existing) {
-          return res.status(409).json({ success: false, message: `Batch "${cleanName}" already exists.` });
+          return res.status(409).json({ success: false, message: `A batch named "${cleanName}" already exists for this creator.` });
         }
         batch.name = cleanName;
 
-        // Synchronize all assigned students to new batch name
-        await User.updateMany({ batch: oldName }, { $set: { batch: cleanName } });
+        // Synchronize only students assigned to this creator's batch
+        await User.updateMany(
+          {
+            role: 'USER',
+            $or: [
+              { batchId: batch._id },
+              { batch: oldName, createdBy: batch.createdBy },
+            ],
+          },
+          { $set: { batch: cleanName, batchId: batch._id } }
+        );
       }
 
       if (description !== undefined) batch.description = description.trim();
@@ -201,8 +225,17 @@ export class BatchController {
         return res.status(403).json({ success: false, message: 'Access denied. You can only delete batches you created.' });
       }
 
-      // Detach batch name from users who were assigned
-      await User.updateMany({ batch: batch.name }, { $set: { batch: '' } });
+      // Detach only from users assigned to this creator's batch
+      await User.updateMany(
+        {
+          role: 'USER',
+          $or: [
+            { batchId: batch._id },
+            { batch: batch.name, createdBy: batch.createdBy },
+          ],
+        },
+        { $set: { batch: '', batchId: null } }
+      );
       await Batch.findByIdAndDelete(id);
 
       res.status(200).json({
@@ -234,11 +267,16 @@ export class BatchController {
       const isSuperAdmin = req.user?.role === 'ADMIN';
       const studentFilter = { _id: { $in: studentIds }, role: 'USER' };
       if (!isSuperAdmin) {
-        // Faculty can only assign students they created
-        studentFilter.createdBy = req.user._id;
+        // Faculty can only assign students they created or manage
+        studentFilter.$or = [
+          { createdBy: req.user._id },
+          { assignedFaculties: req.user._id },
+        ];
       }
 
-      const result = await User.updateMany(studentFilter, { $set: { batch: batch.name } });
+      const result = await User.updateMany(studentFilter, {
+        $set: { batch: batch.name, batchId: batch._id },
+      });
 
       res.status(200).json({
         success: true,
@@ -278,6 +316,7 @@ export class BatchController {
       }
 
       user.batch = '';
+      user.batchId = null;
       await user.save();
 
       res.status(200).json({
@@ -304,6 +343,20 @@ export class BatchController {
       const filter = { _id: { $in: targetIds } };
       if (!isSuperAdmin) {
         filter.createdBy = req.user._id;
+      }
+
+      const batchesToDelete = await Batch.find(filter);
+      for (const b of batchesToDelete) {
+        await User.updateMany(
+          {
+            role: 'USER',
+            $or: [
+              { batchId: b._id },
+              { batch: b.name, createdBy: b.createdBy },
+            ],
+          },
+          { $set: { batch: '', batchId: null } }
+        );
       }
 
       const result = await Batch.deleteMany(filter);

@@ -50,19 +50,22 @@ export class UserService {
       throw error;
     }
 
-    if (email && email.toLowerCase().trim() !== user.email) {
-      const existing = await User.findOne({ email: email.toLowerCase().trim(), _id: { $ne: userId } });
-      if (existing) {
-        const error = new Error('Email is already registered by another account');
-        error.statusCode = 400;
-        error.errorCode = 'EMAIL_IN_USE';
-        throw error;
+    // Students are not permitted to change their email or phone number
+    if (user.role !== 'USER') {
+      if (email && email.toLowerCase().trim() !== user.email) {
+        const existing = await User.findOne({ email: email.toLowerCase().trim(), _id: { $ne: userId } });
+        if (existing) {
+          const error = new Error('Email is already registered by another account');
+          error.statusCode = 400;
+          error.errorCode = 'EMAIL_IN_USE';
+          throw error;
+        }
+        user.email = email.toLowerCase().trim();
       }
-      user.email = email.toLowerCase().trim();
+      if (phone !== undefined) user.phone = phone.trim();
     }
 
     if (name) user.name = name.trim();
-    if (phone !== undefined) user.phone = phone.trim();
     if (gender !== undefined) user.gender = gender.trim();
     if (age !== undefined) user.age = age === '' || age === null ? null : Number(age);
 

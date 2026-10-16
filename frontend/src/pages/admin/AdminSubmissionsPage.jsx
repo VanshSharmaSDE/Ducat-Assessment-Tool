@@ -580,7 +580,7 @@ export default function AdminSubmissionsPage() {
                           <th className="py-3 px-4 font-semibold">Candidate</th>
                           <th className="py-3 px-4 font-semibold">Email</th>
                           <th className="py-3 px-4 font-semibold">Roll Number</th>
-                          <th className="py-3 px-4 font-semibold">Batch</th>
+                          <th className="py-3 px-4 font-semibold">Technology</th>
                           <th className="py-3 px-4 font-semibold">Status</th>
                           <th className="py-3 px-4 font-semibold">Score</th>
                           <th className="py-3 px-4 font-semibold">Percentage</th>
@@ -598,6 +598,7 @@ export default function AdminSubmissionsPage() {
                               item.user?.name?.toLowerCase().includes(term) ||
                               item.user?.email?.toLowerCase().includes(term) ||
                               item.user?.rollNumber?.toLowerCase().includes(term) ||
+                              item.user?.technology?.toLowerCase().includes(term) ||
                               item.user?.batch?.toLowerCase().includes(term)
                             );
                           })
@@ -628,7 +629,7 @@ export default function AdminSubmissionsPage() {
                                 {item.user?.rollNumber || '—'}
                               </td>
                               <td className="py-3 px-4 font-medium text-blue-700 whitespace-nowrap">
-                                {item.user?.batch || 'General'}
+                                {item.user?.technology || item.user?.batch || 'General'}
                               </td>
                               <td className="py-3 px-4 whitespace-nowrap">
                                 <span

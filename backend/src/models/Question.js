@@ -3,8 +3,8 @@ import { SUPPORTED_LANGUAGES } from '../utils/starterCode.js';
 
 const exampleSchema = new mongoose.Schema(
   {
-    input: { type: String, required: true },
-    output: { type: String, required: true },
+    input: { type: String, default: '' },
+    output: { type: String, default: '' },
     explanation: { type: String, default: '' },
   },
   { _id: false }

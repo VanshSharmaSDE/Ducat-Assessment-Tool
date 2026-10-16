@@ -42,7 +42,7 @@ export default function AdminLayout() {
     { label: isSuperAdmin ? 'Coding Questions' : 'My Coding Bank', path: '/admin/questions', icon: HelpCircle },
     { label: isSuperAdmin ? 'MCQ Question Bank' : 'My MCQ Bank', path: '/admin/mcq-questions', icon: CheckSquare },
     { label: isSuperAdmin ? 'Candidates' : 'My Students', path: '/admin/users', icon: Users },
-    { label: isSuperAdmin ? 'Batches' : 'My Batches', path: '/admin/batches', icon: Layers },
+    { label: isSuperAdmin ? 'Technologies' : 'My Technologies', path: '/admin/technologies', icon: Layers },
     ...(isSuperAdmin ? [{ label: 'Organizations', path: '/admin/organizations', icon: Building2 }] : []),
     ...(isSuperAdmin ? [{ label: 'Faculty Management', path: '/admin/faculty', icon: GraduationCap }] : []),
     { label: isSuperAdmin ? 'Results & Reports' : 'Student Results', path: '/admin/results', icon: Award },

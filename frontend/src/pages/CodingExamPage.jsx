@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Editor from "@monaco-editor/react";
 import api from "../api/axios";
@@ -64,7 +64,8 @@ export default function CodingExamPage() {
   const [error, setError] = useState("");
   const [toastMessage, setToastMessage] = useState("");
   const [visitedQuestions, setVisitedQuestions] = useState(new Set([0]));
-  const [customInputs, setCustomInputs] = useState({}); // { [qId]: string }
+  const [customInputs, setCustomInputs] = useState({}); // { [key]: string }
+  const [selectedCaseIndices, setSelectedCaseIndices] = useState({}); // { [qId]: number | 'custom' }
   const [runOutputs, setRunOutputs] = useState({}); // { [qId]: { status, stdout, stderr, compileOutput, executionTime } }
   const [isRunningCode, setIsRunningCode] = useState(false);
   const [showConsoleDrawer, setShowConsoleDrawer] = useState(false);
@@ -649,10 +650,32 @@ export default function CodingExamPage() {
     }));
   };
 
+  // Available sample test cases for the current question
+  const currentCases = useMemo(() => {
+    if (!currentQ) return [];
+    if (Array.isArray(currentQ.sampleTestCases) && currentQ.sampleTestCases.length > 0) {
+      return currentQ.sampleTestCases;
+    }
+    if (Array.isArray(currentQ.examples) && currentQ.examples.length > 0) {
+      return currentQ.examples.map((ex, idx) => ({
+        _id: `ex_${idx}`,
+        input: ex.input || "",
+        expectedOutput: ex.output || "",
+      }));
+    }
+    return [];
+  }, [currentQ]);
+
+  const activeCaseKey = currentQ
+    ? (selectedCaseIndices[currentQ._id] !== undefined
+        ? selectedCaseIndices[currentQ._id]
+        : (currentCases.length > 0 ? 0 : 'custom'))
+    : 'custom';
+
   const currentCustomInput =
     currentQ && customInputs[currentQ._id] !== undefined
       ? customInputs[currentQ._id]
-      : (currentQ?.examples?.[0]?.input || "");
+      : (currentCases[0]?.input || currentQ?.examples?.[0]?.input || "");
 
   const currentRunOutput = currentQ ? runOutputs[currentQ._id] : null;
 
@@ -668,7 +691,15 @@ export default function CodingExamPage() {
     if (isRunningCode || !currentQ) return;
 
     const qId = currentQ._id;
-    const inputVal = currentCustomInput;
+    const isCustom = activeCaseKey === 'custom';
+    const activeTc = !isCustom ? currentCases[activeCaseKey] : null;
+    const inputVal = isCustom
+      ? (customInputs[qId] !== undefined ? customInputs[qId] : "")
+      : (customInputs[`${qId}_case_${activeCaseKey}`] !== undefined
+          ? customInputs[`${qId}_case_${activeCaseKey}`]
+          : (activeTc?.input || ""));
+    const expectedOut = activeTc ? (activeTc.expectedOutput || "") : null;
+    const caseLabel = activeTc ? `Case ${Number(activeCaseKey) + 1}` : 'Custom Input';
 
     setIsRunningCode(true);
     setShowConsoleDrawer(true);
@@ -683,9 +714,25 @@ export default function CodingExamPage() {
       });
 
       if (res.data?.success && res.data?.data) {
+        const data = res.data.data;
+        const isCompileError = Boolean(data.compileOutput);
+        const isRuntimeError = Boolean(data.stderr) && !data.compileOutput;
+        let passed = null;
+        if (!isCompileError && !isRuntimeError && expectedOut !== null) {
+          passed = (data.stdout || '').trim() === expectedOut.trim();
+        }
+
         setRunOutputs((prev) => ({
           ...prev,
-          [qId]: res.data.data,
+          [qId]: {
+            ...data,
+            caseLabel,
+            inputUsed: inputVal,
+            expectedOutput: expectedOut,
+            passed,
+            isCompileError,
+            isRuntimeError,
+          },
         }));
       } else {
         setRunOutputs((prev) => ({
@@ -696,6 +743,10 @@ export default function CodingExamPage() {
             stderr: "Execution returned empty response.",
             compileOutput: "",
             executionTime: 0,
+            caseLabel,
+            inputUsed: inputVal,
+            expectedOutput: expectedOut,
+            passed: false,
           },
         }));
       }
@@ -709,6 +760,10 @@ export default function CodingExamPage() {
           stderr: errMsg,
           compileOutput: "",
           executionTime: 0,
+          caseLabel,
+          inputUsed: inputVal,
+          expectedOutput: expectedOut,
+          passed: false,
         },
       }));
     } finally {
@@ -1167,39 +1222,46 @@ export default function CodingExamPage() {
 
                 {/* Collapsible Console Drawer (when question or exam allows code run) */}
                 {Boolean(currentQ?.allowCodeRun) && showConsoleDrawer && (
-                  <div className="h-52 border-t border-slate-200 bg-white flex flex-col shrink-0 animate-in slide-in-from-bottom-2 duration-150 shadow-lg">
+                  <div className="h-64 sm:h-72 border-t border-slate-200 bg-white flex flex-col shrink-0 animate-in slide-in-from-bottom-2 duration-150 shadow-lg">
                     {/* Console Drawer Header with Tabs */}
-                    <div className="h-8 bg-slate-50 border-b border-slate-200 px-3 flex items-center justify-between shrink-0">
+                    <div className="h-9 bg-slate-50 border-b border-slate-200 px-3 flex items-center justify-between shrink-0">
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
                           onClick={() => setActiveConsoleTab("input")}
-                          className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors flex items-center gap-1.5 ${
+                          className={`px-3 py-1 text-[11px] font-semibold rounded-md transition-colors flex items-center gap-1.5 ${
                             activeConsoleTab === "input"
                               ? "bg-white text-blue-600 shadow-sm border border-slate-200"
                               : "text-slate-600 hover:text-slate-900"
                           }`}
                         >
                           <Terminal className="w-3 h-3" />
-                          Custom Input (stdin)
+                          Test Cases
+                          {availableCases.length > 0 && (
+                            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-50 text-blue-600 border border-blue-200 font-mono">
+                              {availableCases.length}
+                            </span>
+                          )}
                         </button>
                         <button
                           type="button"
                           onClick={() => setActiveConsoleTab("output")}
-                          className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors flex items-center gap-1.5 ${
+                          className={`px-3 py-1 text-[11px] font-semibold rounded-md transition-colors flex items-center gap-1.5 ${
                             activeConsoleTab === "output"
                               ? "bg-white text-blue-600 shadow-sm border border-slate-200"
                               : "text-slate-600 hover:text-slate-900"
                           }`}
                         >
                           <Code2 className="w-3 h-3" />
-                          Console Output
+                          Test Result
                           {currentRunOutput && (
                             <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                currentRunOutput.status === "SUCCESS"
+                              className={`w-2 h-2 rounded-full ${
+                                currentRunOutput.passed === true
                                   ? "bg-emerald-500"
-                                  : "bg-rose-500"
+                                  : currentRunOutput.passed === false || currentRunOutput.isCompileError || currentRunOutput.isRuntimeError
+                                  ? "bg-rose-500"
+                                  : "bg-blue-500"
                               }`}
                             />
                           )}
@@ -1209,15 +1271,25 @@ export default function CodingExamPage() {
                       <div className="flex items-center gap-2">
                         {activeConsoleTab === "output" && currentRunOutput && (
                           <div className="flex items-center gap-2 text-[10px]">
-                            <span
-                              className={`px-1.5 py-0.5 rounded font-bold font-mono ${
-                                currentRunOutput.status === "SUCCESS"
-                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                  : "bg-rose-50 text-rose-700 border border-rose-200"
-                              }`}
-                            >
-                              {currentRunOutput.status}
-                            </span>
+                            {currentRunOutput.passed === true ? (
+                              <span className="px-2 py-0.5 rounded-full font-bold bg-emerald-50 text-emerald-700 border border-emerald-300">
+                                ✓ Passed
+                              </span>
+                            ) : currentRunOutput.passed === false ? (
+                              <span className="px-2 py-0.5 rounded-full font-bold bg-rose-50 text-rose-700 border border-rose-300">
+                                ✗ Wrong Answer
+                              </span>
+                            ) : (
+                              <span
+                                className={`px-1.5 py-0.5 rounded font-bold font-mono ${
+                                  currentRunOutput.status === "SUCCESS"
+                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                    : "bg-rose-50 text-rose-700 border border-rose-200"
+                                }`}
+                              >
+                                {currentRunOutput.status}
+                              </span>
+                            )}
                             {currentRunOutput.executionTime !== undefined && (
                               <span className="text-slate-500 font-mono">
                                 {currentRunOutput.executionTime}s
@@ -1237,30 +1309,100 @@ export default function CodingExamPage() {
                     </div>
 
                     {/* Console Drawer Body */}
-                    <div className="flex-1 p-2.5 overflow-auto bg-slate-50 font-mono text-xs">
+                    <div className="flex-1 p-3 overflow-auto bg-slate-50 font-mono text-xs">
                       {activeConsoleTab === "input" ? (
-                        <div className="h-full flex flex-col">
-                          <div className="text-[10px] text-slate-500 mb-1 font-sans flex items-center justify-between">
-                            <span>Standard input (stdin) provided to your program:</span>
-                            {currentQ?.examples?.[0]?.input && (
+                        <div className="h-full flex flex-col space-y-2">
+                          {/* Case Selection Tabs (LeetCode Style) */}
+                          <div className="flex items-center gap-2 overflow-x-auto pb-1 shrink-0 font-sans">
+                            {availableCases.map((tc, idx) => (
                               <button
+                                key={tc._id || idx}
                                 type="button"
-                                onClick={() => handleCustomInputChange(currentQ.examples[0].input)}
-                                className="text-blue-600 hover:underline font-mono text-[10px]"
+                                onClick={() =>
+                                  setSelectedCaseIndices((prev) => ({
+                                    ...prev,
+                                    [currentQ._id]: idx,
+                                  }))
+                                }
+                                className={`px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                                  activeCaseKey === idx
+                                    ? "bg-blue-600 text-white shadow-sm shadow-blue-600/20 font-bold"
+                                    : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-100"
+                                }`}
                               >
-                                Paste Example 1 Input
+                                Case {idx + 1}
                               </button>
-                            )}
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSelectedCaseIndices((prev) => ({
+                                  ...prev,
+                                  [currentQ._id]: "custom",
+                                }))
+                              }
+                              className={`px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                                activeCaseKey === "custom"
+                                  ? "bg-blue-600 text-white shadow-sm shadow-blue-600/20 font-bold"
+                                  : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-100"
+                              }`}
+                            >
+                              + Custom Input
+                            </button>
                           </div>
-                          <textarea
-                            value={currentCustomInput}
-                            onChange={(e) => handleCustomInputChange(e.target.value)}
-                            placeholder="Enter custom input (stdin) here..."
-                            className="flex-1 w-full bg-white border border-slate-200 rounded-lg p-2 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none font-mono text-xs leading-relaxed shadow-sm"
-                          />
+
+                          {/* Selected Case Content */}
+                          {activeCaseKey === "custom" ? (
+                            <div className="flex-1 flex flex-col">
+                              <div className="text-[11px] text-slate-500 mb-1 font-sans">
+                                Custom standard input (stdin) provided to your program:
+                              </div>
+                              <textarea
+                                value={
+                                  customInputs[currentQ._id] !== undefined
+                                    ? customInputs[currentQ._id]
+                                    : ""
+                                }
+                                onChange={(e) => handleCustomInputChange(e.target.value)}
+                                placeholder="Enter custom input (stdin) here..."
+                                className="flex-1 w-full bg-white border border-slate-200 rounded-lg p-2.5 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none font-mono text-xs leading-relaxed shadow-sm min-h-[80px]"
+                              />
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 min-h-[90px]">
+                              <div className="flex flex-col">
+                                <span className="text-[11px] text-slate-500 mb-1 font-sans font-semibold">
+                                  Input (stdin):
+                                </span>
+                                <textarea
+                                  value={
+                                    customInputs[`${currentQ._id}_case_${activeCaseKey}`] !== undefined
+                                      ? customInputs[`${currentQ._id}_case_${activeCaseKey}`]
+                                      : (availableCases[activeCaseKey]?.input || "")
+                                  }
+                                  onChange={(e) =>
+                                    setCustomInputs((prev) => ({
+                                      ...prev,
+                                      [`${currentQ._id}_case_${activeCaseKey}`]: e.target.value,
+                                    }))
+                                  }
+                                  className="flex-1 w-full bg-white border border-slate-200 rounded-lg p-2 text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none font-mono text-xs leading-relaxed shadow-sm"
+                                />
+                              </div>
+
+                              <div className="flex flex-col">
+                                <span className="text-[11px] text-slate-500 mb-1 font-sans font-semibold">
+                                  Expected Output (stdout):
+                                </span>
+                                <div className="flex-1 w-full bg-slate-100 border border-slate-200 rounded-lg p-2 text-emerald-700 font-mono text-xs leading-relaxed overflow-auto whitespace-pre-wrap select-text">
+                                  {availableCases[activeCaseKey]?.expectedOutput || "(empty)"}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ) : (
-                        <div className="h-full space-y-2">
+                        <div className="h-full space-y-3">
                           {isRunningCode ? (
                             <div className="flex flex-col items-center justify-center h-full text-blue-600 py-6 gap-2">
                               <Loader2 className="w-5 h-5 animate-spin" />
@@ -1273,41 +1415,107 @@ export default function CodingExamPage() {
                               <Terminal className="w-5 h-5 text-slate-400 mb-1" />
                               <span className="text-xs">No execution output yet.</span>
                               <span className="text-[11px] text-slate-500">
-                                Click "Run Code" below to test your solution with custom input.
+                                Click "Run Code" below to test your solution with public testcases or custom input.
                               </span>
                             </div>
                           ) : (
-                            <>
+                            <div className="space-y-3">
+                              {/* Verdict Banner */}
+                              <div className="flex items-center justify-between pb-1 border-b border-slate-200 font-sans">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-bold text-slate-700">
+                                    {currentRunOutput.caseLabel || "Test Case"}
+                                  </span>
+                                  {currentRunOutput.passed === true ? (
+                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                                      ✓ Passed
+                                    </span>
+                                  ) : currentRunOutput.passed === false ? (
+                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1">
+                                      ✗ Wrong Answer
+                                    </span>
+                                  ) : currentRunOutput.isCompileError ? (
+                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                                      ✗ Compilation Error
+                                    </span>
+                                  ) : currentRunOutput.isRuntimeError ? (
+                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                                      ✗ Runtime Error
+                                    </span>
+                                  ) : (
+                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-300">
+                                      Finished ({currentRunOutput.status})
+                                    </span>
+                                  )}
+                                </div>
+
+                                {currentRunOutput.executionTime !== undefined && (
+                                  <span className="text-slate-500 font-mono text-xs">
+                                    Time: {currentRunOutput.executionTime}s
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Compilation Error Message */}
                               {currentRunOutput.compileOutput && (
-                                <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-[11px] whitespace-pre-wrap font-mono">
+                                <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-[11px] whitespace-pre-wrap font-mono">
                                   <div className="font-bold text-rose-800 mb-1 font-sans">
                                     Compilation / Syntax Error:
                                   </div>
                                   {currentRunOutput.compileOutput}
                                 </div>
                               )}
-                              {currentRunOutput.stdout && (
-                                <div className="p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 whitespace-pre-wrap leading-relaxed font-mono shadow-sm">
-                                  <div className="text-[10px] text-slate-500 font-sans mb-1 font-semibold">
-                                    Output:
-                                  </div>
-                                  {currentRunOutput.stdout}
-                                </div>
-                              )}
+
+                              {/* Runtime / Stderr Error Message */}
                               {currentRunOutput.stderr && !currentRunOutput.compileOutput && (
-                                <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-[11px] whitespace-pre-wrap font-mono">
+                                <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-[11px] whitespace-pre-wrap font-mono">
                                   <div className="font-bold text-rose-800 mb-1 font-sans">
-                                    Error / Traceback:
+                                    Runtime Error / Traceback:
                                   </div>
                                   {currentRunOutput.stderr}
                                 </div>
                               )}
-                              {!currentRunOutput.stdout && !currentRunOutput.stderr && !currentRunOutput.compileOutput && (
-                                <div className="text-slate-500 italic text-center py-4 font-sans text-xs">
-                                  Program finished with status {currentRunOutput.status} and produced no output.
+
+                              {/* Input vs Output Comparison */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                  <div className="text-[10px] text-slate-500 font-sans mb-1 font-semibold">
+                                    Input:
+                                  </div>
+                                  <div className="p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 whitespace-pre-wrap font-mono shadow-sm">
+                                    {currentRunOutput.inputUsed || "(empty)"}
+                                  </div>
                                 </div>
-                              )}
-                            </>
+
+                                <div>
+                                  <div className="text-[10px] text-slate-500 font-sans mb-1 font-semibold">
+                                    Your Output:
+                                  </div>
+                                  <div
+                                    className={`p-2.5 rounded-lg whitespace-pre-wrap font-mono border shadow-sm ${
+                                      currentRunOutput.passed === false
+                                        ? "bg-rose-50 border-rose-200 text-rose-800"
+                                        : "bg-white border-slate-200 text-slate-800"
+                                    }`}
+                                  >
+                                    {currentRunOutput.stdout || "(empty output)"}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Expected Output (if available) */}
+                              {currentRunOutput.expectedOutput !== null &&
+                                currentRunOutput.expectedOutput !== undefined && (
+                                  <div>
+                                    <div className="text-[10px] text-slate-500 font-sans mb-1 font-semibold">
+                                      Expected Output:
+                                    </div>
+                                    <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 whitespace-pre-wrap font-mono shadow-sm">
+                                      {currentRunOutput.expectedOutput}
+                                    </div>
+                                  </div>
+                                )}
+                            </div>
                           )}
                         </div>
                       )}
@@ -1380,7 +1588,7 @@ export default function CodingExamPage() {
                   }`}
                 >
                   <Terminal className="w-3.5 h-3.5" />
-                  <span>Console & Input</span>
+                  <span>Console & Test Cases</span>
                   {showConsoleDrawer ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
                 </button>
 

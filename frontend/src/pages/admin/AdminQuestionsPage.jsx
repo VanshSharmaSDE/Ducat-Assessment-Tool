@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { useModal } from '../../context/ModalContext';
 import {
@@ -16,10 +16,14 @@ import {
   Upload,
   Download,
   X,
-  FileText
+  FileText,
+  Play,
+  Lock,
+  Code2
 } from 'lucide-react';
 
 export default function AdminQuestionsPage() {
+  const navigate = useNavigate();
   const { showAlert, showConfirm } = useModal();
   const [questions, setQuestions] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -93,6 +97,27 @@ export default function AdminQuestionsPage() {
       });
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const [togglingId, setTogglingId] = useState(null);
+
+  const handleToggleCodeRun = async (q) => {
+    try {
+      setTogglingId(q._id);
+      const nextVal = !q.allowCodeRun;
+      await api.patch(`/admin/questions/${q._id}`, { allowCodeRun: nextVal });
+      setQuestions((prev) =>
+        prev.map((item) => (item._id === q._id ? { ...item, allowCodeRun: nextVal } : item))
+      );
+    } catch (err) {
+      await showAlert({
+        title: 'Update Failed',
+        message: err.response?.data?.message || 'Failed to update code run setting',
+        type: 'error',
+      });
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -241,7 +266,7 @@ export default function AdminQuestionsPage() {
               setUploadStatus(null);
               setShowExcelModal(true);
             }}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
           >
             <FileSpreadsheet className="w-4 h-4" />
             <span>Bulk Import via Excel</span>
@@ -249,7 +274,7 @@ export default function AdminQuestionsPage() {
 
           <Link
             to="/admin/questions/new"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/20 transition-all"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/20 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Create Problem</span>
@@ -308,6 +333,7 @@ export default function AdminQuestionsPage() {
                   <th className="py-3 px-4 font-semibold">Difficulty</th>
                   <th className="py-3 px-4 font-semibold">Marks</th>
                   <th className="py-3 px-4 font-semibold">Test Cases</th>
+                  <th className="py-3 px-4 font-semibold">Run Code</th>
                   <th className="py-3 px-4 font-semibold">Languages</th>
                   <th className="py-3 px-4 font-semibold text-right">Actions</th>
                 </tr>
@@ -315,6 +341,7 @@ export default function AdminQuestionsPage() {
               <tbody className="divide-y divide-slate-200">
                 {questions.map((q) => {
                   const isSelected = selectedQuestions.includes(q._id);
+                  const isCoding = (q.type || 'CODING') === 'CODING';
                   return (
                   <tr key={q._id} className={`text-slate-600 hover:bg-slate-50 transition-colors ${isSelected ? 'bg-blue-50' : ''}`}>
                     <td className="py-3 px-4">
@@ -346,6 +373,35 @@ export default function AdminQuestionsPage() {
                     </td>
                     <td className="py-3 px-4 font-mono font-bold whitespace-nowrap text-slate-700">{q.marks}</td>
                     <td className="py-3 px-4 font-mono whitespace-nowrap text-slate-600">{q.testCaseCount || 0} Cases</td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      {!isCoding ? (
+                        <span className="text-[10px] text-slate-400 font-medium">—</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleCodeRun(q)}
+                          disabled={togglingId === q._id}
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition-all cursor-pointer ${
+                            q.allowCodeRun
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 shadow-sm shadow-emerald-500/10'
+                              : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                          }`}
+                          title={q.allowCodeRun ? 'Code run enabled on this question. Click to lock.' : 'Code run disabled. Click to allow.'}
+                        >
+                          {q.allowCodeRun ? (
+                            <>
+                              <Play className="w-2.5 h-2.5 fill-current" />
+                              <span>Allowed</span>
+                            </>
+                          ) : (
+                            <>
+                              <Lock className="w-2.5 h-2.5" />
+                              <span>Locked</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </td>
                     <td className="py-3 px-4 whitespace-nowrap">
                       <div className="flex items-center gap-1">
                         {(q.allowedLanguages || []).slice(0, 4).map((lang) => (
@@ -434,25 +490,32 @@ export default function AdminQuestionsPage() {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-500">
-                  <div className="p-2.5 rounded-lg bg-white border border-slate-200 space-y-1">
-                    <p className="font-semibold text-slate-700">Core Problem Fields:</p>
-                    <ul className="list-disc list-inside space-y-0.5 text-slate-500">
-                      <li><strong className="text-slate-700">Title:</strong> Name of problem (Required)</li>
-                      <li><strong className="text-slate-700">Description:</strong> Problem text (Required)</li>
-                      <li><strong className="text-slate-700">Difficulty:</strong> EASY, MEDIUM, or HARD</li>
-                      <li><strong className="text-slate-700">Marks:</strong> Integer value (default: 10)</li>
-                      <li><strong className="text-slate-700">AllowedLanguages:</strong> java, python, javascript</li>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
+                  <div className="p-3 rounded-xl bg-white border border-slate-200 space-y-1.5">
+                    <div className="flex items-center gap-1.5 font-bold text-rose-600">
+                      <span>Required Problem Fields:</span>
+                    </div>
+                    <ul className="list-disc list-inside space-y-1 text-slate-600">
+                      <li><strong className="text-slate-800">Title * :</strong> Problem title (unique name)</li>
+                      <li><strong className="text-slate-800">Description * :</strong> Complete question description</li>
+                      <li><strong className="text-slate-800">SampleInput1 * :</strong> 1st public testcase input</li>
+                      <li><strong className="text-slate-800">SampleOutput1 * :</strong> 1st public testcase output</li>
+                      <li><strong className="text-slate-800">HiddenInput1 * :</strong> 1st hidden evaluation input</li>
+                      <li><strong className="text-slate-800">HiddenOutput1 * :</strong> 1st hidden evaluation output</li>
                     </ul>
                   </div>
 
-                  <div className="p-2.5 rounded-lg bg-white border border-slate-200 space-y-1">
-                    <p className="font-semibold text-slate-700">Test Cases & Constraints:</p>
-                    <ul className="list-disc list-inside space-y-0.5 text-slate-500">
-                      <li><strong className="text-slate-700">SampleInput1 & SampleOutput1:</strong> Public example</li>
-                      <li><strong className="text-slate-700">SampleExplanation1:</strong> Optional logic explanation</li>
-                      <li><strong className="text-slate-700">HiddenInput1 & HiddenOutput1:</strong> Evaluation test case</li>
-                      <li>Supports <strong className="text-slate-700">HiddenInput1..10</strong> for multiple test cases</li>
+                  <div className="p-3 rounded-xl bg-white border border-slate-200 space-y-1.5">
+                    <div className="flex items-center gap-1.5 font-bold text-blue-600">
+                      <span>Optional Evaluation Fields:</span>
+                    </div>
+                    <ul className="list-disc list-inside space-y-1 text-slate-600">
+                      <li><strong className="text-slate-800">Difficulty:</strong> BEGINNER, MEDIUM, or HARD (default: MEDIUM)</li>
+                      <li><strong className="text-slate-800">Marks:</strong> Points awarded (default: 20)</li>
+                      <li><strong className="text-slate-800">AllowedLanguages:</strong> java, python, javascript</li>
+                      <li><strong className="text-slate-800">InputFormat, OutputFormat, Constraints</strong></li>
+                      <li><strong className="text-slate-800">Explanation1:</strong> Optional sample explanation</li>
+                      <li><strong className="text-slate-800">HiddenInput2..10 & HiddenOutput2..10</strong></li>
                     </ul>
                   </div>
                 </div>
@@ -545,6 +608,7 @@ export default function AdminQuestionsPage() {
           </div>
         </div>
       )}
+
     </div>
   );
 }
