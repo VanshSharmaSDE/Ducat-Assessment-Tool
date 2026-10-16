@@ -1,5 +1,11 @@
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { User } from '../models/User.js';
 import { ExamAttempt } from '../models/ExamAttempt.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export class UserService {
   static async getProfile(userId) {
@@ -94,6 +100,59 @@ export class UserService {
       throw error;
     }
     user.theme = theme;
+    await user.save();
+    return user.toJSON();
+  }
+
+  static async updateProfilePicture(userId, filename) {
+    const user = await User.findById(userId);
+    if (!user) {
+      const error = new Error('User not found');
+      error.statusCode = 404;
+      error.errorCode = 'USER_NOT_FOUND';
+      throw error;
+    }
+
+    // Clean up old avatar file if stored locally
+    if (user.profilePicture && typeof user.profilePicture === 'string' && user.profilePicture.startsWith('/uploads/profiles/')) {
+      try {
+        const oldFilename = path.basename(user.profilePicture);
+        const oldPath = path.join(__dirname, '../../uploads/profiles', oldFilename);
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+      } catch (err) {
+        console.warn('Could not remove previous avatar file:', err.message);
+      }
+    }
+
+    user.profilePicture = `/uploads/profiles/${filename}`;
+    await user.save();
+    return user.toJSON();
+  }
+
+  static async deleteProfilePicture(userId) {
+    const user = await User.findById(userId);
+    if (!user) {
+      const error = new Error('User not found');
+      error.statusCode = 404;
+      error.errorCode = 'USER_NOT_FOUND';
+      throw error;
+    }
+
+    if (user.profilePicture && typeof user.profilePicture === 'string' && user.profilePicture.startsWith('/uploads/profiles/')) {
+      try {
+        const oldFilename = path.basename(user.profilePicture);
+        const oldPath = path.join(__dirname, '../../uploads/profiles', oldFilename);
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+      } catch (err) {
+        console.warn('Could not remove avatar file:', err.message);
+      }
+    }
+
+    user.profilePicture = '';
     await user.save();
     return user.toJSON();
   }

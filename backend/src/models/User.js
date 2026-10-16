@@ -145,6 +145,11 @@ const userSchema = new mongoose.Schema(
       enum: ['light', 'dark'],
       default: 'light',
     },
+    profilePicture: {
+      type: String,
+      default: '',
+      trim: true,
+    },
   },
   {
     timestamps: true,

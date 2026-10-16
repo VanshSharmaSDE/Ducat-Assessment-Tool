@@ -55,4 +55,39 @@ export class UserController {
       next(err);
     }
   }
+
+  static async uploadProfilePicture(req, res, next) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: 'Please select an image file to upload.' });
+      }
+      const user = await UserService.updateProfilePicture(req.user._id, req.file.filename);
+      res.status(200).json({
+        success: true,
+        message: 'Profile picture updated successfully',
+        data: {
+          profilePicture: user.profilePicture,
+          user,
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async deleteProfilePicture(req, res, next) {
+    try {
+      const user = await UserService.deleteProfilePicture(req.user._id);
+      res.status(200).json({
+        success: true,
+        message: 'Profile picture removed successfully',
+        data: {
+          profilePicture: '',
+          user,
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }

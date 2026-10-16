@@ -1153,9 +1153,17 @@ export default function AdminUsersPage() {
                           </td>
                           <td className="py-3 px-4 font-semibold text-slate-800 whitespace-nowrap">
                             <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0 text-xs">
-                                {u.name?.charAt(0) || 'U'}
-                              </div>
+                              {u.profilePicture ? (
+                                <img
+                                  src={u.profilePicture}
+                                  alt={u.name}
+                                  className="w-6 h-6 rounded-lg object-cover shrink-0 border border-slate-200"
+                                />
+                              ) : (
+                                <div className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0 text-xs">
+                                  {u.name?.charAt(0) || 'U'}
+                                </div>
+                              )}
                               <div className="flex flex-col">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="font-bold">{u.name}</span>

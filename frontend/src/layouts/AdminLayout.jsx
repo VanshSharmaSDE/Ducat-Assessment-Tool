@@ -118,9 +118,17 @@ export default function AdminLayout() {
         <div className="p-3.5 border-t border-slate-100 dark:border-slate-800 shrink-0">
           <div className="flex items-center justify-between p-2.5 rounded-2xl bg-[#f4f7fe] dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 shadow-sm">
             <Link to="/admin/profile" className="flex items-center gap-2.5 min-w-0 hover:opacity-85 transition-opacity">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#4f6bf7] to-[#6073ea] text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm shadow-[#4f6bf7]/30">
-                {user?.name?.charAt(0).toUpperCase() || 'A'}
-              </div>
+              {user?.profilePicture ? (
+                <img
+                  src={user.profilePicture}
+                  alt={user?.name || 'Profile'}
+                  className="w-9 h-9 rounded-full object-cover shrink-0 border border-slate-200 dark:border-slate-700 shadow-xs"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#4f6bf7] to-[#6073ea] text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm shadow-[#4f6bf7]/30">
+                  {user?.name?.charAt(0).toUpperCase() || 'A'}
+                </div>
+              )}
               <div className="min-w-0">
                 <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{user?.name}</p>
                 <div className="flex items-center gap-1.5">

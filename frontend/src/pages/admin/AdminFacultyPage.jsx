@@ -555,9 +555,17 @@ export default function AdminFacultyPage() {
                     </td>
                     <td className="py-3 px-4 font-semibold text-slate-800 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 font-bold flex items-center justify-center shrink-0 text-xs">
-                          {f.name?.charAt(0) || 'F'}
-                        </div>
+                        {f.profilePicture ? (
+                          <img
+                            src={f.profilePicture}
+                            alt={f.name}
+                            className="w-6 h-6 rounded-lg object-cover shrink-0 border border-slate-200"
+                          />
+                        ) : (
+                          <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 font-bold flex items-center justify-center shrink-0 text-xs">
+                            {f.name?.charAt(0) || 'F'}
+                          </div>
+                        )}
                         <div className="flex flex-col">
                           <span className="font-bold">{f.name}</span>
                           <span className="text-[11px] font-mono text-slate-400 font-normal">

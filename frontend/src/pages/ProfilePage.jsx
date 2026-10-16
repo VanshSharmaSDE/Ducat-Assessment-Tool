@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useModal } from '../context/ModalContext';
 import api from '../api/axios';
 import {
   User,
@@ -14,11 +15,21 @@ import {
   Users,
   Hash,
   Building2,
-  GraduationCap
+  GraduationCap,
+  Camera,
+  Upload,
+  Trash2,
+  Loader2,
 } from 'lucide-react';
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
+  const { showConfirm } = useModal();
+
+  const fileInputRef = useRef(null);
+  const [pictureLoading, setPictureLoading] = useState(false);
+  const [pictureSuccess, setPictureSuccess] = useState('');
+  const [pictureError, setPictureError] = useState('');
 
   const [profileForm, setProfileForm] = useState({
     name: user?.name || '',
@@ -69,6 +80,80 @@ export default function ProfilePage() {
       : (user?.adminId || 'Administrator');
 
   const idLabel = isFaculty ? 'Faculty ID' : isStudent ? 'Student ID' : 'Admin ID';
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset input value so re-selecting same file fires onChange
+    e.target.value = '';
+
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type.toLowerCase())) {
+      setPictureError('Invalid file format. Please upload a JPG, PNG, or WEBP image.');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setPictureError('File is too large. Maximum allowed size is 5MB.');
+      return;
+    }
+
+    try {
+      setPictureLoading(true);
+      setPictureError('');
+      setPictureSuccess('');
+
+      const formData = new FormData();
+      formData.append('profilePicture', file);
+
+      const res = await api.post('/users/profile/picture', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (res.data?.data?.user) {
+        updateUser(res.data.data.user);
+      }
+      setPictureSuccess('Profile picture updated successfully');
+      setTimeout(() => setPictureSuccess(''), 4000);
+    } catch (err) {
+      setPictureError(err.response?.data?.message || 'Failed to upload profile picture. Please try again.');
+    } finally {
+      setPictureLoading(false);
+    }
+  };
+
+  const handleDeletePicture = async () => {
+    if (!user?.profilePicture) return;
+
+    const confirmed = await showConfirm({
+      title: 'Remove Profile Picture',
+      message: 'Are you sure you want to remove your profile picture? Your initials will be displayed instead.',
+      confirmText: 'Remove Photo',
+      isDanger: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      setPictureLoading(true);
+      setPictureError('');
+      setPictureSuccess('');
+
+      const res = await api.delete('/users/profile/picture');
+
+      if (res.data?.data?.user) {
+        updateUser(res.data.data.user);
+      }
+      setPictureSuccess('Profile picture removed successfully');
+      setTimeout(() => setPictureSuccess(''), 4000);
+    } catch (err) {
+      setPictureError(err.response?.data?.message || 'Failed to remove profile picture. Please try again.');
+    } finally {
+      setPictureLoading(false);
+    }
+  };
 
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
@@ -155,6 +240,128 @@ export default function ProfilePage() {
           )}
         </div>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Manage your identity credentials, view institutional affiliations, and update security passwords</p>
+      </div>
+
+      {/* Profile Picture Card */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+          {/* Avatar Container with Camera Badge */}
+          <div className="relative group shrink-0">
+            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-gradient-to-tr from-[#4f6bf7] to-[#6073ea] text-white flex items-center justify-center font-black text-3xl sm:text-4xl shadow-md border-4 border-white dark:border-slate-800 ring-2 ring-blue-500/20">
+              {user?.profilePicture ? (
+                <img
+                  src={user.profilePicture}
+                  alt={user?.name || 'Profile'}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <span>{user?.name?.charAt(0).toUpperCase() || 'U'}</span>
+              )}
+            </div>
+
+            {/* Hidden file input */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              className="hidden"
+            />
+
+            {/* Quick-action Camera Badge */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={pictureLoading}
+              title="Upload / Change Photo"
+              className="absolute bottom-0 right-0 p-2 rounded-full bg-[#4f6bf7] hover:bg-blue-600 text-white shadow-md border-2 border-white dark:border-slate-800 transition-all hover:scale-105 cursor-pointer disabled:opacity-50"
+            >
+              {pictureLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Camera className="w-4 h-4" />
+              )}
+            </button>
+          </div>
+
+          {/* User Info & Upload Actions */}
+          <div className="flex-1 text-center sm:text-left space-y-3">
+            <div>
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">{user?.name}</h2>
+                <span
+                  className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
+                    isAdmin
+                      ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800'
+                      : isFaculty
+                      ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800'
+                      : 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800'
+                  }`}
+                >
+                  {isAdmin ? 'Administrator' : isFaculty ? 'Faculty' : 'Student'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                {user?.email || primaryId} • {user?.organization || 'SkillCodex Platform'}
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={pictureLoading}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#4f6bf7] hover:bg-blue-600 disabled:opacity-50 text-white text-xs font-bold transition-all shadow-sm shadow-[#4f6bf7]/20 cursor-pointer"
+              >
+                {pictureLoading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Uploading...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{user?.profilePicture ? 'Change Photo' : 'Upload Photo'}</span>
+                  </>
+                )}
+              </button>
+
+              {user?.profilePicture && (
+                <button
+                  type="button"
+                  onClick={handleDeletePicture}
+                  disabled={pictureLoading}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 border border-slate-200 dark:border-slate-700 hover:border-rose-200 dark:border-rose-800 text-xs font-semibold transition-all cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Remove Photo</span>
+                </button>
+              )}
+            </div>
+
+            <p className="text-[11px] text-slate-400 dark:text-slate-500">
+              Supported formats: JPG, PNG, or WEBP (Max 5MB). Photo is saved securely directly on the server.
+            </p>
+
+            {/* Status alerts */}
+            {pictureSuccess && (
+              <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{pictureSuccess}</span>
+              </div>
+            )}
+            {pictureError && (
+              <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{pictureError}</span>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Institutional Affiliation & Credentials Card (Prominently displayed) */}
