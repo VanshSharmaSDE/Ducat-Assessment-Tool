@@ -83,6 +83,77 @@ export default function CodingExamPage() {
 
   const hasEnteredFullscreenRef = useRef(false);
 
+  // Top-Level Memoized Questions - MUST be called unconditionally on EVERY render
+  const validQuestions = useMemo(() => {
+    return Array.isArray(exam?.questions) ? exam.questions.filter(Boolean) : [];
+  }, [exam?.questions]);
+
+  const currentQ = validQuestions[currentQIndex] || validQuestions[0] || null;
+  const currentQId = currentQ?._id || "";
+  const currentQIsMcq = (currentQ?.type || 'CODING') === 'MCQ';
+
+  // Top-Level Sample Test Cases Memo - MUST be called unconditionally on EVERY render
+  const currentCases = useMemo(() => {
+    if (!currentQ) return [];
+    if (Array.isArray(currentQ.sampleTestCases) && currentQ.sampleTestCases.length > 0) {
+      return currentQ.sampleTestCases;
+    }
+    if (Array.isArray(currentQ.examples) && currentQ.examples.length > 0) {
+      return currentQ.examples.map((ex, idx) => ({
+        _id: `ex_${idx}`,
+        input: ex.input || "",
+        expectedOutput: ex.output || "",
+      }));
+    }
+    return [];
+  }, [currentQ]);
+
+  // Alias for testcase references
+  const availableCases = currentCases;
+
+  const currentAnswer = (currentQId && answers[currentQId]) || (
+    currentQIsMcq
+      ? { type: 'MCQ', selectedOption: null }
+      : {
+          type: 'CODING',
+          language: "java",
+          code: currentQ?.starterCode?.java || DEFAULT_TEMPLATES.java,
+        }
+  );
+
+  const activeCaseKey = currentQId
+    ? (selectedCaseIndices[currentQId] !== undefined
+        ? selectedCaseIndices[currentQId]
+        : (availableCases.length > 0 ? 0 : 'custom'))
+    : 'custom';
+
+  const currentCustomInput =
+    currentQId && customInputs[currentQId] !== undefined
+      ? customInputs[currentQId]
+      : (availableCases[0]?.input || currentQ?.examples?.[0]?.input || "");
+
+  const currentRunOutput = currentQId ? runOutputs[currentQId] : null;
+
+  const handleOptionSelect = (optionIdx) => {
+    if (!currentQ || !currentQId) return;
+    setAnswers((prev) => ({
+      ...prev,
+      [currentQId]: {
+        ...prev[currentQId],
+        type: 'MCQ',
+        selectedOption: optionIdx,
+      },
+    }));
+  };
+
+  const handleCustomInputChange = (val) => {
+    if (!currentQ || !currentQId) return;
+    setCustomInputs((prev) => ({
+      ...prev,
+      [currentQId]: val,
+    }));
+  };
+
   // Helper to determine if question has been actively attempted by the student
   const isQuestionAttempted = (question, answer) => {
     if (!question) return false;
@@ -594,111 +665,8 @@ export default function CodingExamPage() {
       .padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  if (loading) {
-    return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 text-slate-800 gap-3">
-        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-        <p className="text-sm text-slate-500 font-mono">
-          Loading secure examination workspace...
-        </p>
-      </div>
-    );
-  }
-
-  const validQuestions = useMemo(() => {
-    return Array.isArray(exam?.questions) ? exam.questions.filter(Boolean) : [];
-  }, [exam?.questions]);
-
-  if (error || !exam || validQuestions.length === 0) {
-    return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 text-slate-800 p-6">
-        <div className="p-6 rounded-2xl bg-white border border-slate-200 max-w-md text-center space-y-4 shadow-sm">
-          <AlertCircle className="w-12 h-12 text-rose-500 mx-auto" />
-          <h2 className="text-lg font-bold text-slate-800">
-            {error ? "Assessment Access Error" : "Assessment Unavailable"}
-          </h2>
-          <p className="text-xs text-slate-500">
-            {error || "No questions have been configured for this examination yet."}
-          </p>
-          <button
-            onClick={() => navigate("/exams")}
-            className="px-4 py-2 bg-blue-600 rounded-xl text-xs font-semibold text-white hover:bg-blue-500 transition-colors shadow-sm cursor-pointer"
-          >
-            Return to Assessments
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const currentQ = validQuestions[currentQIndex] || validQuestions[0] || null;
-  const currentQId = currentQ?._id || "";
-  const currentQIsMcq = (currentQ?.type || 'CODING') === 'MCQ';
-
-  const currentAnswer = (currentQId && answers[currentQId]) || (
-    currentQIsMcq
-      ? { type: 'MCQ', selectedOption: null }
-      : {
-          type: 'CODING',
-          language: "java",
-          code: currentQ?.starterCode?.java || DEFAULT_TEMPLATES.java,
-        }
-  );
-
-  const handleOptionSelect = (optionIdx) => {
-    if (!currentQ || !currentQId) return;
-    setAnswers((prev) => ({
-      ...prev,
-      [currentQId]: {
-        ...prev[currentQId],
-        type: 'MCQ',
-        selectedOption: optionIdx,
-      },
-    }));
-  };
-
-  // Available sample test cases for the current question
-  const currentCases = useMemo(() => {
-    if (!currentQ) return [];
-    if (Array.isArray(currentQ.sampleTestCases) && currentQ.sampleTestCases.length > 0) {
-      return currentQ.sampleTestCases;
-    }
-    if (Array.isArray(currentQ.examples) && currentQ.examples.length > 0) {
-      return currentQ.examples.map((ex, idx) => ({
-        _id: `ex_${idx}`,
-        input: ex.input || "",
-        expectedOutput: ex.output || "",
-      }));
-    }
-    return [];
-  }, [currentQ]);
-
-  // Alias for testcase references
-  const availableCases = currentCases;
-
-  const activeCaseKey = currentQId
-    ? (selectedCaseIndices[currentQId] !== undefined
-        ? selectedCaseIndices[currentQId]
-        : (availableCases.length > 0 ? 0 : 'custom'))
-    : 'custom';
-
-  const currentCustomInput =
-    currentQId && customInputs[currentQId] !== undefined
-      ? customInputs[currentQId]
-      : (availableCases[0]?.input || currentQ?.examples?.[0]?.input || "");
-
-  const currentRunOutput = currentQId ? runOutputs[currentQId] : null;
-
-  const handleCustomInputChange = (val) => {
-    if (!currentQ || !currentQId) return;
-    setCustomInputs((prev) => ({
-      ...prev,
-      [currentQId]: val,
-    }));
-  };
-
   const handleRunCode = async () => {
-    if (isRunningCode || !currentQ) return;
+    if (isRunningCode || !currentQ || !currentQ._id) return;
 
     const qId = currentQ._id;
     const isCustom = activeCaseKey === 'custom';
@@ -781,7 +749,6 @@ export default function CodingExamPage() {
     }
   };
 
-
   // Accurate counting of attempted, visited, and unvisited questions
   const attemptedCount = validQuestions.filter((q) =>
     isQuestionAttempted(q, answers[q?._id]),
@@ -797,6 +764,40 @@ export default function CodingExamPage() {
 
   const totalQuestions = validQuestions.length;
   const allQuestionsVisited = totalQuestions > 0 && visitedQuestions.size >= totalQuestions;
+
+  if (loading) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 text-slate-800 gap-3">
+        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+        <p className="text-sm text-slate-500 font-mono">
+          Loading secure examination workspace...
+        </p>
+      </div>
+    );
+  }
+
+  if (error || !exam || validQuestions.length === 0) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 text-slate-800 p-6">
+        <div className="p-6 rounded-2xl bg-white border border-slate-200 max-w-md text-center space-y-4 shadow-sm">
+          <AlertCircle className="w-12 h-12 text-rose-500 mx-auto" />
+          <h2 className="text-lg font-bold text-slate-800">
+            {error ? "Assessment Access Error" : "Assessment Unavailable"}
+          </h2>
+          <p className="text-xs text-slate-500">
+            {error || "No questions have been configured for this examination yet."}
+          </p>
+          <button
+            onClick={() => navigate("/exams")}
+            className="px-4 py-2 bg-blue-600 rounded-xl text-xs font-semibold text-white hover:bg-blue-500 transition-colors shadow-sm cursor-pointer"
+          >
+            Return to Assessments
+          </button>
+        </div>
+      </div>
+    );
+  }
+
 
   return (
     <div className="h-screen w-screen flex flex-col bg-slate-50 text-slate-800 overflow-hidden font-sans select-none">
