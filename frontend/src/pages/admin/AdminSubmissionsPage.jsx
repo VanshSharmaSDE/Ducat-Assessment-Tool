@@ -113,7 +113,9 @@ export default function AdminSubmissionsPage() {
   const handleExportDocx = async (examId, userId = null, filename = 'submissions.docx') => {
     try {
       setDownloadingDocx(true);
-      let query = `?examId=${examId}`;
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata';
+      let query = `?timezone=${encodeURIComponent(tz)}`;
+      if (examId) query += `&examId=${examId}`;
       if (userId) query += `&userId=${userId}`;
 
       const response = await api.get(`/admin/submissions/export-docx${query}`, {

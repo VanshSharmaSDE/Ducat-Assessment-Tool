@@ -1363,25 +1363,49 @@ export const updateStudent = async (req, res) => {
 
 export const exportSubmissionsDocx = async (req, res) => {
   try {
-    const { examId, userId } = req.query;
+    const { examId, userId, timezone } = req.query;
 
-    if (req.user.role === 'FACULTY') {
+    if (req.user?.role === 'FACULTY') {
       if (userId) {
-        const student = await User.findById(userId);
-        if (!student || String(student.createdBy) !== String(req.user._id)) {
-          return res.status(403).json({ success: false, message: 'Access denied. You can only export submissions for your own students.' });
+        const student = await User.findById(userId).populate('createdBy', 'role');
+        const isMyStudent = student && String(student.createdBy?._id || student.createdBy) === String(req.user._id);
+        const isSameOrg = student && student.organization && student.organization === req.user.organization;
+        const isAdminStudent = !student?.createdBy || student?.createdBy?.role === 'ADMIN';
+        if (!isMyStudent && !isSameOrg && !isAdminStudent) {
+          return res.status(403).json({ success: false, message: 'Access denied. You can only export submissions for your own organization or students.' });
         }
       }
     }
 
     const { DocxExportService } = await import('../services/docxExportService.js');
-    const buffer = await DocxExportService.generateSubmissionsDocx({ examId, userId });
+    const buffer = await DocxExportService.generateSubmissionsDocx({
+      examId,
+      userId,
+      requestingUser: req.user,
+      timezone: timezone || 'Asia/Kolkata',
+    });
 
-    const filename = `submissions_${examId || 'all'}_${Date.now()}.docx`;
+    let examTitle = 'All_Exams';
+    if (examId) {
+      const examDoc = await Exam.findById(examId);
+      if (examDoc?.title) examTitle = examDoc.title.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    }
+
+    let candidateName = '';
+    if (userId) {
+      const studentDoc = await User.findById(userId);
+      if (studentDoc?.name) candidateName = `_${studentDoc.name.replace(/[^a-zA-Z0-9_\-]/g, '_')}`;
+    }
+
+    const filename = userId
+      ? `Candidate${candidateName}_${examTitle}_Submission_${Date.now()}.docx`
+      : `${examTitle}_All_Submissions_${Date.now()}.docx`;
+
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.send(buffer);
+    return res.send(buffer);
   } catch (error) {
+    console.error('DOCX Export Error:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };

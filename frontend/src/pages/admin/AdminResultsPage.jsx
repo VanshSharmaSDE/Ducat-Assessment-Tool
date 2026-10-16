@@ -27,6 +27,7 @@ import {
   Check,
   TrendingUp,
   RotateCcw,
+  FileText,
 } from 'lucide-react';
 
 export default function AdminResultsPage() {
@@ -63,6 +64,7 @@ export default function AdminResultsPage() {
   const [pagination, setPagination] = useState({ total: 0, pages: 1 });
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [exportingDocx, setExportingDocx] = useState(false);
 
   const loadResults = async () => {
     try {
@@ -171,6 +173,61 @@ export default function AdminResultsPage() {
       });
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleExportDocx = async (specificExamId = null, specificUserId = null) => {
+    try {
+      setExportingDocx(true);
+      const targetExamId = specificExamId || examFilter || (selectedExam ? selectedExam._id : '');
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata';
+      const params = [`timezone=${encodeURIComponent(tz)}`];
+      if (targetExamId) params.push(`examId=${targetExamId}`);
+      if (specificUserId) params.push(`userId=${specificUserId}`);
+      const query = `?${params.join('&')}`;
+
+      const response = await api.get(`/admin/submissions/export-docx${query}`, {
+        responseType: 'blob',
+      });
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const targetExam =
+        availableExams.find((e) => e._id === targetExamId) ||
+        examsSummary.find((e) => e._id === targetExamId) ||
+        (selectedExam?._id === targetExamId ? selectedExam : null);
+      const filename = specificUserId
+        ? `Candidate_Submission_${Date.now()}.docx`
+        : (targetExam
+          ? `Exam_${targetExam.title.replace(/[^a-zA-Z0-9_\-]/g, '_')}_All_Submissions.docx`
+          : 'All_Exams_Submissions.docx');
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('DOCX Export error:', err);
+      let errMsg = 'Failed to download Word (.docx) document.';
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const parsed = JSON.parse(text);
+          if (parsed.message) errMsg = parsed.message;
+        } catch (_) {}
+      } else if (err.response?.data?.message) {
+        errMsg = err.response.data.message;
+      }
+      showAlert({
+        title: 'Export Failed',
+        message: errMsg,
+        type: 'error',
+      });
+    } finally {
+      setExportingDocx(false);
     }
   };
 
@@ -429,6 +486,20 @@ export default function AdminResultsPage() {
               ? 'Export This Exam (Excel)'
               : 'Export All Results (Excel)'}
           </button>
+
+          {/* Export Word Doc Button */}
+          <button
+            onClick={() => handleExportDocx(selectedExam?._id)}
+            disabled={exportingDocx}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-md shadow-blue-600/15 transition-all shrink-0 cursor-pointer"
+          >
+            <FileText className="w-4 h-4" />
+            {exportingDocx
+              ? 'Exporting Word...'
+              : selectedExam
+              ? 'Export This Exam (Word)'
+              : 'Export All (Word)'}
+          </button>
         </div>
       </div>
 
@@ -587,6 +658,15 @@ export default function AdminResultsPage() {
                               title="Download Exam Excel"
                             >
                               <Download className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleExportDocx(ex._id)}
+                              disabled={exportingDocx}
+                              className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-blue-600 dark:hover:bg-blue-600 text-slate-600 dark:text-slate-300 hover:text-white dark:hover:text-white border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                              title="Download Exam Word (.docx) Dossier"
+                            >
+                              <FileText className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </td>
@@ -895,6 +975,15 @@ export default function AdminResultsPage() {
                                 <span>Inspect</span>
                                 <ArrowRight className="w-3.5 h-3.5" />
                               </Link>
+                              <button
+                                type="button"
+                                onClick={() => handleExportDocx(att.examId?._id || selectedExam?._id, att.userId?._id)}
+                                disabled={exportingDocx}
+                                className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                                title="Download Candidate Word (.docx) Dossier"
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                              </button>
                               <button
                                 onClick={() => handleDeleteSingleResult(att._id)}
                                 disabled={actionLoading}
