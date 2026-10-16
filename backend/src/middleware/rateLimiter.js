@@ -6,7 +6,7 @@ export const generalLimiter = isRateLimitDisabled
   ? (req, res, next) => next()
   : rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: parseInt(process.env.GENERAL_RATE_LIMIT_MAX || '1000', 10),
+      max: parseInt(process.env.GENERAL_RATE_LIMIT_MAX || '25000', 10), // 25,000 requests per 15 mins
       standardHeaders: true,
       legacyHeaders: false,
       message: {
@@ -20,7 +20,7 @@ export const authLimiter = isRateLimitDisabled
   ? (req, res, next) => next()
   : rateLimit({
       windowMs: 15 * 60 * 1000,
-      max: parseInt(process.env.AUTH_RATE_LIMIT_MAX || '50', 10),
+      max: parseInt(process.env.AUTH_RATE_LIMIT_MAX || '1000', 10), // 1,000 attempts per 15 minutes
       standardHeaders: true,
       legacyHeaders: false,
       message: {

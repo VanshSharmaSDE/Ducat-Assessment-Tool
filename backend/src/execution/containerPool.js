@@ -192,7 +192,7 @@ export async function runCustomCodeInPool(data) {
   const language = queues[data.language] ? data.language : 'java';
 
   // High load protection: if queue for this language is excessively large, reject early
-  const maxQueue = parseInt(process.env.MAX_EXECUTION_QUEUE_SIZE || '500', 10);
+  const maxQueue = parseInt(process.env.MAX_EXECUTION_QUEUE_SIZE || '1500', 10);
   if (queues[language].length > maxQueue) {
     const error = new Error('Execution sandbox is currently under high load. Please try again in a few seconds.');
     error.statusCode = 503;

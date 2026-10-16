@@ -174,6 +174,10 @@ async function setupTestData() {
     exam.allowCodeRun = true;
     exam.status = 'ACTIVE';
     exam.passingMarks = 6;
+    exam.organization = ORG_NAME;
+    exam.technology = TECH_NAME;
+    exam.targetTechnologies = [TECH_NAME];
+    exam.targetBatches = [BATCH_NAME];
     await exam.save();
   } else {
     exam = await Exam.create({
@@ -189,7 +193,8 @@ async function setupTestData() {
       allowCodeRun: true,
       organization: ORG_NAME,
       technology: TECH_NAME,
-      batches: [BATCH_NAME],
+      targetTechnologies: [TECH_NAME],
+      targetBatches: [BATCH_NAME],
       createdBy: admin._id,
       questions: [
         { questionId: codingQuestion._id, marks: 10, allowCodeRun: true },
@@ -237,6 +242,20 @@ async function setupTestData() {
   } else {
     console.log(`   Found ${existingCount} test students already prepared.`);
   }
+
+  // Always ensure all test students belong to the exam's organization, technology, and batch
+  await User.updateMany(
+    { email: { $regex: /^loadtest_student_\d+@skillcodex\.tech$/ } },
+    {
+      $set: {
+        organization: ORG_NAME,
+        technology: TECH_NAME,
+        batch: BATCH_NAME,
+        isActive: true,
+        isVerified: true,
+      },
+    }
+  );
 
   // Clear any existing attempts for this load-test exam so tests start completely clean
   await ExamAttempt.deleteMany({ examId: exam._id });
@@ -330,8 +349,9 @@ async function runLoadTest(testMeta) {
         });
         const duration = performance.now() - t0;
         const data = await res.json().catch(() => ({}));
-        if (res.ok && data?.data?._id) {
-          student.attemptId = data.data._id;
+        const attemptId = data?.data?.attempt?._id || data?.data?._id;
+        if (res.ok && attemptId) {
+          student.attemptId = attemptId;
           return { success: true, duration, status: res.status };
         }
         return { success: false, duration, status: res.status, error: data?.message || res.statusText };
@@ -545,6 +565,18 @@ function printBenchmarkSummary(report) {
     console.log(`   - Completed: ${report.evaluation.totalEvaluated} submissions`);
     console.log(`   - Total Queue Drain Time: ${report.evaluation.totalTimeSec} seconds`);
     console.log(`   - Average Time per Code Evaluation: ${report.evaluation.avgSecPerSubmission}s / submission`);
+  }
+
+  // Print failure details if any
+  const failedStages = stages.filter((s) => s.failureCount > 0);
+  if (failedStages.length > 0) {
+    console.log(`\n⚠️ Failure Breakdown:`);
+    failedStages.forEach((s) => {
+      console.log(`   [${s.stageName}]:`);
+      for (const [reason, count] of Object.entries(s.failureReasons)) {
+        console.log(`     - "${reason}": ${count} request(s)`);
+      }
+    });
   }
 
   // Bottleneck & Health Diagnostic
