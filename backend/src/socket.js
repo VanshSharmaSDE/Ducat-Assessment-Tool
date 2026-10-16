@@ -6,9 +6,29 @@ import { logger } from './utils/logger.js';
 let ioInstance = null;
 
 export function initSocket(server) {
+  const allowedOrigins = [
+    config.clientUrl,
+    'https://skillcodex.tech',
+    'https://api.skillcodex.tech',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:5000',
+    'http://127.0.0.1:5000',
+  ].filter(Boolean);
+
   ioInstance = new Server(server, {
     cors: {
-      origin: [config.clientUrl,'https://skillcodex,tech', 'http://localhost:5173', 'http://127.0.0.1:5173'],
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        if (
+          allowedOrigins.includes(origin) ||
+          /^https?:\/\/([a-zA-Z0-9-]+\.)*skillcodex\.tech(:\d+)?$/.test(origin) ||
+          /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+        ) {
+          return callback(null, true);
+        }
+        return callback(null, true);
+      },
       methods: ['GET', 'POST'],
       credentials: true,
     },

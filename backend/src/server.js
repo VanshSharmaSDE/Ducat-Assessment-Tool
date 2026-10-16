@@ -34,16 +34,42 @@ app.use(
     crossOriginResourcePolicy: { policy: 'cross-origin' },
   })
 );
+const allowedOrigins = [
+  config.clientUrl,
+  'https://skillcodex.tech',
+  'https://api.skillcodex.tech',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:5000',
+  'http://127.0.0.1:5000',
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: [config.clientUrl,'https://skillcodex.tech', 'http://localhost:5173', 'http://127.0.0.1:5173'],
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (
+        allowedOrigins.includes(origin) ||
+        /^https?:\/\/([a-zA-Z0-9-]+\.)*skillcodex\.tech(:\d+)?$/.test(origin) ||
+        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+      ) {
+        return callback(null, true);
+      }
+      return callback(null, true);
+    },
     credentials: true,
   })
 );
 
-// Serve static profile uploads
-app.use('/uploads', express.static(uploadsDir));
-app.use('/api/uploads', express.static(uploadsDir));
+// Serve static profile uploads with CORS/CORP headers
+const staticUploadsOptions = {
+  setHeaders: (res) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  },
+};
+app.use('/uploads', express.static(uploadsDir, staticUploadsOptions));
+app.use('/api/uploads', express.static(uploadsDir, staticUploadsOptions));
 
 // Body Parsing with safe size limits
 app.use(express.json({ limit: '512kb' }));

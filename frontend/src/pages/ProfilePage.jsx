@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useModal } from '../context/ModalContext';
 import api from '../api/axios';
+import { getProfilePictureUrl, handleAvatarError } from '../utils/imageUrl';
 import {
   User,
   Mail,
@@ -248,18 +249,17 @@ export default function ProfilePage() {
           {/* Avatar Container with Camera Badge */}
           <div className="relative group shrink-0">
             <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-gradient-to-tr from-[#4f6bf7] to-[#6073ea] text-white flex items-center justify-center font-black text-3xl sm:text-4xl shadow-md border-4 border-white dark:border-slate-800 ring-2 ring-blue-500/20">
-              {user?.profilePicture ? (
+              {user?.profilePicture && (
                 <img
-                  src={user.profilePicture}
+                  src={getProfilePictureUrl(user.profilePicture)}
                   alt={user?.name || 'Profile'}
                   className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
+                  onError={(e) => handleAvatarError(e, user?.profilePicture)}
                 />
-              ) : (
-                <span>{user?.name?.charAt(0).toUpperCase() || 'U'}</span>
               )}
+              <span className={user?.profilePicture ? 'hidden' : ''}>
+                {user?.name?.charAt(0).toUpperCase() || 'U'}
+              </span>
             </div>
 
             {/* Hidden file input */}

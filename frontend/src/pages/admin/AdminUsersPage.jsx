@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/axios';
+import { getProfilePictureUrl, handleAvatarError } from '../../utils/imageUrl';
 import { useAuth } from '../../context/AuthContext';
 import { useModal } from '../../context/ModalContext';
 import * as XLSX from 'xlsx';
@@ -1153,17 +1154,21 @@ export default function AdminUsersPage() {
                           </td>
                           <td className="py-3 px-4 font-semibold text-slate-800 whitespace-nowrap">
                             <div className="flex items-center gap-2">
-                              {u.profilePicture ? (
+                              {u.profilePicture && (
                                 <img
-                                  src={u.profilePicture}
+                                  src={getProfilePictureUrl(u.profilePicture)}
                                   alt={u.name}
                                   className="w-6 h-6 rounded-lg object-cover shrink-0 border border-slate-200"
+                                  onError={(e) => handleAvatarError(e, u.profilePicture)}
                                 />
-                              ) : (
-                                <div className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0 text-xs">
-                                  {u.name?.charAt(0) || 'U'}
-                                </div>
                               )}
+                              <div
+                                className={`w-6 h-6 rounded-lg bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0 text-xs ${
+                                  u.profilePicture ? 'hidden' : ''
+                                }`}
+                              >
+                                {u.name?.charAt(0) || 'U'}
+                              </div>
                               <div className="flex flex-col">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="font-bold">{u.name}</span>
