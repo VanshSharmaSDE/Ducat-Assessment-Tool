@@ -259,6 +259,48 @@ export default function CodingExamPage() {
         });
 
         setAnswers(initialAnswers);
+
+        // Restore visited questions from localStorage
+        const visitedKey = `exam_visited_${id}_${activeAttempt._id}`;
+        const savedVisited = localStorage.getItem(visitedKey);
+        const restoredVisited = new Set();
+        const validQList = (examData.questions || []).filter(Boolean);
+
+        if (savedVisited) {
+          try {
+            const parsed = JSON.parse(savedVisited);
+            if (Array.isArray(parsed)) {
+              parsed.forEach((idx) => {
+                const n = Number(idx);
+                if (!isNaN(n) && n >= 0 && n < validQList.length) {
+                  restoredVisited.add(n);
+                }
+              });
+            }
+          } catch (e) {}
+        }
+
+        // Any question with an active attempt is definitely visited
+        validQList.forEach((q, idx) => {
+          if (q && q._id && isQuestionAttempted(q, initialAnswers[q._id])) {
+            restoredVisited.add(idx);
+          }
+        });
+
+        // Restore last active question index
+        const lastQKey = `exam_current_q_${id}_${activeAttempt._id}`;
+        const savedQIndex = localStorage.getItem(lastQKey);
+        let restoredQIndex = 0;
+        if (savedQIndex !== null) {
+          const parsedIdx = Number(savedQIndex);
+          if (!isNaN(parsedIdx) && parsedIdx >= 0 && parsedIdx < validQList.length) {
+            restoredQIndex = parsedIdx;
+          }
+        }
+        restoredVisited.add(restoredQIndex);
+
+        setVisitedQuestions(restoredVisited);
+        setCurrentQIndex(restoredQIndex);
       } catch (err) {
         setError(err.response?.data?.message || "Failed to load assessment.");
       } finally {
@@ -307,10 +349,46 @@ export default function CodingExamPage() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Track visited questions
+  // Track visited questions and current question index in localStorage
   useEffect(() => {
-    setVisitedQuestions((prev) => new Set([...prev, currentQIndex]));
+    setVisitedQuestions((prev) => {
+      if (prev.has(currentQIndex)) return prev;
+      const next = new Set(prev);
+      next.add(currentQIndex);
+      return next;
+    });
   }, [currentQIndex]);
+
+  useEffect(() => {
+    if (attempt?._id && visitedQuestions.size > 0) {
+      const visitedKey = `exam_visited_${id}_${attempt._id}`;
+      localStorage.setItem(visitedKey, JSON.stringify(Array.from(visitedQuestions)));
+    }
+  }, [visitedQuestions, id, attempt]);
+
+  useEffect(() => {
+    if (attempt?._id) {
+      const lastQKey = `exam_current_q_${id}_${attempt._id}`;
+      localStorage.setItem(lastQKey, String(currentQIndex));
+    }
+  }, [currentQIndex, id, attempt]);
+
+  // If a question is attempted, ensure it is added to visitedQuestions
+  useEffect(() => {
+    if (validQuestions.length === 0) return;
+    validQuestions.forEach((q, idx) => {
+      if (isQuestionAttempted(q, answers[q?._id])) {
+        setVisitedQuestions((prev) => {
+          if (!prev.has(idx)) {
+            const next = new Set(prev);
+            next.add(idx);
+            return next;
+          }
+          return prev;
+        });
+      }
+    });
+  }, [answers, validQuestions]);
 
   // Safe exit from fullscreen
   const exitFullscreenSafe = async () => {
@@ -607,9 +685,12 @@ export default function CodingExamPage() {
     if (isSubmitting) return;
 
     const totalQuestions = validQuestions.length;
-    const allQuestionsVisited = totalQuestions > 0 && visitedQuestions.size >= totalQuestions;
+    const effectiveVisitedCount = validQuestions.filter(
+      (q, idx) => visitedQuestions.has(idx) || isQuestionAttempted(q, answersRef.current?.[q?._id])
+    ).length;
+    const allQuestionsVisited = totalQuestions > 0 && effectiveVisitedCount >= totalQuestions;
     if (!forced && !allQuestionsVisited) {
-      showToast(`Please visit all ${totalQuestions} questions before submitting assessment (${visitedQuestions.size}/${totalQuestions} visited).`);
+      showToast(`Please visit all ${totalQuestions} questions before submitting assessment (${effectiveVisitedCount}/${totalQuestions} visited).`);
       return;
     }
 
@@ -645,6 +726,8 @@ export default function CodingExamPage() {
 
       // Clear local storage progress
       localStorage.removeItem(`exam_progress_${id}_${attemptRef.current._id}`);
+      localStorage.removeItem(`exam_visited_${id}_${attemptRef.current._id}`);
+      localStorage.removeItem(`exam_current_q_${id}_${attemptRef.current._id}`);
 
       // Navigate to evaluation waiting & results page
       navigate(`/results/${attemptRef.current._id}`);
@@ -755,7 +838,7 @@ export default function CodingExamPage() {
   ).length;
   const visitedCount = validQuestions.filter(
     (q, idx) =>
-      !isQuestionAttempted(q, answers[q?._id]) && visitedQuestions.has(idx),
+      !isQuestionAttempted(q, answers[q?._id]) && (visitedQuestions.has(idx) || isQuestionAttempted(q, answers[q?._id])),
   ).length;
   const notVisitedCount = validQuestions.filter(
     (q, idx) =>
@@ -763,7 +846,8 @@ export default function CodingExamPage() {
   ).length;
 
   const totalQuestions = validQuestions.length;
-  const allQuestionsVisited = totalQuestions > 0 && visitedQuestions.size >= totalQuestions;
+  const effectiveVisitedCount = attemptedCount + visitedCount;
+  const allQuestionsVisited = totalQuestions > 0 && effectiveVisitedCount >= totalQuestions;
 
   if (loading) {
     return (
@@ -876,7 +960,7 @@ export default function CodingExamPage() {
           <button
             onClick={() => {
               if (!allQuestionsVisited) {
-                showToast(`Please visit all ${totalQuestions} questions before submitting assessment (${visitedQuestions.size}/${totalQuestions} visited).`);
+                showToast(`Please visit all ${totalQuestions} questions before submitting assessment (${effectiveVisitedCount}/${totalQuestions} visited).`);
                 return;
               }
               setShowSubmitModal(true);
@@ -885,7 +969,7 @@ export default function CodingExamPage() {
             title={
               allQuestionsVisited
                 ? "Finalize and submit examination"
-                : `Visit all ${totalQuestions} questions to enable submission (${visitedQuestions.size}/${totalQuestions} visited)`
+                : `Visit all ${totalQuestions} questions to enable submission (${effectiveVisitedCount}/${totalQuestions} visited)`
             }
             className={`flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-xl transition-all ${
               allQuestionsVisited
@@ -894,7 +978,7 @@ export default function CodingExamPage() {
             }`}
           >
             <Send className="w-3.5 h-3.5" />
-            <span>Submit Exam {!allQuestionsVisited && `(${visitedQuestions.size}/${totalQuestions})`}</span>
+            <span>Submit Exam {!allQuestionsVisited && `(${effectiveVisitedCount}/${totalQuestions})`}</span>
           </button>
         </div>
       </header>
@@ -1564,27 +1648,6 @@ export default function CodingExamPage() {
               >
                 Next <ChevronRight className="w-3.5 h-3.5" />
               </button>
-
-              {currentQIndex === validQuestions.length - 1 && (
-                <button
-                  onClick={() => {
-                    if (!allQuestionsVisited) {
-                      showToast(`Please visit all ${totalQuestions} questions before submitting assessment (${visitedQuestions.size}/${totalQuestions} visited).`);
-                      return;
-                    }
-                    setShowSubmitModal(true);
-                  }}
-                  disabled={!allQuestionsVisited}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    allQuestionsVisited
-                      ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm shadow-emerald-600/20 cursor-pointer"
-                      : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
-                  }`}
-                >
-                  <Send className="w-3 h-3" />
-                  <span>Submit Exam {!allQuestionsVisited && `(${visitedQuestions.size}/${totalQuestions})`}</span>
-                </button>
-              )}
             </div>
 
             {/* Run Code Controls (Displayed if this specific question has code run allowed) */}

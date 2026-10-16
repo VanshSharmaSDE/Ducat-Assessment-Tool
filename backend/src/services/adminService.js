@@ -526,6 +526,7 @@ export class AdminService {
         questionId: q.questionId,
         marks: Number(q.marks || 0),
         order: q.order !== undefined ? q.order : idx + 1,
+        allowCodeRun: q.allowCodeRun !== undefined && q.allowCodeRun !== null ? Boolean(q.allowCodeRun) : null,
       };
     });
 
@@ -563,6 +564,7 @@ export class AdminService {
           questionId: q.questionId,
           marks: Number(q.marks || 0),
           order: q.order !== undefined ? q.order : idx + 1,
+          allowCodeRun: q.allowCodeRun !== undefined && q.allowCodeRun !== null ? Boolean(q.allowCodeRun) : null,
         };
       });
       if (!data.totalMarks) {

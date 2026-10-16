@@ -249,6 +249,7 @@ export class ExamService {
         if (!qData) return null;
         const qObj = qData.toObject();
         qObj.marks = eq.marks || qObj.marks;
+        qObj.questionId = eq.questionId;
 
         // Effective allowCodeRun: Check question-level override on exam item first, then question doc, then exam global
         const examItemOverride = eq.allowCodeRun !== undefined && eq.allowCodeRun !== null ? Boolean(eq.allowCodeRun) : null;
@@ -258,6 +259,7 @@ export class ExamService {
           : (questionDocOverride !== null ? questionDocOverride : Boolean(exam.allowCodeRun));
 
         qObj.allowCodeRun = qObj.type === 'MCQ' ? false : effectiveAllowCodeRun;
+        qObj.examItemAllowCodeRun = examItemOverride;
 
         // Attach unhidden testcases so student can test with public cases in LeetCode style
         qObj.sampleTestCases = unhiddenTestCases

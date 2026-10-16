@@ -164,16 +164,20 @@ export default function AdminExamWizardPage() {
                     const qDoc = (qRes.data?.data?.questions || []).find(
                       (item) => item._id === (q._id || q.questionId)
                     );
+                    const isCoding = (q.type || qDoc?.type || 'CODING') === 'CODING';
+                    const hasCodeRun = q.allowCodeRun !== undefined && q.allowCodeRun !== null
+                      ? Boolean(q.allowCodeRun)
+                      : (q.examItemAllowCodeRun !== undefined && q.examItemAllowCodeRun !== null
+                          ? Boolean(q.examItemAllowCodeRun)
+                          : (qDoc?.allowCodeRun !== undefined && qDoc?.allowCodeRun !== null
+                              ? Boolean(qDoc.allowCodeRun)
+                              : Boolean(ex.allowCodeRun)));
                     return {
                       questionId: q._id || q.questionId,
                       marks: Number(q.marks) || (qDoc?.marks || 20),
                       title: q.title || qDoc?.title || 'Question',
                       type: q.type || qDoc?.type || 'CODING',
-                      allowCodeRun: q.allowCodeRun !== undefined && q.allowCodeRun !== null
-                        ? Boolean(q.allowCodeRun)
-                        : (qDoc?.allowCodeRun !== undefined && qDoc?.allowCodeRun !== null
-                            ? Boolean(qDoc.allowCodeRun)
-                            : Boolean(ex.allowCodeRun)),
+                      allowCodeRun: isCoding ? hasCodeRun : false,
                     };
                   })
                 : [],
@@ -786,7 +790,18 @@ export default function AdminExamWizardPage() {
                   <input
                     type="checkbox"
                     checked={Boolean(formData.allowCodeRun)}
-                    onChange={(e) => setFormData({ ...formData, allowCodeRun: e.target.checked })}
+                    onChange={(e) => {
+                      const enabled = e.target.checked;
+                      setFormData((prev) => ({
+                        ...prev,
+                        allowCodeRun: enabled,
+                        questions: (prev.questions || []).map((q) =>
+                          (q.type || 'CODING') === 'CODING'
+                            ? { ...q, allowCodeRun: enabled }
+                            : q
+                        ),
+                      }));
+                    }}
                     className="sr-only peer"
                   />
                   <div className="w-11 h-6 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 dark:after:border-slate-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
