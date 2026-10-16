@@ -61,9 +61,22 @@ export default function AdminQuestionsPage() {
   }, [searchTerm, difficultyFilter]);
 
   const handleDuplicate = async (id) => {
+    const confirmed = await showConfirm({
+      title: 'Duplicate Coding Question',
+      message: 'Are you sure you want to duplicate this coding problem?',
+      confirmText: 'Duplicate',
+      isDanger: false,
+    });
+    if (!confirmed) return;
+
     try {
       setActionLoading(true);
       await api.post(`/admin/questions/${id}/duplicate`);
+      await showAlert({
+        title: 'Question Duplicated',
+        message: 'Coding problem duplicated successfully!',
+        type: 'success',
+      });
       await loadQuestions();
     } catch (err) {
       await showAlert({

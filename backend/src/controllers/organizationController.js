@@ -1,5 +1,8 @@
 import { Organization } from '../models/Organization.js';
 import { User } from '../models/User.js';
+import { Technology } from '../models/Technology.js';
+import { Batch } from '../models/Batch.js';
+import { Exam } from '../models/Exam.js';
 import mongoose from 'mongoose';
 
 export class OrganizationController {
@@ -201,8 +204,14 @@ export class OrganizationController {
           }
           org.name = cleanName;
 
-          // Cascade name change to users belonging to this organization
-          await User.updateMany({ organization: oldName }, { $set: { organization: cleanName } });
+          // Cascade name change to users, technologies, batches, and exams belonging to this organization
+          const oldNameRegex = new RegExp(`^${oldName.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i');
+          await Promise.all([
+            User.updateMany({ organization: oldNameRegex }, { $set: { organization: cleanName } }),
+            Technology.updateMany({ organization: oldNameRegex }, { $set: { organization: cleanName } }),
+            Batch.updateMany({ organization: oldNameRegex }, { $set: { organization: cleanName } }),
+            Exam.updateMany({ organization: oldNameRegex }, { $set: { organization: cleanName } }),
+          ]);
         }
       }
 
@@ -240,8 +249,13 @@ export class OrganizationController {
       }
 
       const orgRegex = new RegExp(`^${org.name.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i');
-      // Detach users who belonged to this organization
-      await User.updateMany({ organization: orgRegex }, { $set: { organization: '' } });
+      // Detach users, technologies, batches, and exams who belonged to this organization
+      await Promise.all([
+        User.updateMany({ organization: orgRegex }, { $set: { organization: '' } }),
+        Technology.deleteMany({ organization: orgRegex }),
+        Batch.deleteMany({ organization: orgRegex }),
+        Exam.updateMany({ organization: orgRegex }, { $set: { organization: '' } }),
+      ]);
 
       await Organization.findByIdAndDelete(id);
 

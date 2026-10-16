@@ -25,6 +25,12 @@ export class QuestionService {
         )
       : [];
 
+    if ((data.type === 'CODING' || !data.type) && (!cleanedExamples || cleanedExamples.length === 0 || !cleanedExamples.some((ex) => ex.output && ex.output.trim()))) {
+      const error = new Error('At least one example with Expected Output is required for coding problems');
+      error.statusCode = 400;
+      throw error;
+    }
+
     const question = await Question.create({
       ...data,
       type: data.type || 'CODING',
@@ -32,6 +38,21 @@ export class QuestionService {
       starterCode: starterCodeMap,
       createdBy: userId,
     });
+
+    if (Array.isArray(data.testCases) && data.testCases.length > 0) {
+      await Promise.all(
+        data.testCases.map((tc, idx) =>
+          TestCase.create({
+            questionId: question._id,
+            input: tc.input || '',
+            expectedOutput: tc.expectedOutput,
+            isHidden: tc.isHidden !== undefined ? tc.isHidden : true,
+            marks: Number(tc.marks) || 5,
+            order: tc.order !== undefined ? tc.order : idx + 1,
+          })
+        )
+      );
+    }
 
     return question;
   }

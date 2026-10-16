@@ -49,11 +49,13 @@ export default function AdminResultsPage() {
   const [candidateSearch, setCandidateSearch] = useState('');
   const [resultStatusFilter, setResultStatusFilter] = useState('');
   const [examFilter, setExamFilter] = useState('');
+  const [technologyFilter, setTechnologyFilter] = useState('');
   const [batchFilter, setBatchFilter] = useState('');
   const [genderFilter, setGenderFilter] = useState('');
   const [languageFilter, setLanguageFilter] = useState('');
 
   const [availableExams, setAvailableExams] = useState([]);
+  const [availableTechnologies, setAvailableTechnologies] = useState([]);
   const [availableBatches, setAvailableBatches] = useState([]);
   const [availableGenders, setAvailableGenders] = useState([]);
 
@@ -67,6 +69,7 @@ export default function AdminResultsPage() {
       let query = `?page=${page}&limit=20`;
       if (resultStatusFilter) query += `&resultStatus=${resultStatusFilter}`;
       if (examFilter) query += `&examId=${examFilter}`;
+      if (technologyFilter) query += `&technology=${encodeURIComponent(technologyFilter)}`;
       if (batchFilter) query += `&batch=${encodeURIComponent(batchFilter)}`;
       if (genderFilter) query += `&gender=${encodeURIComponent(genderFilter)}`;
       if (languageFilter) query += `&language=${encodeURIComponent(languageFilter)}`;
@@ -76,6 +79,7 @@ export default function AdminResultsPage() {
       setPagination(res.data.data.pagination || { total: 0, pages: 1 });
       if (res.data.data.examsSummary) setExamsSummary(res.data.data.examsSummary);
       if (res.data.data.availableExams) setAvailableExams(res.data.data.availableExams);
+      if (res.data.data.availableTechnologies) setAvailableTechnologies(res.data.data.availableTechnologies);
       if (res.data.data.availableBatches) setAvailableBatches(res.data.data.availableBatches);
       if (res.data.data.availableGenders) setAvailableGenders(res.data.data.availableGenders);
     } catch (err) {
@@ -109,7 +113,7 @@ export default function AdminResultsPage() {
 
   useEffect(() => {
     loadResults();
-  }, [page, resultStatusFilter, examFilter, batchFilter, genderFilter, languageFilter]);
+  }, [page, resultStatusFilter, examFilter, technologyFilter, batchFilter, genderFilter, languageFilter]);
 
   const handleExportExcel = async (specificExamId = null) => {
     try {
@@ -117,6 +121,7 @@ export default function AdminResultsPage() {
       const targetId = specificExamId || examFilter || (selectedExam ? selectedExam._id : '');
       let query = '';
       if (targetId) query += `&examId=${targetId}`;
+      if (technologyFilter) query += `&technology=${encodeURIComponent(technologyFilter)}`;
       if (batchFilter) query += `&batch=${encodeURIComponent(batchFilter)}`;
       if (genderFilter) query += `&gender=${encodeURIComponent(genderFilter)}`;
       if (languageFilter) query += `&language=${encodeURIComponent(languageFilter)}`;
@@ -645,6 +650,23 @@ export default function AdminResultsPage() {
                 <option value="PENDING">Pending Evaluation</option>
               </select>
 
+              {/* Technology filter */}
+              <select
+                value={technologyFilter}
+                onChange={(e) => {
+                  setTechnologyFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+              >
+                <option value="">All Technologies</option>
+                {availableTechnologies.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+
               {/* Batch filter */}
               <select
                 value={batchFilter}
@@ -654,7 +676,7 @@ export default function AdminResultsPage() {
                 }}
                 className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
               >
-                <option value="">All Technologies</option>
+                <option value="">All Batches</option>
                 {availableBatches.map((b) => (
                   <option key={b} value={b}>
                     {b}
@@ -722,6 +744,7 @@ export default function AdminResultsPage() {
                       {isAdmin && <th className="py-3 px-4 font-semibold">Faculty / Added By</th>}
                       {!selectedExam && <th className="py-3 px-4 font-semibold">Examination</th>}
                       <th className="py-3 px-4 font-semibold">Technology</th>
+                      <th className="py-3 px-4 font-semibold">Batch</th>
                       <th className="py-3 px-4 font-semibold">Gender</th>
                       <th className="py-3 px-4 font-semibold">Language(s)</th>
                       <th className="py-3 px-4 font-semibold">Violations</th>
@@ -791,7 +814,10 @@ export default function AdminResultsPage() {
                           )}
 
                           <td className="py-3 px-4 text-blue-700 dark:text-blue-400 font-medium whitespace-nowrap">
-                            {att.userId?.technology || att.userId?.batch || '—'}
+                            {att.userId?.technology || '—'}
+                          </td>
+                          <td className="py-3 px-4 text-slate-700 dark:text-slate-300 font-medium whitespace-nowrap">
+                            {att.userId?.batch || '—'}
                           </td>
                           <td className="py-3 px-4 text-slate-500 dark:text-slate-400 whitespace-nowrap">
                             {att.userId?.gender || '—'}

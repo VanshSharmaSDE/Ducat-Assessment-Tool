@@ -57,9 +57,22 @@ export default function AdminMcqQuestionsPage() {
   }, [searchTerm, difficultyFilter]);
 
   const handleDuplicate = async (id) => {
+    const confirmed = await showConfirm({
+      title: 'Duplicate MCQ Question',
+      message: 'Are you sure you want to duplicate this multiple-choice question?',
+      confirmText: 'Duplicate',
+      isDanger: false,
+    });
+    if (!confirmed) return;
+
     try {
       setActionLoading(true);
       await api.post(`/admin/questions/${id}/duplicate`);
+      await showAlert({
+        title: 'MCQ Duplicated',
+        message: 'Multiple-choice question duplicated successfully!',
+        type: 'success',
+      });
       await loadQuestions();
     } catch (err) {
       await showAlert({

@@ -303,6 +303,20 @@ export default function AdminExamsPage() {
                               )}
                             </div>
                           )}
+                          {exam.targetBatches && exam.targetBatches.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1">
+                              {exam.targetBatches.slice(0, 3).map((batch) => (
+                                <span key={batch} className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                                  {batch}
+                                </span>
+                              ))}
+                              {exam.targetBatches.length > 3 && (
+                                <span className="text-[9px] text-slate-400">
+                                  +{exam.targetBatches.length - 3}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="py-3 px-4 text-slate-500 text-xs whitespace-nowrap max-w-[220px] truncate" title={exam.description || ''}>

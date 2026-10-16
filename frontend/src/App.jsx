@@ -35,6 +35,7 @@ import AdminResultsPage from './pages/admin/AdminResultsPage';
 import AdminResultDetailPage from './pages/admin/AdminResultDetailPage';
 import AdminSubmissionsPage from './pages/admin/AdminSubmissionsPage';
 import AdminBatchesPage from './pages/admin/AdminBatchesPage';
+import AdminTechnologiesPage from './pages/admin/AdminTechnologiesPage';
 import AdminOrganizationsPage from './pages/admin/AdminOrganizationsPage';
 import AdminMcqQuestionsPage from './pages/admin/AdminMcqQuestionsPage';
 import AdminMcqQuestionEditorPage from './pages/admin/AdminMcqQuestionEditorPage';
@@ -161,8 +162,8 @@ export default function App() {
         <Route path="mcq-questions" element={<AdminMcqQuestionsPage />} />
         <Route path="mcq-questions/new" element={<AdminMcqQuestionEditorPage />} />
         <Route path="users" element={<AdminUsersPage />} />
-        <Route path="technologies" element={<AdminBatchesPage />} />
-        <Route path="batches" element={<Navigate to="/admin/technologies" replace />} />
+        <Route path="technologies" element={<AdminTechnologiesPage />} />
+        <Route path="batches" element={<AdminBatchesPage />} />
         <Route path="organizations" element={<AdminOrganizationsPage />} />
         <Route path="faculty" element={<AdminFacultyPage />} />
         <Route path="results" element={<AdminResultsPage />} />

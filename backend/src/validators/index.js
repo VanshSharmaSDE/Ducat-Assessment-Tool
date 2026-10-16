@@ -67,7 +67,9 @@ export const examSchema = z.object({
   maxViolations: z.number().int().min(1).max(20).optional(),
   allowCodeRun: z.boolean().optional(),
   technology: z.string().optional(),
+  organization: z.string().optional(),
   targetTechnologies: z.array(z.string()).optional(),
+  targetBatches: z.array(z.string()).optional(),
 }).passthrough();
 
 export const questionSchema = z.object({
@@ -99,6 +101,14 @@ export const questionSchema = z.object({
   timeLimit: z.number().min(0.1).max(30).optional().default(2),
   memoryLimit: z.number().min(16).max(2048).optional().default(256),
   comparisonMode: z.enum(['EXACT', 'TRIMMED', 'WHITESPACE_INSENSITIVE']).optional().default('TRIMMED'),
+  testCases: z.array(
+    z.object({
+      input: z.string().optional().default(''),
+      expectedOutput: z.string().min(1, 'Expected output is required'),
+      isHidden: z.boolean().default(true),
+      marks: z.number().optional().default(5),
+    })
+  ).optional(),
 }).passthrough();
 
 export const testCaseSchema = z.object({

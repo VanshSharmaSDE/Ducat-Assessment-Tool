@@ -167,7 +167,7 @@ export default function ProfilePage() {
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
           {/* Organization */}
           <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200/80 dark:border-slate-700/60 rounded-xl p-3 shadow-xs">
             <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block mb-1 flex items-center gap-1.5">
@@ -186,10 +186,22 @@ export default function ProfilePage() {
               <Users className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
               Technology
             </span>
-            <div className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate" title={user?.technology || user?.batch || 'General'}>
-              {user?.technology || user?.batch || (isAdmin ? 'All Technologies' : 'General')}
+            <div className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate" title={user?.technology || (isAdmin ? 'All Technologies' : 'General')}>
+              {user?.technology || (isAdmin ? 'All Technologies' : 'General')}
             </div>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Assigned cohort or specialization</p>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Assigned specialization track</p>
+          </div>
+
+          {/* Batch */}
+          <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200/80 dark:border-slate-700/60 rounded-xl p-3 shadow-xs">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block mb-1 flex items-center gap-1.5">
+              <GraduationCap className="w-3.5 h-3.5 text-purple-500 dark:text-purple-400" />
+              Batch
+            </span>
+            <div className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate" title={user?.batch || 'General'}>
+              {user?.batch || 'General'}
+            </div>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Assigned cohort batch</p>
           </div>
 
           {/* Primary ID */}

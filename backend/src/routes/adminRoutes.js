@@ -5,6 +5,7 @@ import { TestCaseController } from '../controllers/testCaseController.js';
 import { ExamController } from '../controllers/examController.js';
 import { ResultController } from '../controllers/resultController.js';
 import { BatchController } from '../controllers/batchController.js';
+import { TechnologyController } from '../controllers/technologyController.js';
 import { OrganizationController } from '../controllers/organizationController.js';
 import { authenticateUser, requireAdmin, requireAdminOrFaculty } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
@@ -55,6 +56,14 @@ router.get('/students/template-excel', downloadStudentTemplate);
 router.post('/students/upload-excel', upload.single('file'), uploadStudentsExcel);
 router.post('/students/share-token', generateStudentShareToken);
 router.post('/students/import-shared', importSharedStudents);
+
+// Dedicated Technology Management (Admin & Faculty)
+router.get('/technologies', TechnologyController.getAllTechnologies);
+router.get('/technologies/:id', TechnologyController.getTechnologyById);
+router.post('/technologies', TechnologyController.createTechnology);
+router.post('/technologies/bulk-delete', TechnologyController.bulkDeleteTechnologies);
+router.put('/technologies/:id', TechnologyController.updateTechnology);
+router.delete('/technologies/:id', TechnologyController.deleteTechnology);
 
 // Dedicated Batch Management (Admin & Faculty)
 router.get('/batches', BatchController.getAllBatches);

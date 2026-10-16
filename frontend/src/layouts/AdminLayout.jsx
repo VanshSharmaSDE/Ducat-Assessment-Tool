@@ -22,6 +22,7 @@ import {
   Building2,
   CheckSquare,
   Settings,
+  FolderTree,
 } from 'lucide-react';
 
 export default function AdminLayout() {
@@ -43,6 +44,7 @@ export default function AdminLayout() {
     { label: isSuperAdmin ? 'MCQ Question Bank' : 'My MCQ Bank', path: '/admin/mcq-questions', icon: CheckSquare },
     { label: isSuperAdmin ? 'Candidates' : 'My Students', path: '/admin/users', icon: Users },
     { label: isSuperAdmin ? 'Technologies' : 'My Technologies', path: '/admin/technologies', icon: Layers },
+    { label: isSuperAdmin ? 'Batches' : 'My Batches', path: '/admin/batches', icon: FolderTree },
     ...(isSuperAdmin ? [{ label: 'Organizations', path: '/admin/organizations', icon: Building2 }] : []),
     ...(isSuperAdmin ? [{ label: 'Faculty Management', path: '/admin/faculty', icon: GraduationCap }] : []),
     { label: isSuperAdmin ? 'Results & Reports' : 'Student Results', path: '/admin/results', icon: Award },

@@ -17,6 +17,18 @@ const batchSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    technology: {
+      type: String,
+      trim: true,
+      default: '',
+      index: true,
+    },
+    organization: {
+      type: String,
+      trim: true,
+      default: '',
+      index: true,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -33,18 +45,19 @@ const batchSchema = new mongoose.Schema(
   }
 );
 
-// Compound unique index: batch name is unique per instructor/creator
-batchSchema.index({ name: 1, createdBy: 1 }, { unique: true });
+// Compound unique index: batch name is unique per technology, organization, and creator
+batchSchema.index({ name: 1, technology: 1, organization: 1, createdBy: 1 }, { unique: true });
 
 export const Batch = mongoose.model('Batch', batchSchema);
 
-// Self-healing: Ensure legacy global unique index on name is dropped
+// Self-healing: Ensure legacy global unique indexes on name or {name, createdBy} are dropped
 const dropLegacyIndex = async () => {
   try {
     await Batch.collection.dropIndex('name_1');
-  } catch (_) {
-    // Ignore if index not present
-  }
+  } catch (_) {}
+  try {
+    await Batch.collection.dropIndex('name_1_createdBy_1');
+  } catch (_) {}
 };
 dropLegacyIndex();
 Batch.on('index', dropLegacyIndex);

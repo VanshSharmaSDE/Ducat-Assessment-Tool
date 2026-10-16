@@ -93,12 +93,23 @@ const examSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    organization: {
+      type: String,
+      default: '',
+      trim: true,
+      index: true,
+    },
     technology: {
       type: String,
       default: '',
       index: true,
     },
     targetTechnologies: {
+      type: [String],
+      default: [],
+      index: true,
+    },
+    targetBatches: {
       type: [String],
       default: [],
       index: true,

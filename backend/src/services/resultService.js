@@ -288,7 +288,7 @@ export class ResultService {
       filter.resultStatus = query.resultStatus;
     }
 
-    // Filter by student batch or gender
+    // Filter by student organization, technology, batch, or gender
     const userFilter = {};
     if (isFaculty) {
       const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
@@ -301,6 +301,8 @@ export class ResultService {
         { createdBy: { $exists: false } },
       ];
     }
+    if (query.organization) userFilter.organization = query.organization;
+    if (query.technology) userFilter.technology = query.technology;
     if (query.batch) userFilter.batch = query.batch;
     if (query.gender) userFilter.gender = query.gender;
 
@@ -324,11 +326,24 @@ export class ResultService {
     const limit = parseInt(query.limit || '20', 10);
     const skip = (page - 1) * limit;
 
-    const [attempts, total, availableBatches, availableGenders, availableExams] = await Promise.all([
+    const baseUserRoleFilter = {
+      role: 'USER',
+      ...(isFaculty
+        ? {
+            $or: [
+              { createdBy: currentUser._id },
+              { assignedFaculties: currentUser._id },
+              { organization: currentUser.organization || '__NONE__' },
+            ],
+          }
+        : {}),
+    };
+
+    const [attempts, total, availableOrganizations, availableTechnologies, availableBatches, availableGenders, availableExams] = await Promise.all([
       ExamAttempt.find(filter)
         .populate({
           path: 'userId',
-          select: 'name email phone rollNumber batch gender createdBy assignedFaculties',
+          select: 'name email phone rollNumber studentId batch technology organization gender createdBy assignedFaculties',
           populate: { path: 'createdBy', select: 'name email role' },
         })
         .populate({
@@ -340,29 +355,21 @@ export class ResultService {
         .skip(skip)
         .limit(limit),
       ExamAttempt.countDocuments(filter),
+      User.distinct('organization', {
+        ...baseUserRoleFilter,
+        organization: { $ne: '' },
+      }),
+      User.distinct('technology', {
+        ...baseUserRoleFilter,
+        technology: { $ne: '' },
+      }),
       User.distinct('batch', {
-        role: 'USER',
+        ...baseUserRoleFilter,
         batch: { $ne: '' },
-        ...(isFaculty
-          ? {
-              $or: [
-                { createdBy: currentUser._id },
-                { assignedFaculties: currentUser._id },
-              ],
-            }
-          : {}),
       }),
       User.distinct('gender', {
-        role: 'USER',
+        ...baseUserRoleFilter,
         gender: { $ne: '' },
-        ...(isFaculty
-          ? {
-              $or: [
-                { createdBy: currentUser._id },
-                { assignedFaculties: currentUser._id },
-              ],
-            }
-          : {}),
       }),
       Exam.find(isFaculty ? { createdBy: currentUser._id } : {}).select('_id title').sort({ title: 1 }),
     ]);
@@ -450,6 +457,8 @@ export class ResultService {
     return {
       results: enrichedResults,
       examsSummary,
+      availableOrganizations,
+      availableTechnologies,
       availableBatches,
       availableGenders,
       availableExams,

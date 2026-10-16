@@ -112,27 +112,97 @@ export default function AdminQuestionEditorPage() {
   };
 
   const removeExample = (index) => {
+    if (formData.examples.length <= 1) {
+      showAlert({
+        title: 'Requirement',
+        message: 'At least one example with Expected Output is mandatory for coding problems.',
+        type: 'warning',
+      });
+      return;
+    }
     const updated = formData.examples.filter((_, i) => i !== index);
     setFormData({ ...formData, examples: updated });
   };
 
   const handleSaveQuestion = async (e) => {
     e.preventDefault();
-    setSaving(true);
     setError('');
     setSuccess('');
 
     if (!formData.title?.trim()) {
       setError('Problem Title is required');
-      setSaving(false);
+      await showAlert({
+        title: 'Validation Error',
+        message: 'Problem Title is required.',
+        type: 'warning',
+      });
       return;
     }
 
     if (!formData.description?.trim()) {
       setError('Problem Description is required');
-      setSaving(false);
+      await showAlert({
+        title: 'Validation Error',
+        message: 'Problem Description is required.',
+        type: 'warning',
+      });
       return;
     }
+
+    // 1. Mandatory Example validation: at least 1 example with Expected Output
+    const filledExamples = (formData.examples || []).filter(
+      (ex) => ex && ex.output && String(ex.output).trim().length > 0
+    );
+    if (filledExamples.length === 0) {
+      setError('At least one example with Expected Output is mandatory.');
+      await showAlert({
+        title: 'Validation Error',
+        message: 'At least one public example with Expected Output is mandatory for coding problems.',
+        type: 'warning',
+      });
+      return;
+    }
+
+    // 2. Mandatory Test Cases validation: at least 1 public and 1 hidden
+    const publicCases = testCases.filter((tc) => !tc.isHidden);
+    const hiddenCases = testCases.filter((tc) => tc.isHidden);
+
+    if (publicCases.length === 0) {
+      setError('At least 1 unhidden (public) test case is required.');
+      await showAlert({
+        title: 'Validation Error',
+        message: 'Please add at least 1 Unhidden (Public) test case before creating the problem.',
+        type: 'warning',
+      });
+      return;
+    }
+
+    if (hiddenCases.length === 0) {
+      setError('At least 1 hidden (private) test case is required.');
+      await showAlert({
+        title: 'Validation Error',
+        message: 'Please add at least 1 Hidden (Private) test case before creating the problem.',
+        type: 'warning',
+      });
+      return;
+    }
+
+    const isNew = !isEditing;
+    const confirmed = await showConfirm({
+      title: isNew ? 'Create Coding Problem' : 'Update Coding Problem',
+      message: isNew
+        ? `Are you sure you want to create the coding problem "${formData.title.trim()}" with ${testCases.length} test case(s)?`
+        : `Are you sure you want to save changes to the coding problem "${formData.title.trim()}"?`,
+      confirmText: isNew ? 'Create Problem' : 'Save Changes',
+      cancelText: 'Cancel',
+      type: 'info',
+      isDanger: false,
+    });
+    if (!confirmed) {
+      return;
+    }
+
+    setSaving(true);
 
     try {
       // Clean up examples: filter out completely empty example objects
@@ -161,23 +231,77 @@ export default function AdminQuestionEditorPage() {
         memoryLimit: Number(formData.memoryLimit) || 256,
       };
 
-      let savedQId = id;
       if (isEditing) {
         await api.put(`/admin/questions/${id}`, payload);
-        setSuccess('Question updated successfully');
+        // Persist any newly added test cases if any
+        const newCases = testCases.filter((tc) => String(tc._id).startsWith('temp_'));
+        for (const tc of newCases) {
+          await api.post(`/admin/questions/${id}/testcases`, {
+            input: tc.input || '',
+            expectedOutput: tc.expectedOutput,
+            isHidden: tc.isHidden,
+            marks: 5,
+          }).catch((err) => console.error(err));
+        }
+        await showAlert({
+          title: 'Question Updated',
+          message: 'Coding problem updated successfully!',
+          type: 'success',
+        });
+        navigate('/admin/questions');
       } else {
-        const res = await api.post('/admin/questions', payload);
-        savedQId = res.data?.data?.question?._id;
-        setSuccess('Question created successfully! You can now configure test cases.');
-        navigate(`/admin/questions/${savedQId}/edit`);
+        const createPayload = {
+          ...payload,
+          testCases: testCases.map((tc) => ({
+            input: tc.input || '',
+            expectedOutput: tc.expectedOutput,
+            isHidden: tc.isHidden,
+            marks: 5,
+          })),
+        };
+        const res = await api.post('/admin/questions', createPayload);
+        const savedQId = res.data?.data?.question?._id;
+
+        // Safety fallback to guarantee test cases are present
+        if (savedQId) {
+          const checkCases = await api.get(`/admin/questions/${savedQId}/testcases`).catch(() => ({ data: { data: { testCases: [] } } }));
+          if ((checkCases.data?.data?.testCases || []).length === 0 && testCases.length > 0) {
+            for (const tc of testCases) {
+              await api.post(`/admin/questions/${savedQId}/testcases`, {
+                input: tc.input || '',
+                expectedOutput: tc.expectedOutput,
+                isHidden: tc.isHidden,
+                marks: 5,
+              }).catch((e) => console.error(e));
+            }
+          }
+        }
+
+        await showAlert({
+          title: 'Question Created',
+          message: 'Coding problem and all test cases created successfully!',
+          type: 'success',
+        });
+        navigate('/admin/questions');
       }
     } catch (err) {
       const respData = err.response?.data;
       if (respData?.errors && Array.isArray(respData.errors) && respData.errors.length > 0) {
         const errDetails = respData.errors.map((item) => `${item.field}: ${item.message}`).join(', ');
         setError(`Validation error (${errDetails})`);
+        await showAlert({
+          title: 'Validation Error',
+          message: `Validation error (${errDetails})`,
+          type: 'error',
+        });
       } else {
-        setError(respData?.message || err.message || 'Failed to save question');
+        const msg = respData?.message || err.message || 'Failed to save question';
+        setError(msg);
+        await showAlert({
+          title: 'Save Failed',
+          message: msg,
+          type: 'error',
+        });
       }
     } finally {
       setSaving(false);
@@ -185,27 +309,35 @@ export default function AdminQuestionEditorPage() {
   };
 
   const handleAddTestCase = async (e) => {
-    e.preventDefault();
-    if (!isEditing) {
-      await showAlert({
-        title: 'Save Required',
-        message: 'Please save the question first before adding test cases.',
-        type: 'warning',
-      });
-      return;
-    }
-    if (!newTc.expectedOutput.trim()) {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!newTc.expectedOutput || !newTc.expectedOutput.trim()) {
       await showAlert({
         title: 'Input Missing',
-        message: 'Expected output is required.',
+        message: 'Expected output is required for the test case.',
         type: 'warning',
       });
       return;
     }
 
+    const tcData = {
+      input: (newTc.input || '').trim(),
+      expectedOutput: newTc.expectedOutput.trim(),
+      isHidden: Boolean(newTc.isHidden),
+      marks: 5,
+    };
+
+    if (!isEditing) {
+      // In create mode: store locally in testCases state
+      const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      setTestCases((prev) => [...prev, { ...tcData, _id: tempId }]);
+      setNewTc({ input: '', expectedOutput: '', isHidden: true, marks: 5 });
+      return;
+    }
+
+    // In edit mode: save directly to server
     try {
-      const res = await api.post(`/admin/questions/${id}/testcases`, newTc);
-      setTestCases([...testCases, res.data.data.testCase]);
+      const res = await api.post(`/admin/questions/${id}/testcases`, tcData);
+      setTestCases((prev) => [...prev, res.data.data.testCase]);
       setNewTc({ input: '', expectedOutput: '', isHidden: true, marks: 5 });
     } catch (err) {
       await showAlert({
@@ -225,9 +357,14 @@ export default function AdminQuestionEditorPage() {
     });
     if (!confirmed) return;
 
+    if (!isEditing || String(tcId).startsWith('temp_')) {
+      setTestCases((prev) => prev.filter((tc) => tc._id !== tcId));
+      return;
+    }
+
     try {
       await api.delete(`/admin/testcases/${tcId}`);
-      setTestCases(testCases.filter((tc) => tc._id !== tcId));
+      setTestCases((prev) => prev.filter((tc) => tc._id !== tcId));
     } catch (err) {
       await showAlert({
         title: 'Delete Failed',
@@ -487,12 +624,12 @@ export default function AdminQuestionEditorPage() {
         <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-              <Eye className="w-4 h-4 text-emerald-600" /> Public Problem Examples (Visible to Candidates)
+              <Eye className="w-4 h-4 text-emerald-600" /> Public Problem Examples (At least 1 Mandatory <span className="text-red-500 font-bold">*</span>)
             </h2>
             <button
               type="button"
               onClick={addExample}
-              className="text-xs text-blue-600 hover:text-blue-700 font-semibold"
+              className="text-xs text-blue-600 hover:text-blue-700 font-semibold cursor-pointer"
             >
               + Add Example
             </button>
@@ -501,12 +638,15 @@ export default function AdminQuestionEditorPage() {
           {formData.examples.map((ex, idx) => (
             <div key={idx} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700">Example #{idx + 1}</span>
+                <span className="text-xs font-bold text-slate-700">
+                  Example #{idx + 1} {idx === 0 && <span className="text-red-500 font-bold ml-1">* Mandatory</span>}
+                </span>
                 {formData.examples.length > 1 && (
                   <button
                     type="button"
                     onClick={() => removeExample(idx)}
-                    className="text-slate-400 hover:text-rose-600"
+                    className="text-slate-400 hover:text-rose-600 cursor-pointer"
+                    title="Remove Example"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -516,7 +656,7 @@ export default function AdminQuestionEditorPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-                    Example Input <span className="text-red-500 font-bold ml-0.5">*</span>
+                    Example Input (stdin)
                   </label>
                   <textarea
                     rows={2}
@@ -554,20 +694,7 @@ export default function AdminQuestionEditorPage() {
           ))}
         </div>
 
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={saving}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition-all cursor-pointer"
-          >
-            <Save className="w-4 h-4" />
-            <span>{saving ? 'Saving Problem...' : isEditing ? 'Update Problem' : 'Create Problem'}</span>
-          </button>
-        </div>
-      </form>
-
-      {/* Test Case Management Section (Only active when editing an existing problem) */}
-      {isEditing && (
+        {/* Test Case Management Section (Always active for both creation and editing) */}
         <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
@@ -615,20 +742,19 @@ export default function AdminQuestionEditorPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[700px] text-left text-xs">
+                <table className="w-full min-w-[600px] text-left text-xs">
                   <thead>
                     <tr className="border-b border-slate-200 text-slate-600 bg-slate-50">
                       <th className="py-2.5 px-3">#</th>
                       <th className="py-2.5 px-3">Type</th>
                       <th className="py-2.5 px-3">Input</th>
                       <th className="py-2.5 px-3">Expected Output</th>
-                      <th className="py-2.5 px-3">Marks</th>
                       <th className="py-2.5 px-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 font-mono">
                     {testCases.map((tc, idx) => (
-                      <tr key={tc._id} className="text-slate-600 hover:bg-slate-50 transition-colors">
+                      <tr key={tc._id || idx} className="text-slate-600 hover:bg-slate-50 transition-colors">
                         <td className="py-2.5 px-3">{idx + 1}</td>
                         <td className="py-2.5 px-3">
                           <span
@@ -644,14 +770,15 @@ export default function AdminQuestionEditorPage() {
                         <td className="py-2.5 px-3 max-w-[200px] truncate text-slate-500">
                           {tc.input || '(empty)'}
                         </td>
-                        <td className="py-2.5 px-3 max-w-[200px] truncate text-emerald-600">
+                        <td className="py-2.5 px-3 max-w-[200px] truncate text-emerald-600 font-semibold">
                           {tc.expectedOutput}
                         </td>
-                        <td className="py-2.5 px-3 font-bold text-slate-800">{tc.marks}</td>
                         <td className="py-2.5 px-3 text-right">
                           <button
+                            type="button"
                             onClick={() => handleDeleteTestCase(tc._id)}
                             className="p-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                            title="Delete test case"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -664,8 +791,8 @@ export default function AdminQuestionEditorPage() {
             )}
           </div>
 
-          {/* Add New Test Case Form */}
-          <form onSubmit={handleAddTestCase} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-4">
+          {/* Add New Test Case Card */}
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-4">
             <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">+ Add New Test Case</h4>
 
             {/* Test Case Type Selection: Public vs Hidden */}
@@ -717,7 +844,7 @@ export default function AdminQuestionEditorPage() {
                       🔒 Hidden (Private Test Case)
                     </span>
                     <p className="text-[11px] text-slate-500 mt-0.5">
-                      Confidential. Evaluated strictly during exam final submission to compute student marks.
+                      Confidential. Evaluated strictly during exam final submission to compute student score.
                     </p>
                   </div>
                 </label>
@@ -731,7 +858,7 @@ export default function AdminQuestionEditorPage() {
                   rows={3}
                   value={newTc.input}
                   onChange={(e) => setNewTc({ ...newTc, input: e.target.value })}
-                  placeholder="Input provided to program..."
+                  placeholder="Input provided to program (optional)..."
                   className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -742,7 +869,6 @@ export default function AdminQuestionEditorPage() {
                 </label>
                 <textarea
                   rows={3}
-                  required
                   value={newTc.expectedOutput}
                   onChange={(e) => setNewTc({ ...newTc, expectedOutput: e.target.value })}
                   placeholder="Exact expected standard output..."
@@ -751,38 +877,36 @@ export default function AdminQuestionEditorPage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-slate-600 font-semibold">Marks Allocated:</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={newTc.marks}
-                  onChange={(e) => setNewTc({ ...newTc, marks: Number(e.target.value) })}
-                  className="w-20 px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-800 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
+            <div className="flex justify-end">
               <button
-                type="submit"
+                type="button"
+                onClick={handleAddTestCase}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-600/20 cursor-pointer"
               >
-                + Save Test Case
+                + Add Test Case
               </button>
             </div>
-          </form>
+          </div>
         </div>
-      )}
 
-      {!isEditing && (
-        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm text-center py-8 space-y-2">
-          <Shield className="w-8 h-8 text-blue-600 mx-auto" />
-          <h3 className="text-sm font-bold text-slate-800">Test Cases Configuration</h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto">
-            Test cases (at least 1 public and 1 hidden) can be added immediately after saving problem specifications above. Click "Create Problem" above to save and proceed.
-          </p>
+        {/* Bottom Form Action Buttons */}
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+          <Link
+            to="/admin/questions"
+            className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold transition-colors cursor-pointer"
+          >
+            Cancel
+          </Link>
+          <button
+            type="submit"
+            disabled={saving}
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/20 disabled:opacity-50 transition-all cursor-pointer"
+          >
+            <Save className="w-4 h-4" />
+            <span>{saving ? (isEditing ? 'Updating Problem...' : 'Creating Problem...') : isEditing ? 'Update Problem' : 'Create Problem'}</span>
+          </button>
         </div>
-      )}
+      </form>
     </div>
   );
 }

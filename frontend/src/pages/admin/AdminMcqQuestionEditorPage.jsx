@@ -18,7 +18,7 @@ export default function AdminMcqQuestionEditorPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEditing = !!id;
-  const { showAlert } = useModal();
+  const { showAlert, showConfirm } = useModal();
 
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
@@ -107,22 +107,57 @@ export default function AdminMcqQuestionEditorPage() {
 
     if (!formData.title.trim()) {
       setError('Question title / problem statement is required');
+      await showAlert({
+        title: 'Validation Error',
+        message: 'Question title / problem statement is required.',
+        type: 'warning',
+      });
       return;
     }
 
     const filledOptions = formData.options.filter((opt) => opt.text.trim().length > 0);
     if (filledOptions.length < 2) {
       setError('Please provide at least 2 valid option texts');
+      await showAlert({
+        title: 'Validation Error',
+        message: 'Please provide at least 2 valid option texts.',
+        type: 'warning',
+      });
       return;
     }
 
     if (formData.options.some((opt) => !opt.text.trim())) {
       setError('All option fields must have text. Remove empty options if unused.');
+      await showAlert({
+        title: 'Validation Error',
+        message: 'All option fields must have text. Remove empty options if unused.',
+        type: 'warning',
+      });
       return;
     }
 
     if (formData.correctAnswer < 0 || formData.correctAnswer >= formData.options.length) {
       setError('Please select a valid correct answer option');
+      await showAlert({
+        title: 'Validation Error',
+        message: 'Please select a valid correct answer option.',
+        type: 'warning',
+      });
+      return;
+    }
+
+    const isNew = !isEditing;
+    const confirmed = await showConfirm({
+      title: isNew ? 'Create MCQ Question' : 'Update MCQ Question',
+      message: isNew
+        ? `Are you sure you want to create the multiple-choice question "${formData.title.trim()}"?`
+        : `Are you sure you want to save changes to the multiple-choice question "${formData.title.trim()}"?`,
+      confirmText: isNew ? 'Create MCQ' : 'Save Changes',
+      cancelText: 'Cancel',
+      type: 'info',
+      isDanger: false,
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -141,14 +176,30 @@ export default function AdminMcqQuestionEditorPage() {
 
       if (isEditing) {
         await api.put(`/admin/questions/${id}`, payload);
+        await showAlert({
+          title: 'MCQ Question Updated',
+          message: 'Multiple-choice question updated successfully!',
+          type: 'success',
+        });
         setSuccess('MCQ question updated successfully!');
       } else {
         await api.post('/admin/questions', payload);
+        await showAlert({
+          title: 'MCQ Question Created',
+          message: 'Multiple-choice question created successfully!',
+          type: 'success',
+        });
         navigate('/admin/mcq-questions');
         return;
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to save MCQ question');
+      const msg = err.response?.data?.message || 'Failed to save MCQ question';
+      setError(msg);
+      await showAlert({
+        title: 'Save Failed',
+        message: msg,
+        type: 'error',
+      });
     } finally {
       setSaving(false);
     }

@@ -48,11 +48,21 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [technologyFilter, setTechnologyFilter] = useState('');
   const [batchFilter, setBatchFilter] = useState('');
   const [genderFilter, setGenderFilter] = useState('');
+  const [availableTechnologies, setAvailableTechnologies] = useState([]);
   const [availableBatches, setAvailableBatches] = useState([]);
   const [availableGenders, setAvailableGenders] = useState([]);
   const [definedBatches, setDefinedBatches] = useState([]);
+  const [formTechnologies, setFormTechnologies] = useState([]);
+  const [formBatches, setFormBatches] = useState([]);
+  const [loadingFormTechs, setLoadingFormTechs] = useState(false);
+  const [loadingFormBatches, setLoadingFormBatches] = useState(false);
+  const [editFormTechnologies, setEditFormTechnologies] = useState([]);
+  const [editFormBatches, setEditFormBatches] = useState([]);
+  const [loadingEditTechs, setLoadingEditTechs] = useState(false);
+  const [loadingEditBatches, setLoadingEditBatches] = useState(false);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, pages: 1 });
   const [loading, setLoading] = useState(true);
@@ -148,6 +158,7 @@ export default function AdminUsersPage() {
       let query = `?page=${page}&limit=15`;
       if (searchTerm) query += `&search=${encodeURIComponent(searchTerm)}`;
       if (statusFilter) query += `&status=${statusFilter}`;
+      if (technologyFilter) query += `&technology=${encodeURIComponent(technologyFilter)}`;
       if (batchFilter) query += `&batch=${encodeURIComponent(batchFilter)}`;
       if (genderFilter) query += `&gender=${encodeURIComponent(genderFilter)}`;
 
@@ -159,6 +170,9 @@ export default function AdminUsersPage() {
       const res = await api.get(`/admin/users${query}`);
       setUsers(res.data.data.users || []);
       setPagination(res.data.data.pagination || { total: 0, pages: 1 });
+      if (res.data.data.availableTechnologies) {
+        setAvailableTechnologies(res.data.data.availableTechnologies);
+      }
       if (res.data.data.availableBatches) {
         setAvailableBatches(res.data.data.availableBatches);
       }
@@ -198,6 +212,55 @@ export default function AdminUsersPage() {
     }
   };
 
+  const loadTechnologiesForOrg = async (orgName, isEdit = false) => {
+    if (!orgName) {
+      if (isEdit) {
+        setEditFormTechnologies([]);
+        setEditFormBatches([]);
+      } else {
+        setFormTechnologies([]);
+        setFormBatches([]);
+      }
+      return;
+    }
+    try {
+      if (isEdit) setLoadingEditTechs(true);
+      else setLoadingFormTechs(true);
+      const res = await api.get(`/admin/technologies?organization=${encodeURIComponent(orgName)}`);
+      const list = res.data?.data?.technologies || [];
+      if (isEdit) setEditFormTechnologies(list);
+      else setFormTechnologies(list);
+    } catch (_) {
+      if (isEdit) setEditFormTechnologies([]);
+      else setFormTechnologies([]);
+    } finally {
+      if (isEdit) setLoadingEditTechs(false);
+      else setLoadingFormTechs(false);
+    }
+  };
+
+  const loadBatchesForTech = async (orgName, techName, isEdit = false) => {
+    if (!orgName || !techName) {
+      if (isEdit) setEditFormBatches([]);
+      else setFormBatches([]);
+      return;
+    }
+    try {
+      if (isEdit) setLoadingEditBatches(true);
+      else setLoadingFormBatches(true);
+      const res = await api.get(`/admin/batches?organization=${encodeURIComponent(orgName)}&technology=${encodeURIComponent(techName)}`);
+      const list = res.data?.data?.batches || [];
+      if (isEdit) setEditFormBatches(list);
+      else setFormBatches(list);
+    } catch (_) {
+      if (isEdit) setEditFormBatches([]);
+      else setFormBatches([]);
+    } finally {
+      if (isEdit) setLoadingEditBatches(false);
+      else setLoadingFormBatches(false);
+    }
+  };
+
   useEffect(() => {
     loadBatchesAndOrgs();
   }, []);
@@ -205,8 +268,6 @@ export default function AdminUsersPage() {
   const allOrganizationsList = Array.from(
     new Set([
       ...definedOrganizations.map((o) => o.name),
-      ...organizationsSummary.map((o) => o.name),
-      ...availableOrganizations,
       editingUser?.organization,
     ].filter(Boolean))
   ).sort((a, b) => a.localeCompare(b));
@@ -222,7 +283,7 @@ export default function AdminUsersPage() {
   useEffect(() => {
     loadUsers();
     setSelectedUsers([]);
-  }, [page, searchTerm, statusFilter, batchFilter, genderFilter, selectedOrg]);
+  }, [page, searchTerm, statusFilter, technologyFilter, batchFilter, genderFilter, selectedOrg]);
 
   const handleToggleStatus = async (user) => {
     const confirmed = await showConfirm({
@@ -314,35 +375,64 @@ export default function AdminUsersPage() {
     }
   };
 
-  const handleOpenEdit = (user) => {
-    setEditingUser(user);
-    const techVal = user.technology || user.batch || '';
+  const handleOpenEdit = (student) => {
+    loadBatchesAndOrgs();
+    setEditingUser(student);
+    const org = (student.organization || '').trim();
+    const tech = (student.technology || '').trim();
+    const batch = (student.batch || '').trim();
     setEditFormData({
-      name: user.name || '',
-      studentId: user.studentId || user.rollNumber || '',
-      email: user.email || '',
+      name: student.name || '',
+      studentId: student.studentId || student.rollNumber || '',
+      email: student.email || '',
       password: '',
       oldPassword: '',
-      organization: user.organization || '',
-      rollNumber: user.rollNumber || user.studentId || '',
-      phone: user.phone || '',
-      batch: techVal,
-      technology: techVal,
-      gender: user.gender || '',
-      age: user.age !== undefined && user.age !== null ? user.age : '',
+      organization: org,
+      rollNumber: student.rollNumber || student.studentId || '',
+      phone: student.phone || '',
+      batch: batch,
+      technology: tech,
+      gender: student.gender || '',
+      age: student.age !== undefined && student.age !== null ? student.age : '',
     });
     setShowOldPassword(false);
     setShowEditPassword(false);
     setShowEditModal(true);
+    if (org) {
+      loadTechnologiesForOrg(org, true);
+      if (tech) {
+        loadBatchesForTech(org, tech, true);
+      } else {
+        setEditFormBatches([]);
+      }
+    } else {
+      setEditFormTechnologies([]);
+      setEditFormBatches([]);
+    }
   };
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
-    const techVal = (editFormData.technology || editFormData.batch || '').trim();
-    if (!techVal) {
+    if (!editFormData.organization?.trim()) {
+      await showAlert({
+        title: 'Validation Error',
+        message: 'Organization is mandatory for students.',
+        type: 'warning',
+      });
+      return;
+    }
+    if (!editFormData.technology?.trim()) {
       await showAlert({
         title: 'Validation Error',
         message: 'Technology is mandatory for students.',
+        type: 'warning',
+      });
+      return;
+    }
+    if (!editFormData.batch?.trim()) {
+      await showAlert({
+        title: 'Validation Error',
+        message: 'Batch is mandatory for students.',
         type: 'warning',
       });
       return;
@@ -351,8 +441,9 @@ export default function AdminUsersPage() {
       setActionLoading(true);
       await api.put(`/admin/students/${editingUser._id}`, {
         ...editFormData,
-        batch: techVal,
-        technology: techVal,
+        organization: editFormData.organization.trim(),
+        technology: editFormData.technology.trim(),
+        batch: editFormData.batch.trim(),
         studentId: editFormData.studentId || editFormData.rollNumber,
       });
       await showAlert({
@@ -375,6 +466,7 @@ export default function AdminUsersPage() {
 
   // Manual Student Creation
   const handleOpenManualModal = () => {
+    loadBatchesAndOrgs();
     if (user?.role === 'FACULTY' && (!user.organization || !user.organization.trim())) {
       showAlert({
         title: 'Organization Required',
@@ -383,8 +475,9 @@ export default function AdminUsersPage() {
       });
       return;
     }
-    const defaultOrg = user?.role === 'FACULTY'
-      ? (user.organization || '')
+    const facultyOrg = (user?.role === 'FACULTY' && user?.organization) ? user.organization.trim() : '';
+    const defaultOrg = facultyOrg
+      ? facultyOrg
       : ((selectedOrg && selectedOrg !== '__ALL__' && selectedOrg !== 'unassigned')
           ? selectedOrg
           : '');
@@ -401,13 +494,26 @@ export default function AdminUsersPage() {
       gender: '',
       age: '',
     });
+    setFormBatches([]);
+    if (defaultOrg) {
+      loadTechnologiesForOrg(defaultOrg, false);
+    } else {
+      setFormTechnologies([]);
+    }
     setShowManualModal(true);
   };
 
   const handleManualSubmit = async (e) => {
     e.preventDefault();
-    const techVal = (formData.technology || formData.batch || '').trim();
-    if (!techVal) {
+    if (!formData.organization?.trim()) {
+      await showAlert({
+        title: 'Validation Error',
+        message: 'Organization is mandatory for students.',
+        type: 'warning',
+      });
+      return;
+    }
+    if (!formData.technology?.trim()) {
       await showAlert({
         title: 'Validation Error',
         message: 'Technology is mandatory for students.',
@@ -415,11 +521,20 @@ export default function AdminUsersPage() {
       });
       return;
     }
+    if (!formData.batch?.trim()) {
+      await showAlert({
+        title: 'Validation Error',
+        message: 'Batch is mandatory for students.',
+        type: 'warning',
+      });
+      return;
+    }
     try {
       await api.post('/admin/students/create', {
         ...formData,
-        batch: techVal,
-        technology: techVal,
+        organization: formData.organization.trim(),
+        technology: formData.technology.trim(),
+        batch: formData.batch.trim(),
         studentId: formData.studentId || formData.rollNumber,
       });
       await showAlert({
@@ -457,8 +572,9 @@ export default function AdminUsersPage() {
       {
         'Student ID *': 'STU2026001',
         'Full Name *': 'Amit Verma',
+        'Organization *': 'Shape My Skills',
         'Technology *': 'Java Full Stack',
-        'Organization': 'Tech University',
+        'Batch *': 'Batch-1',
         'Password': 'Student@123',
         'Email': 'amit.verma@example.com',
         'Phone': '9876543210',
@@ -468,8 +584,9 @@ export default function AdminUsersPage() {
       {
         'Student ID *': 'STU2026002',
         'Full Name *': 'Sneha Rao',
+        'Organization *': 'Shape My Skills',
         'Technology *': 'Python Development',
-        'Organization': 'Tech University',
+        'Batch *': 'Morning Batch',
         'Password': 'Student@123',
         'Email': '', // Optional
         'Phone': '9876543211',
@@ -481,8 +598,9 @@ export default function AdminUsersPage() {
     const guidelines = [
       { 'Field Name': 'Student ID *', 'Status': 'MANDATORY (*)', 'Description': 'Unique Student ID or Roll Number (e.g. STU2026001)' },
       { 'Field Name': 'Full Name *', 'Status': 'MANDATORY (*)', 'Description': 'Full candidate legal or official name' },
-      { 'Field Name': 'Technology *', 'Status': 'MANDATORY (*)', 'Description': 'Assigned Technology / Course track (e.g. Java Full Stack, Python Development)' },
-      { 'Field Name': 'Organization', 'Status': 'OPTIONAL', 'Description': 'Candidate organization / college (auto-assigned to faculty organization if uploaded by faculty)' },
+      { 'Field Name': 'Organization *', 'Status': 'MANDATORY (*)', 'Description': 'Must be an existing Organization created in the system (Faculty can only upload for their own assigned organization)' },
+      { 'Field Name': 'Technology *', 'Status': 'MANDATORY (*)', 'Description': 'Must be an existing Technology created under the specified Organization' },
+      { 'Field Name': 'Batch *', 'Status': 'MANDATORY (*)', 'Description': 'Must be an existing Batch created under the specified Technology & Organization' },
       { 'Field Name': 'Password', 'Status': 'OPTIONAL', 'Description': 'Candidate initial login password (defaults to Student@123 if omitted)' },
       { 'Field Name': 'Email', 'Status': 'OPTIONAL', 'Description': 'Candidate email address (optional, must be unique across system if provided)' },
       { 'Field Name': 'Phone', 'Status': 'OPTIONAL', 'Description': 'Candidate contact mobile / telephone number' },
@@ -905,6 +1023,22 @@ export default function AdminUsersPage() {
             </select>
 
             <select
+              value={technologyFilter}
+              onChange={(e) => {
+                setTechnologyFilter(e.target.value);
+                setPage(1);
+              }}
+              className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Technologies</option>
+              {availableTechnologies.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+
+            <select
               value={batchFilter}
               onChange={(e) => {
                 setBatchFilter(e.target.value);
@@ -912,14 +1046,12 @@ export default function AdminUsersPage() {
               }}
               className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">All Technologies</option>
-              {Array.from(new Set([...definedBatches.map((b) => b.name), ...availableBatches]))
-                .filter(Boolean)
-                .map((b) => (
-                  <option key={b} value={b}>
-                    {b}
-                  </option>
-                ))}
+              <option value="">All Batches</option>
+              {availableBatches.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
             </select>
 
             <select
@@ -986,6 +1118,7 @@ export default function AdminUsersPage() {
                       {isAdmin && <th className="py-3 px-4 font-semibold">Created By</th>}
                       <th className="py-3 px-4 font-semibold">Student ID</th>
                       <th className="py-3 px-4 font-semibold">Technology</th>
+                      <th className="py-3 px-4 font-semibold">Batch</th>
                       <th className="py-3 px-4 font-semibold">Gender</th>
                       <th className="py-3 px-4 font-semibold">Age</th>
                       <th className="py-3 px-4 font-semibold">Exams Taken</th>
@@ -1078,7 +1211,8 @@ export default function AdminUsersPage() {
                           )}
 
                           <td className="py-3 px-4 font-mono text-slate-600 whitespace-nowrap">{u.studentId || u.rollNumber || '—'}</td>
-                          <td className="py-3 px-4 font-medium text-blue-600 whitespace-nowrap">{u.technology || u.batch || '—'}</td>
+                          <td className="py-3 px-4 font-medium text-blue-600 whitespace-nowrap">{u.technology || '—'}</td>
+                          <td className="py-3 px-4 font-medium text-slate-700 whitespace-nowrap">{u.batch || '—'}</td>
                           <td className="py-3 px-4 text-slate-500 whitespace-nowrap">{u.gender || '—'}</td>
                           <td className="py-3 px-4 font-mono text-slate-600 whitespace-nowrap">{u.age || '—'}</td>
 
@@ -1486,18 +1620,26 @@ export default function AdminUsersPage() {
               </div>
 
               <div>
-                <label className="block font-medium text-slate-700 mb-1">Organization / Institution</label>
+                <label className="block font-medium text-slate-700 mb-1">
+                  Organization / Institution <span className="text-red-500 font-bold ml-0.5">*</span>
+                </label>
                 {user?.role === 'FACULTY' ? (
                   <div className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-blue-600 font-medium">
                     {user?.organization || 'Unassigned'}
                   </div>
                 ) : (
                   <select
+                    required
                     value={formData.organization}
-                    onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
+                    onChange={(e) => {
+                      const newOrg = e.target.value;
+                      setFormData({ ...formData, organization: newOrg, technology: '', batch: '' });
+                      setFormBatches([]);
+                      loadTechnologiesForOrg(newOrg, false);
+                    }}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                   >
-                    <option value="">-- No Organization (Unassigned) --</option>
+                    <option value="">-- Select Organization (Mandatory) * --</option>
                     {allOrganizationsList.map((org) => (
                       <option key={org} value={org}>
                         {org}
@@ -1505,6 +1647,68 @@ export default function AdminUsersPage() {
                     ))}
                   </select>
                 )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-medium text-slate-700 mb-1">
+                    Technology <span className="text-red-500 font-bold ml-0.5">*</span>
+                  </label>
+                  <select
+                    required
+                    value={formData.technology}
+                    disabled={!formData.organization}
+                    onChange={(e) => {
+                      const newTech = e.target.value;
+                      setFormData({ ...formData, technology: newTech, batch: '' });
+                      loadBatchesForTech(formData.organization, newTech, false);
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer disabled:opacity-50"
+                  >
+                    <option value="">
+                      {!formData.organization
+                        ? '-- Select Org First --'
+                        : loadingFormTechs
+                        ? '-- Loading Technologies... --'
+                        : formTechnologies.length === 0
+                        ? '-- No Technologies Created --'
+                        : '-- Select Technology (Mandatory) * --'}
+                    </option>
+                    {formTechnologies.map((t) => (
+                      <option key={t._id || t.name} value={t.name}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-medium text-slate-700 mb-1">
+                    Batch <span className="text-red-500 font-bold ml-0.5">*</span>
+                  </label>
+                  <select
+                    required
+                    value={formData.batch}
+                    disabled={!formData.technology}
+                    onChange={(e) => setFormData({ ...formData, batch: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer disabled:opacity-50"
+                  >
+                    <option value="">
+                      {!formData.technology
+                        ? '-- Select Technology First --'
+                        : loadingFormBatches
+                        ? '-- Loading Batches... --'
+                        : formBatches.length === 0
+                        ? '-- No Batches Created --'
+                        : '-- Select Batch (Mandatory) * --'}
+                    </option>
+                    {formBatches.map((b) => (
+                      <option key={b._id || b.name} value={b.name}>
+                        {b.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1530,30 +1734,7 @@ export default function AdminUsersPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-medium text-slate-700 mb-1">
-                    Technology <span className="text-red-500 font-bold ml-0.5">*</span>
-                  </label>
-                  <select
-                    required
-                    value={formData.batch}
-                    onChange={(e) => setFormData({ ...formData, batch: e.target.value, technology: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                  >
-                    <option value="">-- Select Technology (Mandatory) * --</option>
-                    {definedBatches.map((b) => (
-                      <option key={b._id} value={b.name}>
-                        {b.name} {isAdmin && b.createdBy ? `(${b.createdBy.name || 'Admin'} • ${b.createdBy.role || 'ADMIN'})` : ''}
-                      </option>
-                    ))}
-                    {allBatchesList.filter((bName) => !definedBatches.some((db) => db.name === bName)).map((b) => (
-                      <option key={b} value={b}>
-                        {b}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-medium text-slate-700 mb-1">Gender</label>
                   <select
@@ -1658,18 +1839,26 @@ export default function AdminUsersPage() {
               </div>
 
               <div>
-                <label className="block font-medium text-slate-700 mb-1">Organization / Institution</label>
+                <label className="block font-medium text-slate-700 mb-1">
+                  Organization / Institution <span className="text-red-500 font-bold ml-0.5">*</span>
+                </label>
                 {user?.role === 'FACULTY' ? (
                   <div className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-blue-600 font-medium">
                     {editFormData.organization || user?.organization || 'Unassigned'}
                   </div>
                 ) : (
                   <select
+                    required
                     value={editFormData.organization}
-                    onChange={(e) => setEditFormData({ ...editFormData, organization: e.target.value })}
+                    onChange={(e) => {
+                      const newOrg = e.target.value;
+                      setEditFormData({ ...editFormData, organization: newOrg, technology: '', batch: '' });
+                      setEditFormBatches([]);
+                      loadTechnologiesForOrg(newOrg, true);
+                    }}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                   >
-                    <option value="">-- No Organization (Unassigned) --</option>
+                    <option value="">-- Select Organization (Mandatory) * --</option>
                     {allOrganizationsList.map((org) => (
                       <option key={org} value={org}>
                         {org}
@@ -1677,6 +1866,74 @@ export default function AdminUsersPage() {
                     ))}
                   </select>
                 )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-medium text-slate-700 mb-1">
+                    Technology <span className="text-red-500 font-bold ml-0.5">*</span>
+                  </label>
+                  <select
+                    required
+                    value={editFormData.technology}
+                    disabled={!editFormData.organization}
+                    onChange={(e) => {
+                      const newTech = e.target.value;
+                      setEditFormData({ ...editFormData, technology: newTech, batch: '' });
+                      loadBatchesForTech(editFormData.organization, newTech, true);
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer disabled:opacity-50"
+                  >
+                    <option value="">
+                      {!editFormData.organization
+                        ? '-- Select Org First --'
+                        : loadingEditTechs
+                        ? '-- Loading Technologies... --'
+                        : editFormTechnologies.length === 0
+                        ? '-- No Technologies Created --'
+                        : '-- Select Technology (Mandatory) * --'}
+                    </option>
+                    {editFormData.technology && !editFormTechnologies.some((t) => t.name === editFormData.technology) && (
+                      <option value={editFormData.technology}>{editFormData.technology}</option>
+                    )}
+                    {editFormTechnologies.map((t) => (
+                      <option key={t._id || t.name} value={t.name}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-medium text-slate-700 mb-1">
+                    Batch <span className="text-red-500 font-bold ml-0.5">*</span>
+                  </label>
+                  <select
+                    required
+                    value={editFormData.batch}
+                    disabled={!editFormData.technology}
+                    onChange={(e) => setEditFormData({ ...editFormData, batch: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer disabled:opacity-50"
+                  >
+                    <option value="">
+                      {!editFormData.technology
+                        ? '-- Select Technology First --'
+                        : loadingEditBatches
+                        ? '-- Loading Batches... --'
+                        : editFormBatches.length === 0
+                        ? '-- No Batches Created --'
+                        : '-- Select Batch (Mandatory) * --'}
+                    </option>
+                    {editFormData.batch && !editFormBatches.some((b) => b.name === editFormData.batch) && (
+                      <option value={editFormData.batch}>{editFormData.batch}</option>
+                    )}
+                    {editFormBatches.map((b) => (
+                      <option key={b._id || b.name} value={b.name}>
+                        {b.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1701,30 +1958,7 @@ export default function AdminUsersPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-medium text-slate-700 mb-1">
-                    Technology <span className="text-red-500 font-bold ml-0.5">*</span>
-                  </label>
-                  <select
-                    required
-                    value={editFormData.batch}
-                    onChange={(e) => setEditFormData({ ...editFormData, batch: e.target.value, technology: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                  >
-                    <option value="">-- Select Technology (Mandatory) * --</option>
-                    {definedBatches.map((b) => (
-                      <option key={b._id} value={b.name}>
-                        {b.name} {isAdmin && b.createdBy ? `(${b.createdBy.name || 'Admin'} • ${b.createdBy.role || 'ADMIN'})` : ''}
-                      </option>
-                    ))}
-                    {allBatchesList.filter((bName) => !definedBatches.some((db) => db.name === bName)).map((b) => (
-                      <option key={b} value={b}>
-                        {b}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-medium text-slate-700 mb-1">Gender</label>
                   <select
@@ -1821,15 +2055,15 @@ export default function AdminUsersPage() {
       {/* BULK EXCEL UPLOAD MODAL */}
       {showExcelModal && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full p-6 space-y-4 max-h-[90vh] flex flex-col shadow-xl">
-            <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full p-6 space-y-4 max-h-[90vh] flex flex-col shadow-xl">
+            <div className="flex justify-between items-center border-b border-slate-200 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
                   <FileSpreadsheet className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Bulk Upload Candidates via Excel</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Upload multiple student records with profile details via spreadsheet</p>
+                  <h3 className="text-base font-bold text-slate-800">Bulk Upload Candidates via Excel</h3>
+                  <p className="text-xs text-slate-500">Upload multiple student records with profile details via spreadsheet</p>
                 </div>
               </div>
               <button
@@ -1838,7 +2072,7 @@ export default function AdminUsersPage() {
                   setUploadStatus(null);
                   setExcelFile(null);
                 }}
-                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 rounded-lg cursor-pointer transition-colors"
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg cursor-pointer transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1846,65 +2080,71 @@ export default function AdminUsersPage() {
 
             <div className="flex-1 overflow-y-auto space-y-4 pr-0.5">
               {/* Instructions */}
-              <div className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-xs space-y-3">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-200">
-                    <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                    <span>Excel Column Specifications (9 Supported Fields):</span>
+                  <div className="flex items-center gap-2 font-semibold text-slate-700">
+                    <HelpCircle className="w-4 h-4 text-blue-600" />
+                    <span>Excel Column Specifications (10 Supported Fields):</span>
                   </div>
                   <button
                     type="button"
                     onClick={downloadSampleTemplate}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shrink-0"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shrink-0"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>Download Sample Template (.xlsx)</span>
                   </button>
                 </div>
 
-                <p className="text-slate-500 dark:text-slate-400 text-[11px]">
+                <p className="text-slate-500 text-[11px]">
                   <strong>Profile Auto-Update:</strong> Student ID is the primary unique identifier. If a Student ID already exists, their profile details
-                  (Full Name, Technology, Organization, Phone, Gender, Age) will be updated automatically and linked to your account. Email is optional.
+                  (Full Name, Organization, Technology, Batch, Phone, Gender, Age) will be updated automatically and linked to your account. Email is optional.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-[11px]">
                   {/* Mandatory Fields */}
-                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-red-200 dark:border-red-900/50 space-y-2">
-                    <div className="flex items-center gap-1.5 font-bold text-red-600 dark:text-red-400">
+                  <div className="p-3 rounded-xl bg-white border border-red-200 space-y-2">
+                    <div className="flex items-center gap-1.5 font-bold text-red-600">
                       <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                       <span>Mandatory Fields (<span className="text-red-500 font-bold">*</span>)</span>
                     </div>
-                    <ul className="space-y-1.5 text-slate-600 dark:text-slate-300">
+                    <ul className="space-y-1.5 text-slate-600">
                       <li>
-                        <strong className="text-slate-800 dark:text-slate-100 font-mono">Student ID <span className="text-red-500 font-bold">*</span> :</strong> Unique candidate roll number or ID
+                        <strong className="text-slate-800 font-mono">Student ID <span className="text-red-500 font-bold ml-0.5">*</span> :</strong> Unique candidate roll number or ID
                       </li>
                       <li>
-                        <strong className="text-slate-800 dark:text-slate-100 font-mono">Full Name <span className="text-red-500 font-bold">*</span> :</strong> Candidate full official name
+                        <strong className="text-slate-800 font-mono">Full Name <span className="text-red-500 font-bold ml-0.5">*</span> :</strong> Candidate full official name
                       </li>
                       <li>
-                        <strong className="text-slate-800 dark:text-slate-100 font-mono">Technology <span className="text-red-500 font-bold">*</span> :</strong> Candidate enrolled track (e.g. Java Full Stack)
+                        <strong className="text-slate-800 font-mono">Organization <span className="text-red-500 font-bold ml-0.5">*</span> :</strong> Must be created in system (Faculty can only upload for their own org)
+                      </li>
+                      <li>
+                        <strong className="text-slate-800 font-mono">Technology <span className="text-red-500 font-bold ml-0.5">*</span> :</strong> Must already exist under the specified Organization
+                      </li>
+                      <li>
+                        <strong className="text-slate-800 font-mono">Batch <span className="text-red-500 font-bold ml-0.5">*</span> :</strong> Must already exist under the specified Technology & Organization
                       </li>
                     </ul>
                   </div>
 
                   {/* Optional Fields */}
-                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-2">
-                    <div className="flex items-center gap-1.5 font-bold text-blue-600 dark:text-blue-400">
+                  <div className="p-3 rounded-xl bg-white border border-slate-200 space-y-2">
+                    <div className="flex items-center gap-1.5 font-bold text-blue-600">
                       <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                       <span>Optional Fields</span>
                     </div>
-                    <ul className="space-y-1.5 text-slate-600 dark:text-slate-300">
+                    <ul className="space-y-1.5 text-slate-600">
                       <li>
-                        <strong className="text-slate-800 dark:text-slate-100 font-mono">Organization:</strong> College / University name (auto-assigned if faculty)
+                        <strong className="text-slate-800 font-mono">Password:</strong> Initial password (defaults to <span className="font-mono text-emerald-600">Student@123</span>)
                       </li>
                       <li>
-                        <strong className="text-slate-800 dark:text-slate-100 font-mono">Password:</strong> Initial password (defaults to <span className="font-mono text-emerald-600 dark:text-emerald-400">Student@123</span>)
+                        <strong className="text-slate-800 font-mono">Email:</strong> Optional candidate email (must be unique if given)
                       </li>
                       <li>
-                        <strong className="text-slate-800 dark:text-slate-100 font-mono">Email:</strong> Optional candidate email (must be unique if given)
+                        <strong className="text-slate-800 font-mono">Phone:</strong> Contact phone number
                       </li>
                       <li>
-                        <strong className="text-slate-800 dark:text-slate-100 font-mono">Phone, Gender, Age:</strong> Demographic information
+                        <strong className="text-slate-800 font-mono">Gender, Age:</strong> Demographic information
                       </li>
                     </ul>
                   </div>
@@ -1912,10 +2152,10 @@ export default function AdminUsersPage() {
               </div>
 
               <form onSubmit={handleExcelUpload} className="space-y-4">
-                <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 rounded-xl p-6 text-center space-y-3 transition-colors bg-slate-50 dark:bg-slate-800/50">
+                <div className="border-2 border-dashed border-slate-200 hover:border-emerald-500 rounded-xl p-6 text-center space-y-3 transition-colors bg-slate-50">
                   <Upload className="w-8 h-8 text-slate-400 mx-auto" />
                   <div>
-                    <label className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 cursor-pointer hover:underline">
+                    <label className="text-xs font-semibold text-emerald-600 cursor-pointer hover:underline">
                       Click to choose an .xlsx or .xls file
                       <input
                         type="file"
@@ -1927,14 +2167,14 @@ export default function AdminUsersPage() {
                     <p className="text-[11px] text-slate-400 mt-1">Microsoft Excel format (.xlsx / .xls)</p>
                   </div>
                   {excelFile && (
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-medium">
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg text-xs font-medium">
                       <FileSpreadsheet className="w-4 h-4" />
                       <span>{excelFile.name} ({(excelFile.size / 1024).toFixed(1)} KB)</span>
                     </div>
                   )}
                 </div>
 
-                <div className="flex justify-end gap-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <div className="flex justify-end gap-3 pt-2 border-t border-slate-200">
                   <button
                     type="button"
                     onClick={() => {
@@ -1942,7 +2182,7 @@ export default function AdminUsersPage() {
                       setUploadStatus(null);
                       setExcelFile(null);
                     }}
-                    className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer transition-all"
+                    className="px-4 py-2 border border-slate-200 hover:bg-slate-100 rounded-xl text-xs font-semibold text-slate-600 cursor-pointer transition-all"
                   >
                     Cancel
                   </button>

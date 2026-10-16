@@ -65,8 +65,21 @@ export class ExamService {
       .map((t) => String(t).trim().toLowerCase());
 
     if (examTechs.length > 0) {
-      const studentTech = String(studentUser.technology || studentUser.batch || '').trim().toLowerCase();
+      const studentTech = String(studentUser.technology || '').trim().toLowerCase();
       if (!studentTech || !examTechs.includes(studentTech)) {
+        return false;
+      }
+    }
+
+    // Batch Matching Check:
+    // If targetBatches is specified, student must belong to one of the target batches
+    const examBatches = (Array.isArray(exam.targetBatches) ? exam.targetBatches : [])
+      .filter(Boolean)
+      .map((b) => String(b).trim().toLowerCase());
+
+    if (examBatches.length > 0) {
+      const studentBatch = String(studentUser.batch || '').trim().toLowerCase();
+      if (!studentBatch || !examBatches.includes(studentBatch)) {
         return false;
       }
     }
@@ -98,7 +111,7 @@ export class ExamService {
       filter.createdBy = { $in: uniqueCreatorIds };
 
       // Filter by student's technology
-      const studentTech = String(student.technology || student.batch || '').trim();
+      const studentTech = String(student.technology || '').trim();
       const techConditions = [
         { targetTechnologies: { $size: 0 }, technology: '' },
         { targetTechnologies: { $exists: false }, technology: { $exists: false } },
@@ -110,7 +123,24 @@ export class ExamService {
         techConditions.push({ targetTechnologies: techRegex });
         techConditions.push({ technology: techRegex });
       }
-      filter.$or = techConditions;
+
+      // Filter by student's batch
+      const studentBatch = String(student.batch || '').trim();
+      const batchConditions = [
+        { targetBatches: { $size: 0 } },
+        { targetBatches: { $exists: false } },
+        { targetBatches: null },
+      ];
+      if (studentBatch) {
+        const escapedBatch = studentBatch.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        const batchRegex = new RegExp(`^${escapedBatch}$`, 'i');
+        batchConditions.push({ targetBatches: batchRegex });
+      }
+
+      filter.$and = [
+        { $or: techConditions },
+        { $or: batchConditions },
+      ];
     } else if (student && student.role === 'FACULTY') {
       // Faculty previewing exams
       filter.createdBy = student._id;

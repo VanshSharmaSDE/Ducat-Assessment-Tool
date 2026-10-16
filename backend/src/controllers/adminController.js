@@ -9,6 +9,8 @@ import User from '../models/User.js';
 import ExamAttempt from '../models/ExamAttempt.js';
 import { Exam } from '../models/Exam.js';
 import { Batch } from '../models/Batch.js';
+import { Organization } from '../models/Organization.js';
+import { Technology } from '../models/Technology.js';
 
 /**
  * 1. Manually Create a Single Student
@@ -22,9 +24,14 @@ export const createStudent = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Student ID, Name, and password are required' });
     }
 
-    const cleanTech = (technology || batch || '').trim();
+    const cleanTech = technology ? String(technology).trim() : '';
+    const cleanBatch = batch ? String(batch).trim() : '';
+
     if (!cleanTech) {
       return res.status(400).json({ success: false, message: 'Technology is mandatory for students.' });
+    }
+    if (!cleanBatch) {
+      return res.status(400).json({ success: false, message: 'Batch is mandatory for students.' });
     }
 
     // Role check: Faculty must belong to an organization and can only create students in their organization
@@ -37,6 +44,10 @@ export const createStudent = async (req, res) => {
         });
       }
       studentOrg = req.user.organization.trim();
+    }
+
+    if (!studentOrg) {
+      return res.status(400).json({ success: false, message: 'Organization is mandatory for students.' });
     }
 
     // Check existing student by Student ID / Roll Number
@@ -58,14 +69,47 @@ export const createStudent = async (req, res) => {
       }
     }
 
-    let batchDoc = null;
-    if (cleanTech) {
-      const escapedBatch = cleanTech.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-      batchDoc = await Batch.findOne({
-        name: { $regex: new RegExp(`^${escapedBatch}$`, 'i') },
-        createdBy: req.user._id,
+    // 1. Verify organization exists in the system
+    const escapedOrg = studentOrg.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const orgDoc = await Organization.findOne({
+      name: { $regex: new RegExp(`^${escapedOrg}$`, 'i') },
+    });
+    if (!orgDoc) {
+      return res.status(400).json({
+        success: false,
+        message: `Organization "${studentOrg}" does not exist in the system. Please create the organization first.`,
       });
     }
+    const finalOrg = orgDoc.name;
+
+    // 2. Verify technology exists under that organization
+    const escapedTech = cleanTech.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const techDoc = await Technology.findOne({
+      name: { $regex: new RegExp(`^${escapedTech}$`, 'i') },
+      organization: { $regex: new RegExp(`^${escapedOrg}$`, 'i') },
+    });
+    if (!techDoc) {
+      return res.status(400).json({
+        success: false,
+        message: `Technology "${cleanTech}" does not exist under organization "${finalOrg}". Please create this technology first.`,
+      });
+    }
+    const finalTech = techDoc.name;
+
+    // 3. Verify batch exists under that technology and organization
+    const escapedBatch = cleanBatch.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const batchDoc = await Batch.findOne({
+      name: { $regex: new RegExp(`^${escapedBatch}$`, 'i') },
+      technology: { $regex: new RegExp(`^${escapedTech}$`, 'i') },
+      organization: { $regex: new RegExp(`^${escapedOrg}$`, 'i') },
+    });
+    if (!batchDoc) {
+      return res.status(400).json({
+        success: false,
+        message: `Batch "${cleanBatch}" does not exist under technology "${finalTech}" in organization "${finalOrg}". Please create this batch first.`,
+      });
+    }
+    const finalBatch = batchDoc.name;
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const studentPayload = {
@@ -75,10 +119,10 @@ export const createStudent = async (req, res) => {
       passwordHash: hashedPassword,
       role: 'USER',
       phone: phone ? String(phone).trim() : '',
-      technology: batchDoc ? batchDoc.name : cleanTech,
-      batch: batchDoc ? batchDoc.name : cleanTech,
-      batchId: batchDoc ? batchDoc._id : null,
-      organization: studentOrg,
+      technology: finalTech,
+      batch: finalBatch,
+      batchId: batchDoc._id,
+      organization: finalOrg,
       gender: gender ? String(gender).trim() : '',
       age: age ? Number(age) : null,
       createdBy: req.user._id,
@@ -101,7 +145,7 @@ export const createStudent = async (req, res) => {
         studentId: newStudent.studentId,
         rollNumber: newStudent.rollNumber,
         email: newStudent.email || '',
-        technology: newStudent.technology || newStudent.batch,
+        technology: newStudent.technology,
         batch: newStudent.batch,
         organization: newStudent.organization,
         gender: newStudent.gender,
@@ -154,8 +198,9 @@ export const uploadStudentsExcel = async (req, res) => {
       const email = row['Email'] || row['email'];
       const password = String(row['Password'] || row['password'] || 'Student@123');
       const phone = String(row['Phone'] || row['phone'] || '');
-      const rawTech = String(row['Technology *'] || row['Technology'] || row['technology'] || row['Technologies'] || row['technologies'] || row['Batch'] || row['batch'] || '').trim();
-      const rawOrg = String(row['Organization *'] || row['Organization'] || row['organization'] || row['Organisation'] || row['organisation'] || '');
+      const rawTech = String(row['Technology *'] || row['Technology'] || row['technology'] || row['Technologies'] || row['technologies'] || '').trim();
+      const rawBatch = String(row['Batch *'] || row['Batch'] || row['batch'] || '').trim();
+      const rawOrg = String(row['Organization *'] || row['Organization'] || row['organization'] || row['Organisation'] || row['organisation'] || '').trim();
       const gender = String(row['Gender'] || row['gender'] || '');
       const rawAge = row['Age'] || row['age'];
       const age = rawAge ? Number(rawAge) : null;
@@ -172,11 +217,71 @@ export const uploadStudentsExcel = async (req, res) => {
         continue;
       }
 
-      // Enforce organization attribution
-      let effectiveOrg = rawOrg.trim();
-      if (req.user?.role === 'FACULTY') {
-        effectiveOrg = req.user.organization.trim();
+      if (!rawBatch) {
+        errors.push(`Row ${rowNumber}: Batch is mandatory for students.`);
+        continue;
       }
+
+      // Enforce organization attribution
+      let effectiveOrg = rawOrg;
+      if (req.user?.role === 'FACULTY') {
+        const facultyOrg = req.user.organization ? req.user.organization.trim() : '';
+        if (rawOrg && facultyOrg && rawOrg.toLowerCase().trim() !== facultyOrg.toLowerCase()) {
+          errors.push(
+            `Row ${rowNumber}: Permission denied. You belong to organization "${facultyOrg}" and cannot upload students for "${rawOrg}".`
+          );
+          continue;
+        }
+        effectiveOrg = facultyOrg;
+      }
+
+      if (!effectiveOrg) {
+        errors.push(`Row ${rowNumber}: Organization is mandatory for students.`);
+        continue;
+      }
+
+      // Verify Organization exists in the system
+      const escapedOrg = effectiveOrg.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const orgDoc = await Organization.findOne({
+        name: { $regex: new RegExp(`^${escapedOrg}$`, 'i') },
+      });
+      if (!orgDoc) {
+        errors.push(
+          `Row ${rowNumber}: Organization "${effectiveOrg}" does not exist in the system. Please create the organization first.`
+        );
+        continue;
+      }
+      const finalOrg = orgDoc.name;
+
+      // Verify Technology exists under that organization
+      const escapedTech = rawTech.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const techDoc = await Technology.findOne({
+        name: { $regex: new RegExp(`^${escapedTech}$`, 'i') },
+        organization: { $regex: new RegExp(`^${escapedOrg}$`, 'i') },
+      });
+      if (!techDoc) {
+        errors.push(
+          `Row ${rowNumber}: Technology "${rawTech}" does not exist under organization "${finalOrg}". Please create this technology first.`
+        );
+        continue;
+      }
+      const finalTech = techDoc.name;
+
+      // Verify Batch exists under that technology and organization
+      const escapedBatch = rawBatch.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const batchDoc = await Batch.findOne({
+        name: { $regex: new RegExp(`^${escapedBatch}$`, 'i') },
+        technology: { $regex: new RegExp(`^${escapedTech}$`, 'i') },
+        organization: { $regex: new RegExp(`^${escapedOrg}$`, 'i') },
+      });
+      if (!batchDoc) {
+        errors.push(
+          `Row ${rowNumber}: Batch "${rawBatch}" does not exist under technology "${finalTech}" in organization "${finalOrg}". Please create this batch first.`
+        );
+        continue;
+      }
+      const finalBatch = batchDoc.name;
+      const finalBatchId = batchDoc._id;
 
       const cleanEmail = email && String(email).trim() ? String(email).toLowerCase().trim() : undefined;
 
@@ -209,27 +314,16 @@ export const uploadStudentsExcel = async (req, res) => {
           }
         }
 
-        let batchDoc = null;
-        if (rawTech) {
-          const escapedBatch = rawTech.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-          batchDoc = await Batch.findOne({
-            name: { $regex: new RegExp(`^${escapedBatch}$`, 'i') },
-            createdBy: existing.createdBy || req.user._id,
-          });
-        }
-
         // Update existing student profile information
         if (name) existing.name = String(name).trim();
         existing.studentId = studentId;
         existing.rollNumber = studentId;
         if (cleanEmail) existing.email = cleanEmail;
         if (phone) existing.phone = phone.trim();
-        if (rawTech) {
-          existing.batch = batchDoc ? batchDoc.name : rawTech;
-          existing.technology = batchDoc ? batchDoc.name : rawTech;
-          existing.batchId = batchDoc ? batchDoc._id : null;
-        }
-        if (effectiveOrg) existing.organization = effectiveOrg;
+        existing.technology = finalTech;
+        existing.batch = finalBatch;
+        existing.batchId = finalBatchId;
+        existing.organization = finalOrg;
         if (gender) existing.gender = gender.trim();
         if (age !== null && !isNaN(age)) existing.age = age;
         if (row['Password'] || row['password']) {
@@ -249,15 +343,6 @@ export const uploadStudentsExcel = async (req, res) => {
         continue;
       }
 
-      let newBatchDoc = null;
-      if (rawTech) {
-        const escapedBatch = rawTech.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-        newBatchDoc = await Batch.findOne({
-          name: { $regex: new RegExp(`^${escapedBatch}$`, 'i') },
-          createdBy: req.user._id,
-        });
-      }
-
       const hashedPassword = await bcrypt.hash(password, 10);
       const studentPayload = {
         name: String(name).trim(),
@@ -266,10 +351,10 @@ export const uploadStudentsExcel = async (req, res) => {
         passwordHash: hashedPassword,
         role: 'USER',
         phone: phone.trim(),
-        technology: newBatchDoc ? newBatchDoc.name : rawTech,
-        batch: newBatchDoc ? newBatchDoc.name : rawTech,
-        batchId: newBatchDoc ? newBatchDoc._id : null,
-        organization: effectiveOrg,
+        technology: finalTech,
+        batch: finalBatch,
+        batchId: finalBatchId,
+        organization: finalOrg,
         gender: gender.trim(),
         age: age,
         createdBy: req.user._id,
@@ -311,8 +396,9 @@ export const downloadStudentTemplate = async (req, res) => {
       {
         'Student ID *': 'STU2026001',
         'Full Name *': 'Amit Verma',
+        'Organization *': 'Shape My Skills',
         'Technology *': 'Java Full Stack',
-        'Organization': 'Shape My Skills',
+        'Batch *': 'Batch-1',
         'Password': 'Student@123',
         'Email': 'amit.verma@example.com',
         'Phone': '9876543210',
@@ -322,8 +408,9 @@ export const downloadStudentTemplate = async (req, res) => {
       {
         'Student ID *': 'STU2026002',
         'Full Name *': 'Sneha Rao',
+        'Organization *': 'Shape My Skills',
         'Technology *': 'Python Development',
-        'Organization': 'Shape My Skills',
+        'Batch *': 'Morning Batch',
         'Password': 'Student@123',
         'Email': '', // Optional
         'Phone': '9876543211',
@@ -335,8 +422,9 @@ export const downloadStudentTemplate = async (req, res) => {
     const guidelines = [
       { 'Field Name': 'Student ID *', 'Status': 'MANDATORY (*)', 'Description': 'Unique Student ID or Roll Number (e.g. STU2026001)' },
       { 'Field Name': 'Full Name *', 'Status': 'MANDATORY (*)', 'Description': 'Full candidate legal or official name' },
-      { 'Field Name': 'Technology *', 'Status': 'MANDATORY (*)', 'Description': 'Assigned Technology / Course track (e.g. Java Full Stack, Python Development)' },
-      { 'Field Name': 'Organization', 'Status': 'OPTIONAL', 'Description': 'Candidate organization / college (auto-assigned to faculty organization if uploaded by faculty)' },
+      { 'Field Name': 'Organization *', 'Status': 'MANDATORY (*)', 'Description': 'Must be an existing Organization created in the system (Faculty can only upload for their own assigned organization)' },
+      { 'Field Name': 'Technology *', 'Status': 'MANDATORY (*)', 'Description': 'Must be an existing Technology created under the specified Organization' },
+      { 'Field Name': 'Batch *', 'Status': 'MANDATORY (*)', 'Description': 'Must be an existing Batch created under the specified Technology & Organization' },
       { 'Field Name': 'Password', 'Status': 'OPTIONAL', 'Description': 'Candidate initial login password (defaults to Student@123 if omitted)' },
       { 'Field Name': 'Email', 'Status': 'OPTIONAL', 'Description': 'Candidate email address (optional, must be unique across system if provided)' },
       { 'Field Name': 'Phone', 'Status': 'OPTIONAL', 'Description': 'Candidate contact mobile / telephone number' },
@@ -556,7 +644,7 @@ export const importSharedStudents = async (req, res) => {
 export const exportResultsExcel = async (req, res) => {
   try {
     const examId = req.params.id || req.query.examId;
-    const { batch, gender, language } = req.query;
+    const { batch, technology, organization, gender, language } = req.query;
 
     const filter = { 
       status: { $in: ['EVALUATED', 'SUBMITTED', 'COMPLETED', 'EXPIRED', 'TERMINATED'] } 
@@ -595,7 +683,7 @@ export const exportResultsExcel = async (req, res) => {
       }
     }
 
-    // Filter by student batch or gender
+    // Filter by student organization, technology, batch, or gender
     const userFilter = {};
     if (req.user?.role === 'FACULTY') {
       const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
@@ -608,6 +696,8 @@ export const exportResultsExcel = async (req, res) => {
         { createdBy: { $exists: false } },
       ];
     }
+    if (organization) userFilter.organization = organization;
+    if (technology) userFilter.technology = technology;
     if (batch) userFilter.batch = batch;
     if (gender) userFilter.gender = gender;
 
@@ -630,7 +720,7 @@ export const exportResultsExcel = async (req, res) => {
     const attempts = await ExamAttempt.find(filter)
       .populate({
         path: 'userId',
-        select: 'name email rollNumber batch gender organization createdBy',
+        select: 'name email rollNumber studentId batch technology gender organization createdBy',
         populate: { path: 'createdBy', select: 'name email role' }
       })
       .populate({
@@ -676,9 +766,10 @@ export const exportResultsExcel = async (req, res) => {
       return {
         'S.No': idx + 1,
         'Student Name': att.userId?.name || 'N/A',
+        'Student ID / Roll No': att.userId?.studentId || att.userId?.rollNumber || 'N/A',
         'Email': att.userId?.email || 'N/A',
         'Organization': att.userId?.organization || 'N/A',
-        'Roll Number': att.userId?.rollNumber || 'N/A',
+        'Technology': att.userId?.technology || 'N/A',
         'Batch': att.userId?.batch || 'N/A',
         'Gender': att.userId?.gender || 'N/A',
         'Created By (Faculty)': studentCreator,
@@ -1046,30 +1137,80 @@ export const updateStudent = async (req, res) => {
 
     if (name) user.name = name.trim();
     if (phone !== undefined) user.phone = String(phone).trim();
-    if (batch !== undefined || technology !== undefined) {
-      const cleanBatch = String(technology !== undefined ? technology : batch).trim();
-      if (!cleanBatch) {
+    if (organization !== undefined) {
+      let targetOrg = '';
+      if (req.user?.role === 'FACULTY') {
+        targetOrg = req.user.organization ? req.user.organization.trim() : '';
+      } else {
+        targetOrg = String(organization).trim();
+      }
+      if (!targetOrg) {
+        return res.status(400).json({ success: false, message: 'Organization is mandatory for students.' });
+      }
+      const escapedOrg = targetOrg.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const orgDoc = await Organization.findOne({
+        name: { $regex: new RegExp(`^${escapedOrg}$`, 'i') },
+      });
+      if (!orgDoc) {
+        return res.status(400).json({
+          success: false,
+          message: `Organization "${targetOrg}" does not exist in the system. Please create the organization first.`,
+        });
+      }
+      user.organization = orgDoc.name;
+    }
+
+    if (technology !== undefined) {
+      const cleanTech = String(technology).trim();
+      if (!cleanTech) {
         return res.status(400).json({ success: false, message: 'Technology cannot be empty for students.' });
       }
-      user.batch = cleanBatch;
-      user.technology = cleanBatch;
+      const escapedOrg = user.organization.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const escapedTech = cleanTech.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const techDoc = await Technology.findOne({
+        name: { $regex: new RegExp(`^${escapedTech}$`, 'i') },
+        organization: { $regex: new RegExp(`^${escapedOrg}$`, 'i') },
+      });
+      if (!techDoc) {
+        return res.status(400).json({
+          success: false,
+          message: `Technology "${cleanTech}" does not exist under organization "${user.organization}". Please create this technology first.`,
+        });
+      }
+      user.technology = techDoc.name;
+    }
+
+    if (batch !== undefined) {
+      const cleanBatch = String(batch).trim();
+      if (!cleanBatch) {
+        return res.status(400).json({ success: false, message: 'Batch cannot be empty for students.' });
+      }
+      const escapedOrg = user.organization.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const escapedTech = user.technology.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
       const escapedBatch = cleanBatch.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
       const batchDoc = await Batch.findOne({
         name: { $regex: new RegExp(`^${escapedBatch}$`, 'i') },
-        createdBy: user.createdBy || req.user._id,
+        technology: { $regex: new RegExp(`^${escapedTech}$`, 'i') },
+        organization: { $regex: new RegExp(`^${escapedOrg}$`, 'i') },
+      });
+      if (!batchDoc) {
+        return res.status(400).json({
+          success: false,
+          message: `Batch "${cleanBatch}" does not exist under technology "${user.technology}" in organization "${user.organization}". Please create this batch first.`,
+        });
+      }
+      user.batch = batchDoc.name;
+      user.batchId = batchDoc._id;
+    } else if (user.batch && user.technology && user.organization) {
+      const escapedBatch = user.batch.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const escapedTech = user.technology.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const escapedOrg = user.organization.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const batchDoc = await Batch.findOne({
+        name: { $regex: new RegExp(`^${escapedBatch}$`, 'i') },
+        technology: { $regex: new RegExp(`^${escapedTech}$`, 'i') },
+        organization: { $regex: new RegExp(`^${escapedOrg}$`, 'i') },
       });
       user.batchId = batchDoc ? batchDoc._id : null;
-      if (batchDoc) {
-        user.batch = batchDoc.name;
-        user.technology = batchDoc.name;
-      }
-    }
-    if (organization !== undefined) {
-      if (req.user?.role === 'FACULTY') {
-        user.organization = req.user.organization ? req.user.organization.trim() : '';
-      } else {
-        user.organization = String(organization).trim();
-      }
     }
     if (gender !== undefined) user.gender = String(gender).trim();
     if (age !== undefined) user.age = age === '' || age === null ? null : Number(age);
@@ -1355,14 +1496,22 @@ export const createFaculty = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Organization is mandatory for faculty.' });
     }
 
+    const escapedOrg = finalOrg.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const orgDoc = await Organization.findOne({
+      name: { $regex: new RegExp(`^${escapedOrg}$`, 'i') },
+    });
+    if (!orgDoc) {
+      return res.status(400).json({
+        success: false,
+        message: `Organization "${finalOrg}" does not exist in the system. Please create the organization first.`,
+      });
+    }
+    const validatedOrg = orgDoc.name;
+
     const rawTechs = technologies || (department ? [department] : (technology ? [technology] : []));
     const cleanTechs = Array.isArray(rawTechs)
       ? rawTechs.map((t) => String(t).trim()).filter(Boolean)
       : String(rawTechs).split(',').map((t) => t.trim()).filter(Boolean);
-
-    if (cleanTechs.length === 0) {
-      return res.status(400).json({ success: false, message: 'At least one Technology is mandatory for faculty.' });
-    }
 
     const existingById = await User.findOne({
       facultyId: { $regex: new RegExp(`^${finalFacultyId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
@@ -1388,7 +1537,7 @@ export const createFaculty = async (req, res) => {
       technologies: cleanTechs,
       technology: cleanTechs[0] || '',
       batch: cleanTechs.join(', '),
-      organization: finalOrg,
+      organization: validatedOrg,
       phone: phone ? String(phone).trim() : '',
       createdBy: req.user._id,
       isActive: true,
@@ -1467,7 +1616,17 @@ export const updateFaculty = async (req, res) => {
       if (!finalOrg) {
         return res.status(400).json({ success: false, message: 'Organization is mandatory for faculty.' });
       }
-      faculty.organization = finalOrg;
+      const escapedOrg = finalOrg.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const orgDoc = await Organization.findOne({
+        name: { $regex: new RegExp(`^${escapedOrg}$`, 'i') },
+      });
+      if (!orgDoc) {
+        return res.status(400).json({
+          success: false,
+          message: `Organization "${finalOrg}" does not exist in the system. Please create the organization first.`,
+        });
+      }
+      faculty.organization = orgDoc.name;
     }
 
     if (technologies !== undefined || department !== undefined || technology !== undefined) {
@@ -1476,9 +1635,6 @@ export const updateFaculty = async (req, res) => {
         ? rawTechs.map((t) => String(t).trim()).filter(Boolean)
         : String(rawTechs).split(',').map((t) => t.trim()).filter(Boolean);
 
-      if (cleanTechs.length === 0) {
-        return res.status(400).json({ success: false, message: 'At least one Technology is mandatory for faculty.' });
-      }
       faculty.technologies = cleanTechs;
       faculty.technology = cleanTechs[0] || '';
       faculty.batch = cleanTechs.join(', ');
@@ -1539,7 +1695,7 @@ export const downloadFacultyTemplate = async (req, res) => {
         'Faculty ID *': 'FAC2026001',
         'Full Name *': 'Dr. Rajesh Sharma',
         'Organization *': 'Tech University',
-        'Technologies *': 'Java Full Stack, Python',
+        'Technologies': 'Java Full Stack, Python',
         'Password': 'Faculty@123',
         'Email': 'rajesh.sharma@university.edu',
         'Phone': '9876543210',
@@ -1548,7 +1704,7 @@ export const downloadFacultyTemplate = async (req, res) => {
         'Faculty ID *': 'FAC2026002',
         'Full Name *': 'Prof. Ananya Gupta',
         'Organization *': 'Tech University',
-        'Technologies *': 'Web Development, MERN Stack',
+        'Technologies': 'Web Development, MERN Stack',
         'Password': 'Faculty@123',
         'Email': '', // Optional
         'Phone': '9876543211',
@@ -1559,7 +1715,7 @@ export const downloadFacultyTemplate = async (req, res) => {
       { 'Field Name': 'Faculty ID *', 'Status': 'MANDATORY (*)', 'Description': 'Unique identifier for the faculty member (e.g. FAC2026001)' },
       { 'Field Name': 'Full Name *', 'Status': 'MANDATORY (*)', 'Description': 'Full legal or official name of the faculty instructor' },
       { 'Field Name': 'Organization *', 'Status': 'MANDATORY (*)', 'Description': 'University, College, or Organization name (e.g. Tech University)' },
-      { 'Field Name': 'Technologies *', 'Status': 'MANDATORY (*)', 'Description': 'Comma-separated technologies taught (e.g. Java Full Stack, Python)' },
+      { 'Field Name': 'Technologies', 'Status': 'OPTIONAL', 'Description': 'Comma-separated technologies taught (optional, e.g. Java Full Stack, Python)' },
       { 'Field Name': 'Password', 'Status': 'OPTIONAL', 'Description': 'Initial login password (defaults to Faculty@123 if omitted)' },
       { 'Field Name': 'Email', 'Status': 'OPTIONAL', 'Description': 'Faculty email address (optional, must be unique across system if provided)' },
       { 'Field Name': 'Phone', 'Status': 'OPTIONAL', 'Description': 'Faculty mobile / contact telephone number' },
@@ -1650,15 +1806,20 @@ export const uploadFacultyExcel = async (req, res) => {
         continue;
       }
 
+      const escapedOrg = organization.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const orgDoc = await Organization.findOne({
+        name: { $regex: new RegExp(`^${escapedOrg}$`, 'i') },
+      });
+      if (!orgDoc) {
+        errors.push(`Row ${rowNumber}: Organization "${organization}" does not exist in the system. Please create the organization first.`);
+        continue;
+      }
+      const finalOrg = orgDoc.name;
+
       const rawTechs = technologiesRaw || '';
       const cleanTechs = Array.isArray(rawTechs)
         ? rawTechs.map((t) => String(t).trim()).filter(Boolean)
         : String(rawTechs).split(',').map((t) => t.trim()).filter(Boolean);
-
-      if (cleanTechs.length === 0) {
-        errors.push(`Row ${rowNumber}: At least one Technology is mandatory for faculty.`);
-        continue;
-      }
 
       // Check existing faculty by Faculty ID or Email
       let existing = await User.findOne({
@@ -1675,7 +1836,7 @@ export const uploadFacultyExcel = async (req, res) => {
         existing.facultyId = facultyId;
         existing.name = String(name).trim();
         if (email) existing.email = email;
-        existing.organization = organization;
+        existing.organization = finalOrg;
         existing.technologies = cleanTechs;
         existing.technology = cleanTechs[0] || '';
         existing.batch = cleanTechs.join(', ');
@@ -1698,7 +1859,7 @@ export const uploadFacultyExcel = async (req, res) => {
           name: String(name).trim(),
           passwordHash: hashedPassword,
           role: 'FACULTY',
-          organization,
+          organization: finalOrg,
           technologies: cleanTechs,
           technology: cleanTechs[0] || '',
           batch: cleanTechs.join(', '),

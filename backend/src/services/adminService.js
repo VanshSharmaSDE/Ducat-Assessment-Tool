@@ -229,14 +229,11 @@ export class AdminService {
     if (query.status !== undefined && query.status !== '') {
       conditions.push({ isActive: query.status === 'active' });
     }
-    if (query.batch || query.technology) {
-      const techVal = query.technology || query.batch;
-      conditions.push({
-        $or: [
-          { batch: techVal },
-          { technology: techVal },
-        ],
-      });
+    if (query.technology) {
+      conditions.push({ technology: query.technology });
+    }
+    if (query.batch) {
+      conditions.push({ batch: query.batch });
     }
     if (query.creatorId) {
       conditions.push({ createdBy: query.creatorId });
@@ -274,6 +271,7 @@ export class AdminService {
     }
 
     let availableBatches = [];
+    let availableTechnologies = [];
     let availableGenders = [];
     let availableOrganizations = [];
     let organizationsSummary = [];
@@ -294,8 +292,9 @@ export class AdminService {
 
       if (isFacultyAssigned) {
         const orgRegex = new RegExp(`^${facultyOrgName.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i');
-        const [batches, genders, orgStudentCount, orgActiveCount, orgBatches] = await Promise.all([
+        const [batches, technologies, genders, orgStudentCount, orgActiveCount, orgBatches] = await Promise.all([
           User.distinct('batch', { ...baseFacultyFilter, batch: { $ne: '' } }),
+          User.distinct('technology', { ...baseFacultyFilter, technology: { $ne: '' } }),
           User.distinct('gender', { ...baseFacultyFilter, gender: { $ne: '' } }),
           User.countDocuments({ ...baseFacultyFilter, organization: orgRegex }),
           User.countDocuments({ ...baseFacultyFilter, organization: orgRegex, isActive: true }),
@@ -303,6 +302,7 @@ export class AdminService {
         ]);
 
         availableBatches = batches;
+        availableTechnologies = technologies;
         availableGenders = genders;
         availableOrganizations = [facultyOrgName];
         organizationsSummary = [
@@ -315,19 +315,22 @@ export class AdminService {
           },
         ];
       } else {
-        const [batches, genders] = await Promise.all([
+        const [batches, technologies, genders] = await Promise.all([
           User.distinct('batch', { ...baseFacultyFilter, batch: { $ne: '' } }),
+          User.distinct('technology', { ...baseFacultyFilter, technology: { $ne: '' } }),
           User.distinct('gender', { ...baseFacultyFilter, gender: { $ne: '' } }),
         ]);
 
         availableBatches = batches;
+        availableTechnologies = technologies;
         availableGenders = genders;
         availableOrganizations = [];
         organizationsSummary = [];
       }
     } else {
-      const [batches, genders, orgs, orgAggregate] = await Promise.all([
+      const [batches, technologies, genders, orgs, orgAggregate] = await Promise.all([
         User.distinct('batch', { ...baseFacultyFilter, batch: { $ne: '' } }),
+        User.distinct('technology', { ...baseFacultyFilter, technology: { $ne: '' } }),
         User.distinct('gender', { ...baseFacultyFilter, gender: { $ne: '' } }),
         User.distinct('organization', { ...baseFacultyFilter, organization: { $ne: '' } }),
         User.aggregate([
@@ -345,6 +348,7 @@ export class AdminService {
       ]);
 
       availableBatches = batches;
+      availableTechnologies = technologies;
       availableGenders = genders;
       availableOrganizations = orgs;
       organizationsSummary = orgAggregate.map((item) => ({
@@ -384,7 +388,7 @@ export class AdminService {
     return {
       users: usersWithStats,
       availableBatches,
-      availableTechnologies: availableBatches,
+      availableTechnologies,
       availableGenders,
       availableOrganizations,
       organizationsSummary,

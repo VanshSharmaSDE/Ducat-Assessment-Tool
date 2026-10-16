@@ -46,8 +46,11 @@ export default function AdminExamWizardPage() {
   // Available questions from bank
   const [availableQuestions, setAvailableQuestions] = useState([]);
   const [questionBankTab, setQuestionBankTab] = useState('ALL'); // 'ALL' | 'CODING' | 'MCQ'
-  const [technologiesList, setTechnologiesList] = useState([]);
-  const [customTechInput, setCustomTechInput] = useState('');
+  const [organizations, setOrganizations] = useState([]);
+  const [availableOrgTechs, setAvailableOrgTechs] = useState([]);
+  const [availableTechBatches, setAvailableTechBatches] = useState([]);
+  const [loadingTechs, setLoadingTechs] = useState(false);
+  const [loadingBatches, setLoadingBatches] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -63,20 +66,63 @@ export default function AdminExamWizardPage() {
     maxViolations: 5,
     allowCodeRun: false,
     isPublished: true,
+    organization: '',
     technology: '',
     targetTechnologies: [],
+    targetBatches: [],
     questions: [], // [{ questionId, marks, order, title }]
   });
+
+  const loadTechnologiesForOrg = async (orgName) => {
+    if (!orgName) {
+      setAvailableOrgTechs([]);
+      setAvailableTechBatches([]);
+      return [];
+    }
+    try {
+      setLoadingTechs(true);
+      const res = await api.get(`/admin/technologies?organization=${encodeURIComponent(orgName)}`);
+      const list = res.data?.data?.technologies || [];
+      setAvailableOrgTechs(list);
+      return list;
+    } catch (_) {
+      setAvailableOrgTechs([]);
+      return [];
+    } finally {
+      setLoadingTechs(false);
+    }
+  };
+
+  const loadBatchesForTechs = async (orgName, techs = []) => {
+    if (!orgName || !techs || techs.length === 0) {
+      setAvailableTechBatches([]);
+      return [];
+    }
+    try {
+      setLoadingBatches(true);
+      const res = await api.get(`/admin/batches?organization=${encodeURIComponent(orgName)}`);
+      const allBatches = res.data?.data?.batches || [];
+      const filtered = allBatches.filter((b) => techs.includes(b.technology));
+      setAvailableTechBatches(filtered);
+      return filtered;
+    } catch (_) {
+      setAvailableTechBatches([]);
+      return [];
+    } finally {
+      setLoadingBatches(false);
+    }
+  };
 
   useEffect(() => {
     async function loadInitial() {
       try {
-        const [qRes, tRes] = await Promise.all([
+        const [qRes, orgRes] = await Promise.all([
           api.get('/admin/questions'),
-          api.get('/admin/batches').catch(() => ({ data: { data: { batches: [] } } })),
+          api.get('/admin/organizations').catch(() => ({ data: { data: { organizations: [] } } })),
         ]);
         setAvailableQuestions(qRes.data?.data?.questions || []);
-        setTechnologiesList(tRes.data?.data?.batches || []);
+        const orgList = orgRes.data?.data?.organizations || [];
+        setOrganizations(orgList);
 
         if (isEditing) {
           const eRes = await api.get(`/admin/exams/${id}`);
@@ -86,6 +132,16 @@ export default function AdminExamWizardPage() {
             const rawTargetTechs = Array.isArray(ex.targetTechnologies) && ex.targetTechnologies.length > 0
               ? ex.targetTechnologies
               : (ex.technology ? [ex.technology] : []);
+            const rawTargetBatches = Array.isArray(ex.targetBatches) ? ex.targetBatches : [];
+            const examOrg = ex.organization || (orgList[0]?.name || '');
+
+            if (examOrg) {
+              await loadTechnologiesForOrg(examOrg);
+              if (rawTargetTechs.length > 0) {
+                await loadBatchesForTechs(examOrg, rawTargetTechs);
+              }
+            }
+
             setFormData({
               title: ex.title || '',
               description: ex.description || '',
@@ -99,8 +155,10 @@ export default function AdminExamWizardPage() {
               maxViolations: ex.maxViolations !== undefined ? Number(ex.maxViolations) : 5,
               allowCodeRun: ex.allowCodeRun !== undefined ? Boolean(ex.allowCodeRun) : false,
               isPublished: ex.isPublished !== undefined ? Boolean(ex.isPublished) : true,
+              organization: examOrg,
               technology: ex.technology || rawTargetTechs[0] || '',
               targetTechnologies: rawTargetTechs,
+              targetBatches: rawTargetBatches,
               questions: Array.isArray(ex.questions)
                 ? ex.questions.map((q) => {
                     const qDoc = (qRes.data?.data?.questions || []).find(
@@ -193,8 +251,16 @@ export default function AdminExamWizardPage() {
         setError('Assessment Title is required.');
         return;
       }
+      if (!formData.organization?.trim()) {
+        setError('Please select a Target Organization for this examination.');
+        return;
+      }
       if (!formData.targetTechnologies || formData.targetTechnologies.length === 0) {
         setError('Please select at least one Target Technology for this examination.');
+        return;
+      }
+      if (!formData.targetBatches || formData.targetBatches.length === 0) {
+        setError('Please select at least one Target Batch for this examination.');
         return;
       }
     }
@@ -209,8 +275,20 @@ export default function AdminExamWizardPage() {
       return;
     }
 
+    if (!formData.organization?.trim()) {
+      setError('Please select an Organization for this examination.');
+      setStep(1);
+      return;
+    }
+
     if (!formData.targetTechnologies || formData.targetTechnologies.length === 0) {
       setError('Please select at least one Target Technology for this examination.');
+      setStep(1);
+      return;
+    }
+
+    if (!formData.targetBatches || formData.targetBatches.length === 0) {
+      setError('Please select at least one Target Batch for this examination.');
       setStep(1);
       return;
     }
@@ -239,8 +317,10 @@ export default function AdminExamWizardPage() {
         allowCodeRun: Boolean(formData.allowCodeRun),
         isPublished: formData.isPublished,
         status: formData.isPublished ? 'ACTIVE' : 'DRAFT',
+        organization: formData.organization.trim(),
         technology: formData.targetTechnologies[0] || formData.technology || '',
         targetTechnologies: formData.targetTechnologies || [],
+        targetBatches: formData.targetBatches || [],
         questions: formData.questions.map((q, idx) => ({
           questionId: q.questionId,
           marks: Number(q.marks),
@@ -355,99 +435,219 @@ export default function AdminExamWizardPage() {
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                Target Organization <span className="text-red-500 font-bold ml-0.5">*</span>
+              </label>
+              <select
+                required
+                value={formData.organization}
+                onChange={async (e) => {
+                  const newOrg = e.target.value;
+                  setFormData({
+                    ...formData,
+                    organization: newOrg,
+                    targetTechnologies: [],
+                    targetBatches: [],
+                    technology: '',
+                  });
+                  setAvailableTechBatches([]);
+                  await loadTechnologiesForOrg(newOrg);
+                }}
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all cursor-pointer"
+              >
+                <option value="">-- Select Organization (Mandatory) * --</option>
+                {organizations.map((org) => (
+                  <option key={org._id} value={org.name}>
+                    {org.name} {org.code ? `(${org.code})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Target Technologies <span className="text-red-500 font-bold ml-0.5">*</span>
               </label>
               <p className="text-[11px] text-slate-500 mb-2">
-                Select which technology students can see and take this exam. Only students with matching technologies will be eligible.
+                Select one or more technologies created for {formData.organization || 'the selected organization'}.
               </p>
-              <div className="flex flex-wrap gap-1.5 mb-2 max-h-32 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-xl">
-                {technologiesList.length === 0 && (
-                  <span className="text-xs text-slate-400 p-1">No predefined technologies available</span>
-                )}
-                {technologiesList.map((tech) => {
-                  const isSelected = formData.targetTechnologies?.includes(tech.name);
-                  return (
-                    <button
-                      type="button"
-                      key={tech._id || tech.name}
-                      onClick={() => {
-                        const exists = formData.targetTechnologies?.includes(tech.name);
-                        const next = exists
-                          ? formData.targetTechnologies.filter((t) => t !== tech.name)
-                          : [...(formData.targetTechnologies || []), tech.name];
-                        setFormData({
-                          ...formData,
-                          targetTechnologies: next,
-                          technology: next[0] || '',
-                        });
-                      }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-blue-600 text-white shadow-sm font-bold'
-                          : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      {isSelected ? '✓ ' : '+ '}{tech.name}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={customTechInput}
-                  onChange={(e) => setCustomTechInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      const val = customTechInput.trim();
-                      if (val && !formData.targetTechnologies?.includes(val)) {
-                        const next = [...(formData.targetTechnologies || []), val];
-                        setFormData({ ...formData, targetTechnologies: next, technology: next[0] || '' });
-                        setCustomTechInput('');
-                      }
-                    }
-                  }}
-                  placeholder="Or type a custom technology and click Add..."
-                  className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const val = customTechInput.trim();
-                    if (val && !formData.targetTechnologies?.includes(val)) {
-                      const next = [...(formData.targetTechnologies || []), val];
-                      setFormData({ ...formData, targetTechnologies: next, technology: next[0] || '' });
-                      setCustomTechInput('');
-                    }
-                  }}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
-                >
-                  Add
-                </button>
-              </div>
-              {formData.targetTechnologies?.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1.5 items-center">
-                  <span className="text-[11px] font-semibold text-slate-500">Selected:</span>
-                  {formData.targetTechnologies.map((t) => (
-                    <span
-                      key={t}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold"
-                    >
-                      {t}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const next = formData.targetTechnologies.filter((item) => item !== t);
-                          setFormData({ ...formData, targetTechnologies: next, technology: next[0] || '' });
-                        }}
-                        className="hover:text-rose-600 font-bold ml-0.5 cursor-pointer"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
+              {!formData.organization ? (
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 text-xs">
+                  Please select a Target Organization first to load available technologies.
                 </div>
+              ) : loadingTechs ? (
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-400 text-xs">
+                  Loading technologies...
+                </div>
+              ) : availableOrgTechs.length === 0 ? (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs">
+                  No technologies created for <strong>{formData.organization}</strong>. Please create technologies under this organization first.
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-xl">
+                    {availableOrgTechs.map((tech) => {
+                      const isSelected = formData.targetTechnologies?.includes(tech.name);
+                      return (
+                        <button
+                          type="button"
+                          key={tech._id || tech.name}
+                          onClick={async () => {
+                            const exists = formData.targetTechnologies?.includes(tech.name);
+                            const nextTechs = exists
+                              ? formData.targetTechnologies.filter((t) => t !== tech.name)
+                              : [...(formData.targetTechnologies || []), tech.name];
+
+                            const batches = await loadBatchesForTechs(formData.organization, nextTechs);
+                            const validBatchNames = batches.map((b) => b.name);
+                            const nextBatches = (formData.targetBatches || []).filter((b) => validBatchNames.includes(b));
+
+                            setFormData({
+                              ...formData,
+                              targetTechnologies: nextTechs,
+                              targetBatches: nextBatches,
+                              technology: nextTechs[0] || '',
+                            });
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-blue-600 text-white shadow-sm font-bold'
+                              : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {isSelected ? '✓ ' : '+ '}{tech.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {formData.targetTechnologies?.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5 items-center">
+                      <span className="text-[11px] font-semibold text-slate-500">Selected:</span>
+                      {formData.targetTechnologies.map((t) => (
+                        <span
+                          key={t}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold"
+                        >
+                          {t}
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const nextTechs = formData.targetTechnologies.filter((item) => item !== t);
+                              const batches = await loadBatchesForTechs(formData.organization, nextTechs);
+                              const validBatchNames = batches.map((b) => b.name);
+                              const nextBatches = (formData.targetBatches || []).filter((b) => validBatchNames.includes(b));
+                              setFormData({
+                                ...formData,
+                                targetTechnologies: nextTechs,
+                                targetBatches: nextBatches,
+                                technology: nextTechs[0] || '',
+                              });
+                            }}
+                            className="hover:text-rose-600 font-bold ml-0.5 cursor-pointer"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  Target Batches <span className="text-red-500 font-bold ml-0.5">*</span>
+                </label>
+                {availableTechBatches.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const allSelected = availableTechBatches.every((b) => formData.targetBatches?.includes(b.name));
+                      setFormData({
+                        ...formData,
+                        targetBatches: allSelected ? [] : availableTechBatches.map((b) => b.name),
+                      });
+                    }}
+                    className="text-[11px] font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
+                  >
+                    {availableTechBatches.every((b) => formData.targetBatches?.includes(b.name))
+                      ? 'Deselect All Batches'
+                      : 'Select All Batches'}
+                  </button>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-500 mb-2">
+                Select which batches inside the selected technologies can view and attempt this exam.
+              </p>
+              {!formData.targetTechnologies || formData.targetTechnologies.length === 0 ? (
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 text-xs">
+                  Please select at least one Target Technology first to load available batches.
+                </div>
+              ) : loadingBatches ? (
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-400 text-xs">
+                  Loading batches...
+                </div>
+              ) : availableTechBatches.length === 0 ? (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs">
+                  No batches created under selected technologies. Please create batches under these technologies in Batches management.
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-xl">
+                    {availableTechBatches.map((batch) => {
+                      const isSelected = formData.targetBatches?.includes(batch.name);
+                      return (
+                        <button
+                          type="button"
+                          key={batch._id || `${batch.technology}-${batch.name}`}
+                          onClick={() => {
+                            const exists = formData.targetBatches?.includes(batch.name);
+                            const next = exists
+                              ? formData.targetBatches.filter((b) => b !== batch.name)
+                              : [...(formData.targetBatches || []), batch.name];
+                            setFormData({
+                              ...formData,
+                              targetBatches: next,
+                            });
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-blue-600 text-white shadow-sm font-bold'
+                              : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {isSelected ? '✓ ' : '+ '}{batch.name} <span className="opacity-75 text-[10px]">({batch.technology})</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {formData.targetBatches?.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5 items-center">
+                      <span className="text-[11px] font-semibold text-slate-500">
+                        Selected Batches ({formData.targetBatches.length}):
+                      </span>
+                      {formData.targetBatches.map((b) => (
+                        <span
+                          key={b}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold"
+                        >
+                          {b}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = formData.targetBatches.filter((item) => item !== b);
+                              setFormData({ ...formData, targetBatches: next });
+                            }}
+                            className="hover:text-rose-600 font-bold ml-0.5 cursor-pointer"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -823,9 +1023,19 @@ export default function AdminExamWizardPage() {
                 <span className="font-bold text-slate-800 dark:text-slate-100">{formData.title || 'Untitled'}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
+                <span className="text-slate-500 dark:text-slate-400">Target Organization:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-100">{formData.organization || '—'}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
                 <span className="text-slate-500 dark:text-slate-400">Target Technologies:</span>
                 <span className="font-semibold text-blue-600 dark:text-blue-400">
-                  {formData.targetTechnologies?.length > 0 ? formData.targetTechnologies.join(', ') : 'All Students'}
+                  {formData.targetTechnologies?.length > 0 ? formData.targetTechnologies.join(', ') : 'None'}
+                </span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
+                <span className="text-slate-500 dark:text-slate-400">Target Batches:</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-100">
+                  {formData.targetBatches?.length > 0 ? formData.targetBatches.join(', ') : 'All Batches'}
                 </span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
