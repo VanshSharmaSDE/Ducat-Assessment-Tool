@@ -162,8 +162,8 @@ export default function CodingExamPage() {
           } catch (e) {}
         }
 
-        examData.questions.forEach((q) => {
-          if (!initialAnswers[q._id]) {
+        (examData.questions || []).filter(Boolean).forEach((q) => {
+          if (q && q._id && !initialAnswers[q._id]) {
             const isMcq = (q.type || 'CODING') === 'MCQ';
             if (isMcq) {
               initialAnswers[q._id] = {
@@ -491,8 +491,8 @@ export default function CodingExamPage() {
 
   // Switch Language for current question
   const handleLanguageChange = (newLang) => {
-    const currentQ = exam?.questions[currentQIndex];
-    if (!currentQ) return;
+    const currentQ = validQuestions[currentQIndex];
+    if (!currentQ || !currentQ._id) return;
 
     const currentCode = answers[currentQ._id]?.code || "";
     const isDefault =
@@ -519,8 +519,8 @@ export default function CodingExamPage() {
 
   // Update Code
   const handleCodeChange = (newCode) => {
-    const currentQ = exam?.questions[currentQIndex];
-    if (!currentQ) return;
+    const currentQ = validQuestions[currentQIndex];
+    if (!currentQ || !currentQ._id) return;
 
     setAnswers((prev) => ({
       ...prev,
@@ -535,7 +535,7 @@ export default function CodingExamPage() {
   const handleFinalSubmit = async (forced = false) => {
     if (isSubmitting) return;
 
-    const totalQuestions = exam?.questions?.length || 0;
+    const totalQuestions = validQuestions.length;
     const allQuestionsVisited = totalQuestions > 0 && visitedQuestions.size >= totalQuestions;
     if (!forced && !allQuestionsVisited) {
       showToast(`Please visit all ${totalQuestions} questions before submitting assessment (${visitedQuestions.size}/${totalQuestions} visited).`);
@@ -548,7 +548,7 @@ export default function CodingExamPage() {
       await exitFullscreenSafe();
 
       const currentAnswers = answersRef.current || {};
-      const payloadAnswers = (exam?.questions || []).map((q) => {
+      const payloadAnswers = validQuestions.map((q) => {
         const qId = (q._id || q.questionId?._id || q.questionId || '').toString();
         const ans = currentAnswers[qId] || {};
         const isMcq = (q.type || 'CODING') === 'MCQ';
@@ -605,18 +605,24 @@ export default function CodingExamPage() {
     );
   }
 
-  if (error || !exam) {
+  const validQuestions = useMemo(() => {
+    return Array.isArray(exam?.questions) ? exam.questions.filter(Boolean) : [];
+  }, [exam?.questions]);
+
+  if (error || !exam || validQuestions.length === 0) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 text-slate-800 p-6">
         <div className="p-6 rounded-2xl bg-white border border-slate-200 max-w-md text-center space-y-4 shadow-sm">
           <AlertCircle className="w-12 h-12 text-rose-500 mx-auto" />
-          <h2 className="text-lg font-bold text-slate-800">Assessment Access Error</h2>
+          <h2 className="text-lg font-bold text-slate-800">
+            {error ? "Assessment Access Error" : "Assessment Unavailable"}
+          </h2>
           <p className="text-xs text-slate-500">
-            {error || "Could not load exam."}
+            {error || "No questions have been configured for this examination yet."}
           </p>
           <button
             onClick={() => navigate("/exams")}
-            className="px-4 py-2 bg-blue-600 rounded-xl text-xs font-semibold text-white hover:bg-blue-500 transition-colors shadow-sm"
+            className="px-4 py-2 bg-blue-600 rounded-xl text-xs font-semibold text-white hover:bg-blue-500 transition-colors shadow-sm cursor-pointer"
           >
             Return to Assessments
           </button>
@@ -625,25 +631,26 @@ export default function CodingExamPage() {
     );
   }
 
-  const currentQ = exam.questions[currentQIndex];
+  const currentQ = validQuestions[currentQIndex] || validQuestions[0] || null;
+  const currentQId = currentQ?._id || "";
   const currentQIsMcq = (currentQ?.type || 'CODING') === 'MCQ';
 
-  const currentAnswer = answers[currentQ._id] || (
+  const currentAnswer = (currentQId && answers[currentQId]) || (
     currentQIsMcq
       ? { type: 'MCQ', selectedOption: null }
       : {
           type: 'CODING',
           language: "java",
-          code: currentQ.starterCode?.java || DEFAULT_TEMPLATES.java,
+          code: currentQ?.starterCode?.java || DEFAULT_TEMPLATES.java,
         }
   );
 
   const handleOptionSelect = (optionIdx) => {
-    if (!currentQ) return;
+    if (!currentQ || !currentQId) return;
     setAnswers((prev) => ({
       ...prev,
-      [currentQ._id]: {
-        ...prev[currentQ._id],
+      [currentQId]: {
+        ...prev[currentQId],
         type: 'MCQ',
         selectedOption: optionIdx,
       },
@@ -666,24 +673,27 @@ export default function CodingExamPage() {
     return [];
   }, [currentQ]);
 
-  const activeCaseKey = currentQ
-    ? (selectedCaseIndices[currentQ._id] !== undefined
-        ? selectedCaseIndices[currentQ._id]
-        : (currentCases.length > 0 ? 0 : 'custom'))
+  // Alias for testcase references
+  const availableCases = currentCases;
+
+  const activeCaseKey = currentQId
+    ? (selectedCaseIndices[currentQId] !== undefined
+        ? selectedCaseIndices[currentQId]
+        : (availableCases.length > 0 ? 0 : 'custom'))
     : 'custom';
 
   const currentCustomInput =
-    currentQ && customInputs[currentQ._id] !== undefined
-      ? customInputs[currentQ._id]
-      : (currentCases[0]?.input || currentQ?.examples?.[0]?.input || "");
+    currentQId && customInputs[currentQId] !== undefined
+      ? customInputs[currentQId]
+      : (availableCases[0]?.input || currentQ?.examples?.[0]?.input || "");
 
-  const currentRunOutput = currentQ ? runOutputs[currentQ._id] : null;
+  const currentRunOutput = currentQId ? runOutputs[currentQId] : null;
 
   const handleCustomInputChange = (val) => {
-    if (!currentQ) return;
+    if (!currentQ || !currentQId) return;
     setCustomInputs((prev) => ({
       ...prev,
-      [currentQ._id]: val,
+      [currentQId]: val,
     }));
   };
 
@@ -773,19 +783,19 @@ export default function CodingExamPage() {
 
 
   // Accurate counting of attempted, visited, and unvisited questions
-  const attemptedCount = exam.questions.filter((q) =>
-    isQuestionAttempted(q, answers[q._id]),
+  const attemptedCount = validQuestions.filter((q) =>
+    isQuestionAttempted(q, answers[q?._id]),
   ).length;
-  const visitedCount = exam.questions.filter(
+  const visitedCount = validQuestions.filter(
     (q, idx) =>
-      !isQuestionAttempted(q, answers[q._id]) && visitedQuestions.has(idx),
+      !isQuestionAttempted(q, answers[q?._id]) && visitedQuestions.has(idx),
   ).length;
-  const notVisitedCount = exam.questions.filter(
+  const notVisitedCount = validQuestions.filter(
     (q, idx) =>
-      !isQuestionAttempted(q, answers[q._id]) && !visitedQuestions.has(idx),
+      !isQuestionAttempted(q, answers[q?._id]) && !visitedQuestions.has(idx),
   ).length;
 
-  const totalQuestions = exam.questions.length;
+  const totalQuestions = validQuestions.length;
   const allQuestionsVisited = totalQuestions > 0 && visitedQuestions.size >= totalQuestions;
 
   return (
@@ -814,7 +824,7 @@ export default function CodingExamPage() {
               {exam.title}
             </h1>
             <p className="text-[11px] text-slate-500 truncate">
-              Question {currentQIndex + 1} of {exam.questions.length} • Total:{" "}
+              Question {currentQIndex + 1} of {validQuestions.length} • Total:{" "}
               {exam.totalMarks} Marks
             </p>
           </div>
@@ -894,13 +904,13 @@ export default function CodingExamPage() {
         <aside className="w-56 bg-white border-r border-slate-200 flex flex-col shrink-0 overflow-y-auto">
           <div className="p-3 border-b border-slate-200">
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-              Questions ({attemptedCount}/{exam.questions.length})
+              Questions ({attemptedCount}/{validQuestions.length})
             </span>
           </div>
 
           <div className="p-2 space-y-1">
-            {exam.questions.map((q, idx) => {
-              const ans = answers[q._id];
+            {validQuestions.map((q, idx) => {
+              const ans = answers[q?._id];
               const isAttempted = isQuestionAttempted(q, ans);
               const isVisited = !isAttempted && visitedQuestions.has(idx);
               const isSelected = idx === currentQIndex;
@@ -908,7 +918,7 @@ export default function CodingExamPage() {
 
               return (
                 <button
-                  key={q._id}
+                  key={q._id || idx}
                   onClick={() => setCurrentQIndex(idx)}
                   className={`w-full text-left px-3 py-2.5 rounded-xl text-xs flex items-center justify-between ${
                     isSelected
@@ -1197,14 +1207,20 @@ export default function CodingExamPage() {
                   <Editor
                     height="100%"
                     theme="vs-dark"
+                    loading={
+                      <div className="flex flex-col items-center justify-center h-full gap-2 text-slate-400 bg-[#1e1e1e] font-sans text-xs">
+                        <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                        <span>Initializing code editor...</span>
+                      </div>
+                    }
                     language={
-                      currentAnswer.language === "javascript"
+                      currentAnswer?.language === "javascript"
                         ? "javascript"
-                        : currentAnswer.language === "python"
+                        : currentAnswer?.language === "python"
                           ? "python"
                           : "java"
                     }
-                    value={currentAnswer.code}
+                    value={currentAnswer?.code || ""}
                     onChange={handleCodeChange}
                     options={{
                       fontSize: 13,
@@ -1539,16 +1555,16 @@ export default function CodingExamPage() {
               <button
                 onClick={() =>
                   setCurrentQIndex(
-                    Math.min(exam.questions.length - 1, currentQIndex + 1),
+                    Math.min(validQuestions.length - 1, currentQIndex + 1),
                   )
                 }
-                disabled={currentQIndex === exam.questions.length - 1}
+                disabled={currentQIndex === validQuestions.length - 1}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 text-xs font-semibold text-slate-700 disabled:opacity-40 hover:bg-slate-200 transition-colors"
               >
                 Next <ChevronRight className="w-3.5 h-3.5" />
               </button>
 
-              {currentQIndex === exam.questions.length - 1 && (
+              {currentQIndex === validQuestions.length - 1 && (
                 <button
                   onClick={() => {
                     if (!allQuestionsVisited) {
@@ -1644,13 +1660,13 @@ export default function CodingExamPage() {
               <div className="flex justify-between text-slate-600">
                 <span>Solutions Written:</span>
                 <span className="font-bold text-emerald-600">
-                  {attemptedCount} of {exam.questions.length}
+                  {attemptedCount} of {validQuestions.length}
                 </span>
               </div>
               <div className="flex justify-between text-slate-600">
                 <span>Unattempted Questions:</span>
                 <span className="font-bold text-rose-600">
-                  {exam.questions.length - attemptedCount}
+                  {validQuestions.length - attemptedCount}
                 </span>
               </div>
               <div className="flex justify-between text-slate-600">

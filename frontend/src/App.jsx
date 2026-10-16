@@ -103,11 +103,11 @@ export default function App() {
       {/* Root Landing Route - strictly directs by authentication & role */}
       <Route path="/" element={<RoleHomeRedirect />} />
 
-      {/* Fullscreen Exam Session Route - Candidates/Students Only */}
+      {/* Fullscreen Exam Session Route */}
       <Route
         path="/exams/:id/take"
         element={
-          <RequireAuth allowedRoles={['USER']}>
+          <RequireAuth allowedRoles={['USER', 'FACULTY', 'ADMIN']}>
             <ExamLayout />
           </RequireAuth>
         }

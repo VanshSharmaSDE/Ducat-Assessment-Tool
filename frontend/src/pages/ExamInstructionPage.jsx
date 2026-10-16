@@ -66,6 +66,14 @@ export default function ExamInstructionPage() {
       await api.post(`/exams/${id}/start`);
       navigate(`/exams/${id}/take`);
     } catch (err) {
+      try {
+        if (document.fullscreenElement) {
+          if (document.exitFullscreen) await document.exitFullscreen();
+          else if (document.webkitExitFullscreen) await document.webkitExitFullscreen();
+          else if (document.msExitFullscreen) await document.msExitFullscreen();
+        }
+      } catch (e) {}
+
       const msg = err.response?.data?.message || '';
       if (msg.toLowerCase().includes('already') || err.response?.data?.errorCode === 'ALREADY_SUBMITTED') {
         setError('You already gave this exam. Please refresh your browser or check your assessment results.');
