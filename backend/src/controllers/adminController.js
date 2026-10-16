@@ -149,13 +149,13 @@ export const uploadStudentsExcel = async (req, res) => {
       const row = sheetData[index];
       const rowNumber = index + 2; // Accounting for 1-based index and header row
 
-      const name = row['Full Name'] || row['name'] || row['Name'];
-      const rawStudentId = row['Student ID'] || row['studentId'] || row['StudentID'] || row['Roll Number'] || row['rollNumber'] || row['Roll'] || row['ID'] || row['id'];
+      const name = row['Full Name *'] || row['Full Name'] || row['name'] || row['Name'] || row['FULL NAME'] || row['Student Name'];
+      const rawStudentId = row['Student ID *'] || row['Student ID'] || row['studentId'] || row['StudentID'] || row['Roll Number *'] || row['Roll Number'] || row['rollNumber'] || row['Roll'] || row['ID'] || row['id'];
       const email = row['Email'] || row['email'];
       const password = String(row['Password'] || row['password'] || 'Student@123');
       const phone = String(row['Phone'] || row['phone'] || '');
-      const batch = String(row['Batch'] || row['batch'] || '');
-      const rawOrg = String(row['Organization'] || row['organization'] || row['Organisation'] || row['organisation'] || '');
+      const rawTech = String(row['Technology *'] || row['Technology'] || row['technology'] || row['Technologies'] || row['technologies'] || row['Batch'] || row['batch'] || '').trim();
+      const rawOrg = String(row['Organization *'] || row['Organization'] || row['organization'] || row['Organisation'] || row['organisation'] || '');
       const gender = String(row['Gender'] || row['gender'] || '');
       const rawAge = row['Age'] || row['age'];
       const age = rawAge ? Number(rawAge) : null;
@@ -164,6 +164,11 @@ export const uploadStudentsExcel = async (req, res) => {
 
       if (!name || !studentId) {
         errors.push(`Row ${rowNumber}: Full Name and Student ID are required.`);
+        continue;
+      }
+
+      if (!rawTech) {
+        errors.push(`Row ${rowNumber}: Technology is mandatory for students.`);
         continue;
       }
 
@@ -205,9 +210,8 @@ export const uploadStudentsExcel = async (req, res) => {
         }
 
         let batchDoc = null;
-        const cleanRowBatch = batch ? String(batch).trim() : '';
-        if (cleanRowBatch) {
-          const escapedBatch = cleanRowBatch.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        if (rawTech) {
+          const escapedBatch = rawTech.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
           batchDoc = await Batch.findOne({
             name: { $regex: new RegExp(`^${escapedBatch}$`, 'i') },
             createdBy: existing.createdBy || req.user._id,
@@ -220,8 +224,9 @@ export const uploadStudentsExcel = async (req, res) => {
         existing.rollNumber = studentId;
         if (cleanEmail) existing.email = cleanEmail;
         if (phone) existing.phone = phone.trim();
-        if (cleanRowBatch) {
-          existing.batch = batchDoc ? batchDoc.name : cleanRowBatch;
+        if (rawTech) {
+          existing.batch = batchDoc ? batchDoc.name : rawTech;
+          existing.technology = batchDoc ? batchDoc.name : rawTech;
           existing.batchId = batchDoc ? batchDoc._id : null;
         }
         if (effectiveOrg) existing.organization = effectiveOrg;
@@ -245,9 +250,8 @@ export const uploadStudentsExcel = async (req, res) => {
       }
 
       let newBatchDoc = null;
-      const cleanNewBatch = batch ? String(batch).trim() : '';
-      if (cleanNewBatch) {
-        const escapedBatch = cleanNewBatch.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      if (rawTech) {
+        const escapedBatch = rawTech.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
         newBatchDoc = await Batch.findOne({
           name: { $regex: new RegExp(`^${escapedBatch}$`, 'i') },
           createdBy: req.user._id,
@@ -262,7 +266,8 @@ export const uploadStudentsExcel = async (req, res) => {
         passwordHash: hashedPassword,
         role: 'USER',
         phone: phone.trim(),
-        batch: newBatchDoc ? newBatchDoc.name : cleanNewBatch,
+        technology: newBatchDoc ? newBatchDoc.name : rawTech,
+        batch: newBatchDoc ? newBatchDoc.name : rawTech,
         batchId: newBatchDoc ? newBatchDoc._id : null,
         organization: effectiveOrg,
         gender: gender.trim(),
@@ -304,32 +309,46 @@ export const downloadStudentTemplate = async (req, res) => {
   try {
     const sampleData = [
       {
-        'Student ID': 'STU2026001',
-        'Full Name': 'Amit Verma',
+        'Student ID *': 'STU2026001',
+        'Full Name *': 'Amit Verma',
+        'Technology *': 'Java Full Stack',
+        'Organization': 'Shape My Skills',
         'Password': 'Student@123',
         'Email': 'amit.verma@example.com',
         'Phone': '9876543210',
-        'Batch': 'Batch-2026-A',
-        'Organization': 'Shape My Skills',
         'Gender': 'Male',
         'Age': 21,
       },
       {
-        'Student ID': 'STU2026002',
-        'Full Name': 'Sneha Rao',
+        'Student ID *': 'STU2026002',
+        'Full Name *': 'Sneha Rao',
+        'Technology *': 'Python Development',
+        'Organization': 'Shape My Skills',
         'Password': 'Student@123',
         'Email': '', // Optional
         'Phone': '9876543211',
-        'Batch': 'Batch-2026-A',
-        'Organization': 'Shape My Skills',
         'Gender': 'Female',
         'Age': 20,
       },
     ];
 
+    const guidelines = [
+      { 'Field Name': 'Student ID *', 'Status': 'MANDATORY (*)', 'Description': 'Unique Student ID or Roll Number (e.g. STU2026001)' },
+      { 'Field Name': 'Full Name *', 'Status': 'MANDATORY (*)', 'Description': 'Full candidate legal or official name' },
+      { 'Field Name': 'Technology *', 'Status': 'MANDATORY (*)', 'Description': 'Assigned Technology / Course track (e.g. Java Full Stack, Python Development)' },
+      { 'Field Name': 'Organization', 'Status': 'OPTIONAL', 'Description': 'Candidate organization / college (auto-assigned to faculty organization if uploaded by faculty)' },
+      { 'Field Name': 'Password', 'Status': 'OPTIONAL', 'Description': 'Candidate initial login password (defaults to Student@123 if omitted)' },
+      { 'Field Name': 'Email', 'Status': 'OPTIONAL', 'Description': 'Candidate email address (optional, must be unique across system if provided)' },
+      { 'Field Name': 'Phone', 'Status': 'OPTIONAL', 'Description': 'Candidate contact mobile / telephone number' },
+      { 'Field Name': 'Gender', 'Status': 'OPTIONAL', 'Description': 'Candidate gender (e.g. Male, Female, Other)' },
+      { 'Field Name': 'Age', 'Status': 'OPTIONAL', 'Description': 'Candidate age in numeric years (e.g. 21)' },
+    ];
+
     const worksheet = XLSX.utils.json_to_sheet(sampleData);
+    const wsGuidelines = XLSX.utils.json_to_sheet(guidelines);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Students_Template');
+    XLSX.utils.book_append_sheet(workbook, wsGuidelines, 'Guidelines');
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -1517,28 +1536,40 @@ export const downloadFacultyTemplate = async (req, res) => {
   try {
     const sampleData = [
       {
-        'Faculty ID': 'FAC2026001',
-        'Full Name': 'Dr. Rajesh Sharma',
+        'Faculty ID *': 'FAC2026001',
+        'Full Name *': 'Dr. Rajesh Sharma',
+        'Organization *': 'Tech University',
+        'Technologies *': 'Java Full Stack, Python',
         'Password': 'Faculty@123',
         'Email': 'rajesh.sharma@university.edu',
-        'Organization': 'Tech University',
-        'Department': 'Computer Science & Engineering',
         'Phone': '9876543210',
       },
       {
-        'Faculty ID': 'FAC2026002',
-        'Full Name': 'Prof. Ananya Gupta',
+        'Faculty ID *': 'FAC2026002',
+        'Full Name *': 'Prof. Ananya Gupta',
+        'Organization *': 'Tech University',
+        'Technologies *': 'Web Development, MERN Stack',
         'Password': 'Faculty@123',
         'Email': '', // Optional
-        'Organization': 'Tech University',
-        'Department': 'Information Technology',
         'Phone': '9876543211',
       },
     ];
 
+    const guidelines = [
+      { 'Field Name': 'Faculty ID *', 'Status': 'MANDATORY (*)', 'Description': 'Unique identifier for the faculty member (e.g. FAC2026001)' },
+      { 'Field Name': 'Full Name *', 'Status': 'MANDATORY (*)', 'Description': 'Full legal or official name of the faculty instructor' },
+      { 'Field Name': 'Organization *', 'Status': 'MANDATORY (*)', 'Description': 'University, College, or Organization name (e.g. Tech University)' },
+      { 'Field Name': 'Technologies *', 'Status': 'MANDATORY (*)', 'Description': 'Comma-separated technologies taught (e.g. Java Full Stack, Python)' },
+      { 'Field Name': 'Password', 'Status': 'OPTIONAL', 'Description': 'Initial login password (defaults to Faculty@123 if omitted)' },
+      { 'Field Name': 'Email', 'Status': 'OPTIONAL', 'Description': 'Faculty email address (optional, must be unique across system if provided)' },
+      { 'Field Name': 'Phone', 'Status': 'OPTIONAL', 'Description': 'Faculty mobile / contact telephone number' },
+    ];
+
     const worksheet = XLSX.utils.json_to_sheet(sampleData);
+    const wsGuidelines = XLSX.utils.json_to_sheet(guidelines);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Faculty_Template');
+    XLSX.utils.book_append_sheet(workbook, wsGuidelines, 'Guidelines');
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -1570,12 +1601,39 @@ export const uploadFacultyExcel = async (req, res) => {
       const row = sheetData[index];
       const rowNumber = index + 2;
 
-      const facultyIdRaw = row['Faculty ID'] || row['FacultyId'] || row['facultyId'] || row['FACULTY ID'] || row['faculty_id'] || row['Faculty Id'] || row['ID'];
-      const name = row['Full Name'] || row['name'] || row['Name'] || row['FULL NAME'];
+      const facultyIdRaw =
+        row['Faculty ID *'] ||
+        row['Faculty ID'] ||
+        row['FacultyId'] ||
+        row['facultyId'] ||
+        row['FACULTY ID'] ||
+        row['faculty_id'] ||
+        row['Faculty Id'] ||
+        row['ID'];
+      const name =
+        row['Full Name *'] ||
+        row['Full Name'] ||
+        row['name'] ||
+        row['Name'] ||
+        row['FULL NAME'];
       const emailRaw = row['Email'] || row['email'] || row['EMAIL'];
       const password = String(row['Password'] || row['password'] || 'Faculty@123');
-      const organization = String(row['Organization'] || row['organization'] || '');
-      const department = String(row['Department'] || row['department'] || row['batch'] || '');
+      const organizationRaw =
+        row['Organization *'] ||
+        row['Organization'] ||
+        row['organization'] ||
+        row['Organisation'] ||
+        row['organisation'];
+      const technologiesRaw =
+        row['Technologies *'] ||
+        row['Technologies'] ||
+        row['Technology *'] ||
+        row['Technology'] ||
+        row['technologies'] ||
+        row['technology'] ||
+        row['Department'] ||
+        row['department'] ||
+        row['batch'];
       const phone = String(row['Phone'] || row['phone'] || '');
 
       const facultyId = facultyIdRaw ? String(facultyIdRaw).trim() : '';
@@ -1583,6 +1641,22 @@ export const uploadFacultyExcel = async (req, res) => {
 
       if (!name || !facultyId) {
         errors.push(`Row ${rowNumber}: Faculty ID and Full Name are required.`);
+        continue;
+      }
+
+      const organization = organizationRaw ? String(organizationRaw).trim() : '';
+      if (!organization) {
+        errors.push(`Row ${rowNumber}: Organization is mandatory for faculty.`);
+        continue;
+      }
+
+      const rawTechs = technologiesRaw || '';
+      const cleanTechs = Array.isArray(rawTechs)
+        ? rawTechs.map((t) => String(t).trim()).filter(Boolean)
+        : String(rawTechs).split(',').map((t) => t.trim()).filter(Boolean);
+
+      if (cleanTechs.length === 0) {
+        errors.push(`Row ${rowNumber}: At least one Technology is mandatory for faculty.`);
         continue;
       }
 
@@ -1601,8 +1675,10 @@ export const uploadFacultyExcel = async (req, res) => {
         existing.facultyId = facultyId;
         existing.name = String(name).trim();
         if (email) existing.email = email;
-        if (department) existing.batch = department.trim();
-        if (organization) existing.organization = organization.trim();
+        existing.organization = organization;
+        existing.technologies = cleanTechs;
+        existing.technology = cleanTechs[0] || '';
+        existing.batch = cleanTechs.join(', ');
         if (phone) existing.phone = phone.trim();
         await existing.save();
         createdFaculty.push(facultyId);
@@ -1622,8 +1698,10 @@ export const uploadFacultyExcel = async (req, res) => {
           name: String(name).trim(),
           passwordHash: hashedPassword,
           role: 'FACULTY',
-          batch: department.trim(),
-          organization: organization.trim(),
+          organization,
+          technologies: cleanTechs,
+          technology: cleanTechs[0] || '',
+          batch: cleanTechs.join(', '),
           phone: phone.trim(),
           createdBy: req.user._id,
           isActive: true,

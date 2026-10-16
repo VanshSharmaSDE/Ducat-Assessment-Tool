@@ -511,7 +511,7 @@ export default function AdminBatchesPage() {
             <form onSubmit={handleCreateSubmit} className="space-y-4 text-xs">
               <div>
                 <label className="block font-medium text-slate-700 mb-1">
-                  Technology Name / Identifier *
+                  Technology Name / Identifier <span className="text-red-500 font-bold ml-0.5">*</span>
                 </label>
                 <input
                   type="text"
@@ -591,7 +591,7 @@ export default function AdminBatchesPage() {
             <form onSubmit={handleEditSubmit} className="space-y-4 text-xs">
               <div>
                 <label className="block font-medium text-slate-700 mb-1">
-                  Technology Name *
+                  Technology Name <span className="text-red-500 font-bold ml-0.5">*</span>
                 </label>
                 <input
                   type="text"

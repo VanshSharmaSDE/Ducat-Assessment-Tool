@@ -455,32 +455,46 @@ export default function AdminUsersPage() {
   const downloadSampleTemplate = () => {
     const sampleData = [
       {
-        'Student ID': 'STU2026001',
-        'Full Name': 'Amit Verma',
-        'Password': 'Password@123',
-        'Email': 'amit.verma@example.com',
+        'Student ID *': 'STU2026001',
+        'Full Name *': 'Amit Verma',
+        'Technology *': 'Java Full Stack',
         'Organization': 'Tech University',
-        'Technology': 'Java Fullstack',
+        'Password': 'Student@123',
+        'Email': 'amit.verma@example.com',
         'Phone': '9876543210',
         'Gender': 'Male',
         'Age': 21,
       },
       {
-        'Student ID': 'STU2026002',
-        'Full Name': 'Sneha Rao',
-        'Password': 'Password@123',
-        'Email': '', // Optional
+        'Student ID *': 'STU2026002',
+        'Full Name *': 'Sneha Rao',
+        'Technology *': 'Python Development',
         'Organization': 'Tech University',
-        'Technology': 'Python Development',
+        'Password': 'Student@123',
+        'Email': '', // Optional
         'Phone': '9876543211',
         'Gender': 'Female',
         'Age': 20,
       },
     ];
 
+    const guidelines = [
+      { 'Field Name': 'Student ID *', 'Status': 'MANDATORY (*)', 'Description': 'Unique Student ID or Roll Number (e.g. STU2026001)' },
+      { 'Field Name': 'Full Name *', 'Status': 'MANDATORY (*)', 'Description': 'Full candidate legal or official name' },
+      { 'Field Name': 'Technology *', 'Status': 'MANDATORY (*)', 'Description': 'Assigned Technology / Course track (e.g. Java Full Stack, Python Development)' },
+      { 'Field Name': 'Organization', 'Status': 'OPTIONAL', 'Description': 'Candidate organization / college (auto-assigned to faculty organization if uploaded by faculty)' },
+      { 'Field Name': 'Password', 'Status': 'OPTIONAL', 'Description': 'Candidate initial login password (defaults to Student@123 if omitted)' },
+      { 'Field Name': 'Email', 'Status': 'OPTIONAL', 'Description': 'Candidate email address (optional, must be unique across system if provided)' },
+      { 'Field Name': 'Phone', 'Status': 'OPTIONAL', 'Description': 'Candidate contact mobile / telephone number' },
+      { 'Field Name': 'Gender', 'Status': 'OPTIONAL', 'Description': 'Candidate gender (e.g. Male, Female, Other)' },
+      { 'Field Name': 'Age', 'Status': 'OPTIONAL', 'Description': 'Candidate age in numeric years (e.g. 21)' },
+    ];
+
     const worksheet = XLSX.utils.json_to_sheet(sampleData);
+    const wsGuidelines = XLSX.utils.json_to_sheet(guidelines);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Students_Template');
+    XLSX.utils.book_append_sheet(workbook, wsGuidelines, 'Guidelines');
     XLSX.writeFile(workbook, 'students_upload_template.xlsx');
   };
 
@@ -1179,7 +1193,7 @@ export default function AdminUsersPage() {
 
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">
-                  Target Organization *
+                  Target Organization <span className="text-red-500 font-bold ml-0.5">*</span>
                 </label>
                 {user?.role === 'FACULTY' ? (
                   <div className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-blue-600 font-medium">
@@ -1358,7 +1372,7 @@ export default function AdminUsersPage() {
 
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">
-                  Share Link or Token *
+                  Share Link or Token <span className="text-red-500 font-bold ml-0.5">*</span>
                 </label>
                 <textarea
                   rows="3"
@@ -1409,7 +1423,9 @@ export default function AdminUsersPage() {
             </div>
             <form onSubmit={handleManualSubmit} className="space-y-3.5 text-xs">
               <div>
-                <label className="block font-medium text-slate-700 mb-1">Full Name *</label>
+                <label className="block font-medium text-slate-700 mb-1">
+                  Full Name <span className="text-red-500 font-bold ml-0.5">*</span>
+                </label>
                 <input
                   type="text"
                   required
@@ -1421,7 +1437,9 @@ export default function AdminUsersPage() {
               </div>
 
               <div>
-                <label className="block font-medium text-slate-700 mb-1">Student ID *</label>
+                <label className="block font-medium text-slate-700 mb-1">
+                  Student ID <span className="text-red-500 font-bold ml-0.5">*</span>
+                </label>
                 <input
                   type="text"
                   required
@@ -1433,7 +1451,9 @@ export default function AdminUsersPage() {
               </div>
 
               <div>
-                <label className="block font-medium text-slate-700 dark:text-slate-200 mb-1">Password *</label>
+                <label className="block font-medium text-slate-700 dark:text-slate-200 mb-1">
+                  Password <span className="text-red-500 font-bold ml-0.5">*</span>
+                </label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -1513,7 +1533,7 @@ export default function AdminUsersPage() {
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block font-medium text-slate-700 mb-1">
-                    Technology <span className="text-rose-500">*</span>
+                    Technology <span className="text-red-500 font-bold ml-0.5">*</span>
                   </label>
                   <select
                     required
@@ -1521,7 +1541,7 @@ export default function AdminUsersPage() {
                     onChange={(e) => setFormData({ ...formData, batch: e.target.value, technology: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                   >
-                    <option value="">-- Select Technology * --</option>
+                    <option value="">-- Select Technology (Mandatory) * --</option>
                     {definedBatches.map((b) => (
                       <option key={b._id} value={b.name}>
                         {b.name} {isAdmin && b.createdBy ? `(${b.createdBy.name || 'Admin'} • ${b.createdBy.role || 'ADMIN'})` : ''}
@@ -1600,7 +1620,9 @@ export default function AdminUsersPage() {
 
             <form onSubmit={handleEditSubmit} className="space-y-3.5 text-xs">
               <div>
-                <label className="block font-medium text-slate-700 mb-1">Full Name *</label>
+                <label className="block font-medium text-slate-700 mb-1">
+                  Full Name <span className="text-red-500 font-bold ml-0.5">*</span>
+                </label>
                 <input
                   type="text"
                   required
@@ -1611,7 +1633,9 @@ export default function AdminUsersPage() {
               </div>
 
               <div>
-                <label className="block font-medium text-slate-700 mb-1">Student ID *</label>
+                <label className="block font-medium text-slate-700 mb-1">
+                  Student ID <span className="text-red-500 font-bold ml-0.5">*</span>
+                </label>
                 <input
                   type="text"
                   required
@@ -1680,7 +1704,7 @@ export default function AdminUsersPage() {
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block font-medium text-slate-700 mb-1">
-                    Technology <span className="text-rose-500">*</span>
+                    Technology <span className="text-red-500 font-bold ml-0.5">*</span>
                   </label>
                   <select
                     required
@@ -1688,7 +1712,7 @@ export default function AdminUsersPage() {
                     onChange={(e) => setEditFormData({ ...editFormData, batch: e.target.value, technology: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                   >
-                    <option value="">-- Select Technology * --</option>
+                    <option value="">-- Select Technology (Mandatory) * --</option>
                     {definedBatches.map((b) => (
                       <option key={b._id} value={b.name}>
                         {b.name} {isAdmin && b.createdBy ? `(${b.createdBy.name || 'Admin'} • ${b.createdBy.role || 'ADMIN'})` : ''}
@@ -1797,15 +1821,15 @@ export default function AdminUsersPage() {
       {/* BULK EXCEL UPLOAD MODAL */}
       {showExcelModal && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full p-6 space-y-4 max-h-[90vh] flex flex-col shadow-xl">
-            <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full p-6 space-y-4 max-h-[90vh] flex flex-col shadow-xl">
+            <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                   <FileSpreadsheet className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-800">Bulk Upload Candidates via Excel</h3>
-                  <p className="text-xs text-slate-500">Upload multiple student records with profile details via spreadsheet</p>
+                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Bulk Upload Candidates via Excel</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Upload multiple student records with profile details via spreadsheet</p>
                 </div>
               </div>
               <button
@@ -1814,7 +1838,7 @@ export default function AdminUsersPage() {
                   setUploadStatus(null);
                   setExcelFile(null);
                 }}
-                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg cursor-pointer transition-colors"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 rounded-lg cursor-pointer transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1822,63 +1846,76 @@ export default function AdminUsersPage() {
 
             <div className="flex-1 overflow-y-auto space-y-4 pr-0.5">
               {/* Instructions */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs space-y-2.5">
+              <div className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-xs space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 font-semibold text-slate-700">
-                    <HelpCircle className="w-4 h-4 text-blue-600" />
+                  <div className="flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-200">
+                    <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     <span>Excel Column Specifications (9 Supported Fields):</span>
                   </div>
                   <button
                     type="button"
                     onClick={downloadSampleTemplate}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shrink-0"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shrink-0"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>Download Sample Template (.xlsx)</span>
                   </button>
                 </div>
 
-                <p className="text-slate-500 text-[11px]">
+                <p className="text-slate-500 dark:text-slate-400 text-[11px]">
                   <strong>Profile Auto-Update:</strong> Student ID is the primary unique identifier. If a Student ID already exists, their profile details
                   (Full Name, Technology, Organization, Phone, Gender, Age) will be updated automatically and linked to your account. Email is optional.
                 </p>
 
-                <div className="grid grid-cols-3 gap-2 font-mono text-[11px]">
-                  <div className="bg-white p-2 rounded border border-slate-200">
-                    <span className="text-emerald-600 font-bold">Student ID</span> (Req, Unique)
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-[11px]">
+                  {/* Mandatory Fields */}
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-red-200 dark:border-red-900/50 space-y-2">
+                    <div className="flex items-center gap-1.5 font-bold text-red-600 dark:text-red-400">
+                      <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                      <span>Mandatory Fields (<span className="text-red-500 font-bold">*</span>)</span>
+                    </div>
+                    <ul className="space-y-1.5 text-slate-600 dark:text-slate-300">
+                      <li>
+                        <strong className="text-slate-800 dark:text-slate-100 font-mono">Student ID <span className="text-red-500 font-bold">*</span> :</strong> Unique candidate roll number or ID
+                      </li>
+                      <li>
+                        <strong className="text-slate-800 dark:text-slate-100 font-mono">Full Name <span className="text-red-500 font-bold">*</span> :</strong> Candidate full official name
+                      </li>
+                      <li>
+                        <strong className="text-slate-800 dark:text-slate-100 font-mono">Technology <span className="text-red-500 font-bold">*</span> :</strong> Candidate enrolled track (e.g. Java Full Stack)
+                      </li>
+                    </ul>
                   </div>
-                  <div className="bg-white p-2 rounded border border-slate-200">
-                    <span className="text-emerald-600 font-bold">Full Name</span> (Req)
-                  </div>
-                  <div className="bg-white p-2 rounded border border-slate-200">
-                    <span className="text-slate-600">Password</span> (Opt)
-                  </div>
-                  <div className="bg-white p-2 rounded border border-slate-200">
-                    <span className="text-blue-600 font-bold">Email</span> (Optional)
-                  </div>
-                  <div className="bg-white p-2 rounded border border-slate-200">
-                    <span className="text-blue-600 font-bold">Organization</span> (Opt)
-                  </div>
-                  <div className="bg-white p-2 rounded border border-slate-200">
-                    <span className="text-emerald-600 font-bold">Technology</span> (Req)
-                  </div>
-                  <div className="bg-white p-2 rounded border border-slate-200">
-                    <span className="text-slate-600 font-bold">Phone</span> (Opt)
-                  </div>
-                  <div className="bg-white p-2 rounded border border-slate-200">
-                    <span className="text-slate-600">Gender</span> (Opt)
-                  </div>
-                  <div className="bg-white p-2 rounded border border-slate-200">
-                    <span className="text-slate-600">Age</span> (Opt)
+
+                  {/* Optional Fields */}
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-2">
+                    <div className="flex items-center gap-1.5 font-bold text-blue-600 dark:text-blue-400">
+                      <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                      <span>Optional Fields</span>
+                    </div>
+                    <ul className="space-y-1.5 text-slate-600 dark:text-slate-300">
+                      <li>
+                        <strong className="text-slate-800 dark:text-slate-100 font-mono">Organization:</strong> College / University name (auto-assigned if faculty)
+                      </li>
+                      <li>
+                        <strong className="text-slate-800 dark:text-slate-100 font-mono">Password:</strong> Initial password (defaults to <span className="font-mono text-emerald-600 dark:text-emerald-400">Student@123</span>)
+                      </li>
+                      <li>
+                        <strong className="text-slate-800 dark:text-slate-100 font-mono">Email:</strong> Optional candidate email (must be unique if given)
+                      </li>
+                      <li>
+                        <strong className="text-slate-800 dark:text-slate-100 font-mono">Phone, Gender, Age:</strong> Demographic information
+                      </li>
+                    </ul>
                   </div>
                 </div>
               </div>
 
               <form onSubmit={handleExcelUpload} className="space-y-4">
-                <div className="border-2 border-dashed border-slate-200 hover:border-emerald-500 rounded-xl p-6 text-center space-y-3 transition-colors bg-slate-50">
+                <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 rounded-xl p-6 text-center space-y-3 transition-colors bg-slate-50 dark:bg-slate-800/50">
                   <Upload className="w-8 h-8 text-slate-400 mx-auto" />
                   <div>
-                    <label className="text-xs font-semibold text-emerald-600 cursor-pointer hover:underline">
+                    <label className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 cursor-pointer hover:underline">
                       Click to choose an .xlsx or .xls file
                       <input
                         type="file"
@@ -1890,14 +1927,14 @@ export default function AdminUsersPage() {
                     <p className="text-[11px] text-slate-400 mt-1">Microsoft Excel format (.xlsx / .xls)</p>
                   </div>
                   {excelFile && (
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg text-xs font-medium">
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-medium">
                       <FileSpreadsheet className="w-4 h-4" />
                       <span>{excelFile.name} ({(excelFile.size / 1024).toFixed(1)} KB)</span>
                     </div>
                   )}
                 </div>
 
-                <div className="flex justify-end gap-3 pt-2 border-t border-slate-200">
+                <div className="flex justify-end gap-3 pt-2 border-t border-slate-200 dark:border-slate-800">
                   <button
                     type="button"
                     onClick={() => {
@@ -1905,7 +1942,7 @@ export default function AdminUsersPage() {
                       setUploadStatus(null);
                       setExcelFile(null);
                     }}
-                    className="px-4 py-2 border border-slate-200 hover:bg-slate-100 rounded-xl text-xs font-semibold text-slate-600 cursor-pointer transition-all"
+                    className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer transition-all"
                   >
                     Cancel
                   </button>

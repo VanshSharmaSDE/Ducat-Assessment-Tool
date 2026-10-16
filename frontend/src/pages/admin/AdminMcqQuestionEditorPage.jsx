@@ -200,7 +200,7 @@ export default function AdminMcqQuestionEditorPage() {
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-              Question Title / Statement *
+              Question Title / Statement <span className="text-red-500 font-bold ml-0.5">*</span>
             </label>
             <input
               type="text"
@@ -243,7 +243,7 @@ export default function AdminMcqQuestionEditorPage() {
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Marks / Points *
+                Marks / Points <span className="text-red-500 font-bold ml-0.5">*</span>
               </label>
               <input
                 type="number"

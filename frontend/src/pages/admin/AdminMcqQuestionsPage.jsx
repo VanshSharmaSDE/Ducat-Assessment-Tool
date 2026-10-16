@@ -410,15 +410,15 @@ export default function AdminMcqQuestionsPage() {
       {/* BULK EXCEL UPLOAD MODAL */}
       {showExcelModal && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full p-6 space-y-4 max-h-[90vh] flex flex-col shadow-xl">
-            <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full p-6 space-y-4 max-h-[90vh] flex flex-col shadow-xl">
+            <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                   <FileSpreadsheet className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-800">Bulk Upload MCQ Questions via Excel</h3>
-                  <p className="text-xs text-slate-500">Upload multiple multiple-choice questions via spreadsheet</p>
+                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Bulk Upload MCQ Questions via Excel</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Upload multiple multiple-choice questions via spreadsheet</p>
                 </div>
               </div>
               <button
@@ -427,7 +427,7 @@ export default function AdminMcqQuestionsPage() {
                   setUploadStatus(null);
                   setExcelFile(null);
                 }}
-                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg cursor-pointer transition-colors"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 rounded-lg cursor-pointer transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -435,41 +435,48 @@ export default function AdminMcqQuestionsPage() {
 
             <div className="flex-1 overflow-y-auto space-y-4 pr-0.5">
               {/* Guidelines / Specifications */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs space-y-2.5">
+              <div className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-xs space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 font-semibold text-slate-700">
-                    <HelpCircle className="w-4 h-4 text-blue-600" />
+                  <div className="flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-200">
+                    <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     <span>MCQ Excel Column Specifications:</span>
                   </div>
                   <button
                     type="button"
                     onClick={handleDownloadTemplate}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shrink-0"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shrink-0"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>Download Sample Template (.xlsx)</span>
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-500">
-                  <div className="p-2.5 rounded-lg bg-white border border-slate-200 space-y-1">
-                    <p className="font-semibold text-rose-500">Required Problem Fields:</p>
-                    <ul className="list-disc list-inside space-y-0.5 text-slate-500">
-                      <li><strong className="text-slate-700">Question Title:</strong> Question statement (Required)</li>
-                      <li><strong className="text-slate-700">Option A & Option B:</strong> Minimum 2 options required</li>
-                      <li><strong className="text-slate-700">Option C, D, E:</strong> Optional extra choices</li>
-                      <li><strong className="text-slate-700">Correct Answer:</strong> Option letter (A, B, C, D) or index (1, 2, 3, 4)</li>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-[11px]">
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-red-200 dark:border-red-900/50 space-y-2">
+                    <div className="flex items-center gap-1.5 font-bold text-red-600 dark:text-red-400">
+                      <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                      <span>Mandatory MCQ Fields (<span className="text-red-500 font-bold">*</span>)</span>
+                    </div>
+                    <ul className="space-y-1 text-slate-600 dark:text-slate-300">
+                      <li><strong className="text-slate-800 dark:text-slate-100 font-mono">Question Title <span className="text-red-500 font-bold">*</span> :</strong> Problem / question statement</li>
+                      <li><strong className="text-slate-800 dark:text-slate-100 font-mono">Option A <span className="text-red-500 font-bold">*</span> :</strong> First option choice</li>
+                      <li><strong className="text-slate-800 dark:text-slate-100 font-mono">Option B <span className="text-red-500 font-bold">*</span> :</strong> Second option choice</li>
+                      <li><strong className="text-slate-800 dark:text-slate-100 font-mono">Correct Answer <span className="text-red-500 font-bold">*</span> :</strong> Option letter (A, B, C, D, E) or index (1..5)</li>
                     </ul>
                   </div>
 
-                  <div className="p-2.5 rounded-lg bg-white border border-slate-200 space-y-1">
-                    <p className="font-semibold text-blue-600">Optional Evaluation Fields:</p>
-                    <ul className="list-disc list-inside space-y-0.5 text-slate-500">
-                      <li><strong className="text-slate-700">Description:</strong> Additional code snippet or problem context</li>
-                      <li><strong className="text-slate-700">Marks:</strong> Points awarded for correct answer (default: 1)</li>
-                      <li><strong className="text-slate-700">Difficulty:</strong> EASY, MEDIUM, or HARD (default: MEDIUM)</li>
-                      <li><strong className="text-slate-700">Explanation:</strong> Rationales displayed in evaluation breakdown</li>
-                      <li><strong className="text-slate-700">Tags:</strong> Comma-separated categories or topics</li>
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-2">
+                    <div className="flex items-center gap-1.5 font-bold text-blue-600 dark:text-blue-400">
+                      <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                      <span>Optional Evaluation Fields</span>
+                    </div>
+                    <ul className="space-y-1 text-slate-600 dark:text-slate-300">
+                      <li><strong className="text-slate-800 dark:text-slate-100 font-mono">Option C, Option D, Option E:</strong> Additional choices</li>
+                      <li><strong className="text-slate-800 dark:text-slate-100 font-mono">Difficulty:</strong> EASY, MEDIUM, or HARD (default: MEDIUM)</li>
+                      <li><strong className="text-slate-800 dark:text-slate-100 font-mono">Marks:</strong> Points awarded (default: 1)</li>
+                      <li><strong className="text-slate-800 dark:text-slate-100 font-mono">Description:</strong> Optional code snippet or background context</li>
+                      <li><strong className="text-slate-800 dark:text-slate-100 font-mono">Explanation:</strong> Rationales displayed in evaluation review</li>
+                      <li><strong className="text-slate-800 dark:text-slate-100 font-mono">Tags:</strong> Comma-separated categories or topics</li>
                     </ul>
                   </div>
                 </div>
@@ -477,10 +484,10 @@ export default function AdminMcqQuestionsPage() {
 
               {/* Upload Form */}
               <form onSubmit={handleExcelUpload} className="space-y-4">
-                <div className="border-2 border-dashed border-slate-200 hover:border-emerald-500 rounded-xl p-6 text-center space-y-3 transition-colors bg-slate-50">
+                <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 rounded-xl p-6 text-center space-y-3 transition-colors bg-slate-50 dark:bg-slate-800/50">
                   <Upload className="w-8 h-8 text-slate-400 mx-auto" />
                   <div>
-                    <label className="text-xs font-semibold text-emerald-600 cursor-pointer hover:underline">
+                    <label className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 cursor-pointer hover:underline">
                       Click to choose an .xlsx or .xls file
                       <input
                         type="file"
@@ -492,14 +499,14 @@ export default function AdminMcqQuestionsPage() {
                     <p className="text-[11px] text-slate-400 mt-1">Microsoft Excel format (.xlsx / .xls)</p>
                   </div>
                   {excelFile && (
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg text-xs font-medium">
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-medium">
                       <FileSpreadsheet className="w-4 h-4" />
                       <span>{excelFile.name} ({(excelFile.size / 1024).toFixed(1)} KB)</span>
                     </div>
                   )}
                 </div>
 
-                <div className="flex justify-end gap-3 pt-2 border-t border-slate-200">
+                <div className="flex justify-end gap-3 pt-2 border-t border-slate-200 dark:border-slate-800">
                   <button
                     type="button"
                     onClick={() => {
@@ -507,7 +514,7 @@ export default function AdminMcqQuestionsPage() {
                       setUploadStatus(null);
                       setExcelFile(null);
                     }}
-                    className="px-4 py-2 border border-slate-200 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                    className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-semibold transition-all cursor-pointer"
                   >
                     Cancel
                   </button>

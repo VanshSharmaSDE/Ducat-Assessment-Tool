@@ -285,44 +285,44 @@ export class QuestionExcelService {
     // Sheet 1: Template data with sample MCQs
     const sampleRows = [
       {
-        'Question Title': 'What is the time complexity of searching in a balanced Binary Search Tree?',
-        'Description': 'Consider a self-balancing binary search tree (such as AVL or Red-Black tree) containing n elements.',
-        'Difficulty': 'EASY',
-        'Marks': 1,
-        'Option A': 'O(1)',
-        'Option B': 'O(log n)',
+        'Question Title *': 'What is the time complexity of searching in a balanced Binary Search Tree?',
+        'Option A *': 'O(1)',
+        'Option B *': 'O(log n)',
         'Option C': 'O(n)',
         'Option D': 'O(n log n)',
         'Option E': '',
-        'Correct Answer': 'B',
+        'Correct Answer *': 'B',
+        'Difficulty': 'EASY',
+        'Marks': 1,
+        'Description': 'Consider a self-balancing binary search tree (such as AVL or Red-Black tree) containing n elements.',
         'Explanation': 'In a balanced BST, the maximum height of the tree is O(log n), so search operation runs in O(log n) time.',
         'Tags': 'Data Structures, Trees, BST',
       },
       {
-        'Question Title': 'Which HTTP status code signifies that a resource was successfully created?',
-        'Description': 'RESTful API standard convention for resource creation response.',
-        'Difficulty': 'EASY',
-        'Marks': 1,
-        'Option A': '200 OK',
-        'Option B': '201 Created',
+        'Question Title *': 'Which HTTP status code signifies that a resource was successfully created?',
+        'Option A *': '200 OK',
+        'Option B *': '201 Created',
         'Option C': '204 No Content',
         'Option D': '400 Bad Request',
         'Option E': '',
-        'Correct Answer': 'B',
+        'Correct Answer *': 'B',
+        'Difficulty': 'EASY',
+        'Marks': 1,
+        'Description': 'RESTful API standard convention for resource creation response.',
         'Explanation': 'HTTP 201 Created status indicates that the request has been fulfilled and has resulted in one or more new resources being created.',
         'Tags': 'Web, Networking, HTTP, REST',
       },
       {
-        'Question Title': 'Which sorting algorithm has a worst-case time complexity of O(n^2)?',
-        'Description': '',
-        'Difficulty': 'MEDIUM',
-        'Marks': 2,
-        'Option A': 'Merge Sort',
-        'Option B': 'Quick Sort',
+        'Question Title *': 'Which sorting algorithm has a worst-case time complexity of O(n^2)?',
+        'Option A *': 'Merge Sort',
+        'Option B *': 'Quick Sort',
         'Option C': 'Heap Sort',
         'Option D': 'Counting Sort',
         'Option E': '',
-        'Correct Answer': 'B',
+        'Correct Answer *': 'B',
+        'Difficulty': 'MEDIUM',
+        'Marks': 2,
+        'Description': '',
         'Explanation': 'Quick Sort has average time complexity of O(n log n), but in the worst case (e.g. already sorted array with unbalanced pivot choices) it degrades to O(n^2).',
         'Tags': 'Algorithms, Sorting, Complexity',
       },
@@ -331,20 +331,20 @@ export class QuestionExcelService {
     const wsTemplate = XLSX.utils.json_to_sheet(sampleRows);
     XLSX.utils.book_append_sheet(wb, wsTemplate, 'MCQ_Template');
 
-    // Sheet 2: Guidelines
+    // Sheet 2: Guidelines (Mandatory vs Optional)
     const guidelines = [
-      { 'Field': 'Question Title', 'Required': 'YES', 'Description': 'The question text / problem statement' },
-      { 'Field': 'Description', 'Required': 'NO', 'Description': 'Optional context, code snippet, or background details' },
-      { 'Field': 'Difficulty', 'Required': 'NO', 'Description': 'EASY, MEDIUM, or HARD (default: MEDIUM)' },
-      { 'Field': 'Marks', 'Required': 'NO', 'Description': 'Marks awarded for correct answer (default: 1)' },
-      { 'Field': 'Option A', 'Required': 'YES', 'Description': 'Text for Option A' },
-      { 'Field': 'Option B', 'Required': 'YES', 'Description': 'Text for Option B' },
-      { 'Field': 'Option C', 'Required': 'NO', 'Description': 'Text for Option C (optional)' },
-      { 'Field': 'Option D', 'Required': 'NO', 'Description': 'Text for Option D (optional)' },
-      { 'Field': 'Option E', 'Required': 'NO', 'Description': 'Text for Option E (optional)' },
-      { 'Field': 'Correct Answer', 'Required': 'YES', 'Description': 'Option letter (A, B, C, D, E) or index (1, 2, 3, 4, 5)' },
-      { 'Field': 'Explanation', 'Required': 'NO', 'Description': 'Detailed explanation displayed in evaluation dossier' },
-      { 'Field': 'Tags', 'Required': 'NO', 'Description': 'Comma-separated keywords or categories' },
+      { 'Field Name': 'Question Title *', 'Status': 'MANDATORY (*)', 'Description': 'The question text or problem statement (e.g. What is the time complexity...)' },
+      { 'Field Name': 'Option A *', 'Status': 'MANDATORY (*)', 'Description': 'First choice alternative text (mandatory)' },
+      { 'Field Name': 'Option B *', 'Status': 'MANDATORY (*)', 'Description': 'Second choice alternative text (mandatory)' },
+      { 'Field Name': 'Correct Answer *', 'Status': 'MANDATORY (*)', 'Description': 'Correct option letter (A, B, C, D, E) or 1-based index (1, 2, 3, 4, 5)' },
+      { 'Field Name': 'Option C', 'Status': 'OPTIONAL', 'Description': 'Third choice alternative text' },
+      { 'Field Name': 'Option D', 'Status': 'OPTIONAL', 'Description': 'Fourth choice alternative text' },
+      { 'Field Name': 'Option E', 'Status': 'OPTIONAL', 'Description': 'Fifth choice alternative text' },
+      { 'Field Name': 'Difficulty', 'Status': 'OPTIONAL', 'Description': 'EASY, MEDIUM, or HARD (default: MEDIUM)' },
+      { 'Field Name': 'Marks', 'Status': 'OPTIONAL', 'Description': 'Marks awarded for correct answer (default: 1)' },
+      { 'Field Name': 'Description', 'Status': 'OPTIONAL', 'Description': 'Optional context, code snippet, or background details' },
+      { 'Field Name': 'Explanation', 'Status': 'OPTIONAL', 'Description': 'Detailed explanation displayed in evaluation dossier / candidate review' },
+      { 'Field Name': 'Tags', 'Status': 'OPTIONAL', 'Description': 'Comma-separated keywords or categories (e.g. Algorithms, Trees)' },
     ];
 
     const wsGuidelines = XLSX.utils.json_to_sheet(guidelines);
@@ -374,7 +374,7 @@ export class QuestionExcelService {
       const rowNum = i + 2;
 
       const title = String(
-        row['Question Title'] || row['Title'] || row['Question'] || row['title'] || ''
+        row['Question Title *'] || row['Question Title'] || row['Title *'] || row['Title'] || row['Question *'] || row['Question'] || row['title'] || ''
       ).trim();
       const description = String(row['Description'] || row['description'] || '').trim();
 
@@ -386,8 +386,8 @@ export class QuestionExcelService {
       // Collect options: Option A, Option B, Option C, Option D, Option E
       const rawOptions = [];
       const optionKeys = [
-        ['Option A', 'OptionA', 'optionA', 'option_a', 'A'],
-        ['Option B', 'OptionB', 'optionB', 'option_b', 'B'],
+        ['Option A *', 'Option A', 'OptionA', 'optionA', 'option_a', 'A'],
+        ['Option B *', 'Option B', 'OptionB', 'optionB', 'option_b', 'B'],
         ['Option C', 'OptionC', 'optionC', 'option_c', 'C'],
         ['Option D', 'OptionD', 'optionD', 'option_d', 'D'],
         ['Option E', 'OptionE', 'optionE', 'option_e', 'E'],
@@ -414,11 +414,14 @@ export class QuestionExcelService {
 
       // Parse Correct Answer
       const rawCorrect =
+        row['Correct Answer *'] ||
         row['Correct Answer'] ||
         row['CorrectAnswer'] ||
         row['correctAnswer'] ||
+        row['Correct Option *'] ||
         row['Correct Option'] ||
         row['CorrectOption'] ||
+        row['Answer *'] ||
         row['Answer'] ||
         row['answer'];
 

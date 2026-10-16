@@ -195,7 +195,7 @@ export default function LoginPage() {
               {/* ID or Email Input */}
               <div>
                 <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-2">
-                  Login ID or Email
+                  Login ID or Email <span className="text-red-500 font-bold ml-0.5">*</span>
                 </label>
                 <div className="relative">
                   <User className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
@@ -214,7 +214,7 @@ export default function LoginPage() {
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                    Password
+                    Password <span className="text-red-500 font-bold ml-0.5">*</span>
                   </label>
                 </div>
                 <div className="relative">

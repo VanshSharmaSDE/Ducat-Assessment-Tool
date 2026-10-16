@@ -283,7 +283,7 @@ export default function AdminQuestionEditorPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="sm:col-span-2">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Problem Title *
+                Problem Title <span className="text-red-500 font-bold ml-0.5">*</span>
               </label>
               <input
                 type="text"
@@ -313,7 +313,7 @@ export default function AdminQuestionEditorPage() {
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-              Problem Description *
+              Problem Description <span className="text-red-500 font-bold ml-0.5">*</span>
             </label>
             <textarea
               rows={5}
@@ -516,7 +516,7 @@ export default function AdminQuestionEditorPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-                    Example Input (stdin):
+                    Example Input <span className="text-red-500 font-bold ml-0.5">*</span>
                   </label>
                   <textarea
                     rows={2}
@@ -528,7 +528,7 @@ export default function AdminQuestionEditorPage() {
                 </div>
                 <div>
                   <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-                    Expected Output (stdout):
+                    Expected Output <span className="text-red-500 font-bold ml-0.5">*</span>
                   </label>
                   <textarea
                     rows={2}
@@ -589,7 +589,7 @@ export default function AdminQuestionEditorPage() {
               ) : (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-300 animate-pulse">
                   <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
-                  1 Public Case Required *
+                  1 Public Case Required <span className="text-red-500 font-bold ml-0.5">*</span>
                 </span>
               )}
 
@@ -601,7 +601,7 @@ export default function AdminQuestionEditorPage() {
               ) : (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-300 animate-pulse">
                   <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
-                  1 Hidden Case Required *
+                  1 Hidden Case Required <span className="text-red-500 font-bold ml-0.5">*</span>
                 </span>
               )}
             </div>
@@ -671,7 +671,7 @@ export default function AdminQuestionEditorPage() {
             {/* Test Case Type Selection: Public vs Hidden */}
             <div>
               <label className="text-[11px] font-semibold text-slate-700 block mb-1.5">
-                Test Case Visibility <span className="text-rose-500">*</span>:
+                Test Case Visibility <span className="text-red-500 font-bold ml-0.5">*</span>:
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label
@@ -737,7 +737,9 @@ export default function AdminQuestionEditorPage() {
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-600 block mb-1">Expected Output (stdout) *:</label>
+                <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                  Expected Output (stdout) <span className="text-red-500 font-bold ml-0.5">*</span>:
+                </label>
                 <textarea
                   rows={3}
                   required

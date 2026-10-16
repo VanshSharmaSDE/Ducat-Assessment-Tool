@@ -601,7 +601,9 @@ export default function AdminOrganizationsPage() {
 
             <form onSubmit={handleCreateSubmit} className="p-5 space-y-4 text-xs">
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Organization Name *</label>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Organization Name <span className="text-red-500 font-bold ml-0.5">*</span>
+                </label>
                 <input
                   type="text"
                   required
@@ -685,7 +687,9 @@ export default function AdminOrganizationsPage() {
 
             <form onSubmit={handleEditSubmit} className="p-5 space-y-4 text-xs">
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Organization Name *</label>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Organization Name <span className="text-red-500 font-bold ml-0.5">*</span>
+                </label>
                 <input
                   type="text"
                   required

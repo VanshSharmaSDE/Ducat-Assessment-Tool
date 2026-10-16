@@ -341,7 +341,7 @@ export default function AdminExamWizardPage() {
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Assessment Title *
+                Assessment Title <span className="text-red-500 font-bold ml-0.5">*</span>
               </label>
               <input
                 type="text"
@@ -355,7 +355,7 @@ export default function AdminExamWizardPage() {
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Target Technologies *
+                Target Technologies <span className="text-red-500 font-bold ml-0.5">*</span>
               </label>
               <p className="text-[11px] text-slate-500 mb-2">
                 Select which technology students can see and take this exam. Only students with matching technologies will be eligible.

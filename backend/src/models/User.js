@@ -177,6 +177,11 @@ userSchema.pre('save', function (next) {
     } else if (this.rollNumber && !this.studentId) {
       this.studentId = this.rollNumber;
     }
+    if (this.technology && !this.batch) {
+      this.batch = this.technology;
+    } else if (this.batch && !this.technology) {
+      this.technology = this.batch;
+    }
   }
   next();
 });

@@ -75,7 +75,7 @@ export default function ResetPasswordPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">
-                Reset Token
+                Reset Token <span className="text-red-500 font-bold ml-0.5">*</span>
               </label>
               <input
                 type="text"
@@ -89,7 +89,7 @@ export default function ResetPasswordPage() {
 
             <div>
               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">
-                New Password
+                New Password <span className="text-red-500 font-bold ml-0.5">*</span>
               </label>
               <div className="relative">
                 <Lock className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -107,7 +107,7 @@ export default function ResetPasswordPage() {
 
             <div>
               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">
-                Confirm New Password
+                Confirm New Password <span className="text-red-500 font-bold ml-0.5">*</span>
               </label>
               <div className="relative">
                 <Lock className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />

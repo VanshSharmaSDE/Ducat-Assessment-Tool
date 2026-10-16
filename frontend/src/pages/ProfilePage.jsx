@@ -231,7 +231,7 @@ export default function ProfilePage() {
           <form onSubmit={handleProfileSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">
-                Full Name
+                Full Name <span className="text-red-500 font-bold ml-0.5">*</span>
               </label>
               <div className="relative">
                 <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -466,7 +466,7 @@ export default function ProfilePage() {
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">
-                Current Password
+                Current Password <span className="text-red-500 font-bold ml-0.5">*</span>
               </label>
               <input
                 type="password"
@@ -479,7 +479,7 @@ export default function ProfilePage() {
 
             <div>
               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">
-                New Password (Min 6 characters)
+                New Password (Min 6 characters) <span className="text-red-500 font-bold ml-0.5">*</span>
               </label>
               <input
                 type="password"
@@ -493,7 +493,7 @@ export default function ProfilePage() {
 
             <div>
               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">
-                Confirm New Password
+                Confirm New Password <span className="text-red-500 font-bold ml-0.5">*</span>
               </label>
               <input
                 type="password"
