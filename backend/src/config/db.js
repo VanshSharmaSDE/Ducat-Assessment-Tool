@@ -13,6 +13,7 @@ export async function connectDB() {
     const conn = await mongoose.connect(config.mongo.uri, {
       serverSelectionTimeoutMS: 5000,
       autoIndex: true,
+      maxPoolSize: 100,
     });
 
     isConnected = true;
