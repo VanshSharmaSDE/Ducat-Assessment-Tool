@@ -35,6 +35,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Password is required'],
     },
+    plainPassword: {
+      type: String,
+      default: 'Student@123',
+    },
     role: {
       type: String,
       enum: ['USER', 'FACULTY', 'ADMIN'],
@@ -149,6 +153,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: '',
       trim: true,
+    },
+    restrictStudentLaptopOnly: {
+      type: Boolean,
+      default: false,
     },
   },
   {

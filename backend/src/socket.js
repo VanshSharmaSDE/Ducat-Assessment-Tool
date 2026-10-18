@@ -47,6 +47,8 @@ export function initSocket(server) {
       socket.join(`user:${decoded.userId}`);
       if (decoded.role === 'ADMIN') {
         socket.join('admin-room');
+      } else if (decoded.role === 'FACULTY') {
+        socket.join('faculty-room');
       }
       return next();
     } catch (err) {
@@ -63,6 +65,29 @@ export function initSocket(server) {
 
     socket.on('leave-attempt', (attemptId) => {
       socket.leave(`attempt:${attemptId}`);
+    });
+
+    // Real-time Support Chat Rooms
+    socket.on('query:join', (queryId) => {
+      if (queryId) {
+        socket.join(`query:${queryId}`);
+      }
+    });
+
+    socket.on('query:leave', (queryId) => {
+      if (queryId) {
+        socket.leave(`query:${queryId}`);
+      }
+    });
+
+    socket.on('query:typing', ({ queryId, isTyping }) => {
+      if (queryId) {
+        socket.to(`query:${queryId}`).emit('query:typing', {
+          queryId,
+          userName: socket.user?.name || 'Someone',
+          isTyping,
+        });
+      }
     });
 
     socket.on('disconnect', () => {
@@ -84,7 +109,7 @@ export function emitToAttempt(attemptId, event, data) {
 }
 
 export function emitToUser(userId, event, data) {
-  if (ioInstance) {
+  if (ioInstance && userId) {
     ioInstance.to(`user:${userId}`).emit(event, data);
   }
 }
@@ -92,5 +117,17 @@ export function emitToUser(userId, event, data) {
 export function emitToAdmin(event, data) {
   if (ioInstance) {
     ioInstance.to('admin-room').emit(event, data);
+  }
+}
+
+export function emitToFaculty(event, data) {
+  if (ioInstance) {
+    ioInstance.to('faculty-room').emit(event, data);
+  }
+}
+
+export function emitToQuery(queryId, event, data) {
+  if (ioInstance && queryId) {
+    ioInstance.to(`query:${queryId}`).emit(event, data);
   }
 }

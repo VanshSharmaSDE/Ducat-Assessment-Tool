@@ -128,11 +128,31 @@ export function AuthProvider({ children }) {
     };
   }, [user, recordActivity, handleInactivityLogout]);
 
-  const login = async (identifierOrEmail, password) => {
+  const login = async (identifierOrEmail, password, extraData = {}) => {
+    // Detect client device and viewport characteristics
+    const isMobileUA = typeof navigator !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const screenWidth = typeof window !== 'undefined' ? (window.screen?.width || window.innerWidth || 0) : 0;
+    const screenHeight = typeof window !== 'undefined' ? (window.screen?.height || window.innerHeight || 0) : 0;
+    const windowWidth = typeof window !== 'undefined' ? (window.innerWidth || 0) : 0;
+    const windowHeight = typeof window !== 'undefined' ? (window.innerHeight || 0) : 0;
+    const isMobile = isMobileUA || (screenWidth > 0 && screenWidth < 1024) || (windowWidth > 0 && windowWidth < 1024);
+
+    const deviceInfo = {
+      screenWidth,
+      screenHeight,
+      windowWidth,
+      windowHeight,
+      isMobile,
+      deviceType: isMobile ? 'mobile' : 'laptop',
+      ...extraData?.deviceInfo,
+    };
+
     const res = await api.post('/auth/login', {
       identifier: identifierOrEmail,
       email: identifierOrEmail,
       password,
+      deviceInfo,
+      ...extraData,
     });
     const { user, accessToken, refreshToken } = res.data.data;
     localStorage.setItem('accessToken', accessToken);

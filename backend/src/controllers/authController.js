@@ -16,7 +16,10 @@ export class AuthController {
 
   static async login(req, res, next) {
     try {
-      const result = await AuthService.login(req.body);
+      const result = await AuthService.login({
+        ...req.body,
+        userAgent: req.headers['user-agent'] || '',
+      });
       res.status(200).json({
         success: true,
         message: 'Logged in successfully',

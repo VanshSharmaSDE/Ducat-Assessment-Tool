@@ -81,12 +81,29 @@ export class UserService {
       if (batch !== undefined) user.batch = batch.trim();
     }
 
+    if ((user.role === 'ADMIN' || user.role === 'FACULTY') && restrictStudentLaptopOnly !== undefined) {
+      user.restrictStudentLaptopOnly = Boolean(restrictStudentLaptopOnly);
+    }
+
     if (password && password.trim().length >= 6) {
       const bcrypt = (await import('bcryptjs')).default;
       const salt = await bcrypt.genSalt(10);
       user.passwordHash = await bcrypt.hash(password.trim(), salt);
     }
 
+    await user.save();
+    return user.toJSON();
+  }
+
+  static async updateStudentRestrictions(userId, restrictStudentLaptopOnly) {
+    const user = await User.findById(userId);
+    if (!user) {
+      const error = new Error('User not found');
+      error.statusCode = 404;
+      error.errorCode = 'USER_NOT_FOUND';
+      throw error;
+    }
+    user.restrictStudentLaptopOnly = Boolean(restrictStudentLaptopOnly);
     await user.save();
     return user.toJSON();
   }

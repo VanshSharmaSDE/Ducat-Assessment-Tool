@@ -182,6 +182,8 @@ export default function AdminMcqQuestionEditorPage() {
           type: 'success',
         });
         setSuccess('MCQ question updated successfully!');
+        navigate('/admin/mcq-questions');
+        return;
       } else {
         await api.post('/admin/questions', payload);
         await showAlert({
@@ -214,7 +216,7 @@ export default function AdminMcqQuestionEditorPage() {
   }
 
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-4xl mx-auto w-full">
+    <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
       <div>
         <Link to="/admin/mcq-questions" className="text-xs text-slate-500 hover:text-slate-800 transition-colors mb-3 inline-block">
           &larr; Back to MCQ Question Bank

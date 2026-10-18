@@ -56,6 +56,35 @@ export class UserController {
     }
   }
 
+  static async updateStudentRestrictions(req, res, next) {
+    try {
+      const { restrictStudentLaptopOnly } = req.body;
+      if (typeof restrictStudentLaptopOnly !== 'boolean') {
+        return res.status(400).json({
+          success: false,
+          message: 'restrictStudentLaptopOnly must be a boolean (true or false).',
+        });
+      }
+      if (req.user.role !== 'ADMIN' && req.user.role !== 'FACULTY') {
+        return res.status(403).json({
+          success: false,
+          message: 'Only Administrators and Faculty can configure student login restrictions.',
+        });
+      }
+      const user = await UserService.updateStudentRestrictions(req.user._id, restrictStudentLaptopOnly);
+      res.status(200).json({
+        success: true,
+        message: `Student laptop-only login restriction ${restrictStudentLaptopOnly ? 'enabled' : 'disabled'} successfully`,
+        data: {
+          restrictStudentLaptopOnly: user.restrictStudentLaptopOnly,
+          user,
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async uploadProfilePicture(req, res, next) {
     try {
       if (!req.file) {

@@ -20,7 +20,8 @@ import {
   PieChart as PieChartIcon,
   ChevronRight,
   ExternalLink,
-  Plus
+  Plus,
+  FolderTree,
 } from 'lucide-react';
 import {
   BarChart,
@@ -71,6 +72,7 @@ export default function AdminDashboardPage() {
     totalUsers: 0,
     totalFaculty: 0,
     totalBatches: 0,
+    totalTechnologies: 0,
     totalOrganizations: 0,
     totalExams: 0,
     activeExams: 0,
@@ -258,32 +260,56 @@ export default function AdminDashboardPage() {
               <Layers className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-3xl font-extrabold text-purple-900 dark:text-purple-200 mt-3 font-mono">{stats.totalBatches}</p>
+          <p className="text-3xl font-extrabold text-purple-900 dark:text-purple-200 mt-3 font-mono">{stats.totalTechnologies ?? stats.totalBatches}</p>
           <span className="text-[11px] text-purple-700/80 dark:text-purple-400/80 mt-1 block flex items-center justify-between font-medium">
             <span>Specializations & tracks</span>
             <ChevronRight className="w-3.5 h-3.5 text-purple-400 group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors" />
           </span>
         </Link>
 
-        {/* Organizations - Pastel Yellow/Amber */}
-        <Link
-          to="/admin/organizations"
-          className="group p-5 rounded-2xl bg-[#fef9eb] dark:bg-amber-950/30 border border-[#fef0cd] dark:border-amber-800/40 hover:border-amber-300 dark:hover:border-amber-700/60 transition-all shadow-sm hover:shadow-md block"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wider group-hover:text-amber-950 dark:group-hover:text-amber-200 transition-colors">
-              Organizations
-            </span>
-            <div className="w-9 h-9 rounded-xl bg-white dark:bg-amber-900/40 border border-transparent dark:border-amber-700/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-xs">
-              <Building2 className="w-4 h-4" />
+        {/* Organizations - Only for Admin (Removed from Faculty Dashboard) */}
+        {isAdmin && (
+          <Link
+            to="/admin/organizations"
+            className="group p-5 rounded-2xl bg-[#fef9eb] dark:bg-amber-950/30 border border-[#fef0cd] dark:border-amber-800/40 hover:border-amber-300 dark:hover:border-amber-700/60 transition-all shadow-sm hover:shadow-md block"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wider group-hover:text-amber-950 dark:group-hover:text-amber-200 transition-colors">
+                Organizations
+              </span>
+              <div className="w-9 h-9 rounded-xl bg-white dark:bg-amber-900/40 border border-transparent dark:border-amber-700/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-xs">
+                <Building2 className="w-4 h-4" />
+              </div>
             </div>
-          </div>
-          <p className="text-3xl font-extrabold text-amber-950 dark:text-amber-200 mt-3 font-mono">{stats.totalOrganizations}</p>
-          <span className="text-[11px] text-amber-800/80 dark:text-amber-400/80 mt-1 block flex items-center justify-between font-medium">
-            <span>Institutional partners</span>
-            <ChevronRight className="w-3.5 h-3.5 text-amber-400 group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors" />
-          </span>
-        </Link>
+            <p className="text-3xl font-extrabold text-amber-950 dark:text-amber-200 mt-3 font-mono">{stats.totalOrganizations}</p>
+            <span className="text-[11px] text-amber-800/80 dark:text-amber-400/80 mt-1 block flex items-center justify-between font-medium">
+              <span>Institutional partners</span>
+              <ChevronRight className="w-3.5 h-3.5 text-amber-400 group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors" />
+            </span>
+          </Link>
+        )}
+
+        {/* Student Batches - For Faculty (Replaces Organizations on Faculty Dashboard) */}
+        {!isAdmin && (
+          <Link
+            to="/admin/batches"
+            className="group p-5 rounded-2xl bg-[#fef9eb] dark:bg-amber-950/30 border border-[#fef0cd] dark:border-amber-800/40 hover:border-amber-300 dark:hover:border-amber-700/60 transition-all shadow-sm hover:shadow-md block"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wider group-hover:text-amber-950 dark:group-hover:text-amber-200 transition-colors">
+                Student Batches
+              </span>
+              <div className="w-9 h-9 rounded-xl bg-white dark:bg-amber-900/40 border border-transparent dark:border-amber-700/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-xs">
+                <FolderTree className="w-4 h-4" />
+              </div>
+            </div>
+            <p className="text-3xl font-extrabold text-amber-950 dark:text-amber-200 mt-3 font-mono">{stats.totalBatches}</p>
+            <span className="text-[11px] text-amber-800/80 dark:text-amber-400/80 mt-1 block flex items-center justify-between font-medium">
+              <span>Classes & cohorts</span>
+              <ChevronRight className="w-3.5 h-3.5 text-amber-400 group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors" />
+            </span>
+          </Link>
+        )}
 
         {/* Proctoring Violations - Soft Coral Card */}
         <div className="p-5 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-800/40 shadow-sm transition-colors">

@@ -5,6 +5,7 @@ import { ExamAttempt } from '../models/ExamAttempt.js';
 import { Submission } from '../models/Submission.js';
 import { SubmissionResult } from '../models/SubmissionResult.js';
 import { Batch } from '../models/Batch.js';
+import { Technology } from '../models/Technology.js';
 import { Organization } from '../models/Organization.js';
 
 export class AdminService {
@@ -22,6 +23,7 @@ export class AdminService {
     let questionFilter = {};
     let batchFilter = {};
     let orgFilter = {};
+    let techFilter = {};
 
     if (isFaculty) {
       userFilter.$or = [
@@ -31,7 +33,15 @@ export class AdminService {
       examFilter.createdBy = currentUser._id;
       examActiveFilter.createdBy = currentUser._id;
       questionFilter.createdBy = currentUser._id;
-      batchFilter.createdBy = currentUser._id;
+
+      if (currentUser?.organization && currentUser.organization.trim()) {
+        const escapedOrg = currentUser.organization.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        batchFilter.organization = { $regex: new RegExp(`^${escapedOrg}$`, 'i') };
+        techFilter.organization = { $regex: new RegExp(`^${escapedOrg}$`, 'i') };
+      } else {
+        batchFilter.createdBy = currentUser._id;
+        techFilter.createdBy = currentUser._id;
+      }
 
       const myStudentIds = await User.find(userFilter).distinct('_id');
       const myExamIds = await Exam.find(examFilter).distinct('_id');
@@ -49,6 +59,7 @@ export class AdminService {
       totalUsers,
       totalFaculty,
       totalBatches,
+      totalTechnologies,
       totalOrganizations,
       totalExams,
       activeExams,
@@ -62,7 +73,8 @@ export class AdminService {
       User.countDocuments(userFilter),
       isAdmin ? User.countDocuments(facultyFilter) : 0,
       Batch.countDocuments(batchFilter),
-      Organization.countDocuments(orgFilter),
+      Technology.countDocuments(techFilter),
+      isAdmin ? Organization.countDocuments(orgFilter) : 0,
       Exam.countDocuments(examFilter),
       Exam.countDocuments(examActiveFilter),
       Submission.countDocuments(subFilter),
@@ -183,7 +195,8 @@ export class AdminService {
         totalUsers,
         totalFaculty,
         totalBatches,
-        totalOrganizations,
+        totalTechnologies,
+        totalOrganizations: isAdmin ? totalOrganizations : 0,
         totalExams,
         activeExams,
         completedExams: evaluatedCount,

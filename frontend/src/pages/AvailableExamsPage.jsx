@@ -12,7 +12,8 @@ import {
   Search,
   Filter,
   Check,
-  RotateCw
+  RotateCw,
+  Laptop
 } from 'lucide-react';
 
 export default function AvailableExamsPage() {
@@ -157,9 +158,16 @@ export default function AvailableExamsPage() {
                     >
                       {exam.examStatus}
                     </span>
-                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-                      {exam.difficulty}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {exam.restrictToLaptop && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200 inline-flex items-center gap-1">
+                          <Laptop className="w-3 h-3" /> Laptop Only
+                        </span>
+                      )}
+                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                        {exam.difficulty}
+                      </span>
+                    </div>
                   </div>
 
                   <div>

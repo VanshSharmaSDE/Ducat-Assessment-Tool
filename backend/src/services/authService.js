@@ -94,7 +94,7 @@ export class AuthService {
     };
   }
 
-  static async login({ email, identifier, loginId, studentId, facultyId, password }) {
+  static async login({ email, identifier, loginId, studentId, facultyId, password, deviceInfo, userAgent }) {
     const rawId = (identifier || email || loginId || studentId || facultyId || '').trim();
     if (!rawId) {
       const error = new Error('Student ID, Faculty ID, Admin ID, or Email is required');
@@ -140,6 +140,67 @@ export class AuthService {
       error.statusCode = 401;
       error.errorCode = 'INVALID_CREDENTIALS';
       throw error;
+    }
+
+    // Enforce laptop-only screen restriction if configured by student's governing Admin or Faculty
+    if (user.role === 'USER') {
+      const mentorIds = [];
+      if (user.createdBy) mentorIds.push(user.createdBy);
+      if (Array.isArray(user.assignedFaculties) && user.assignedFaculties.length > 0) {
+        mentorIds.push(...user.assignedFaculties);
+      }
+
+      let isRestricted = false;
+      let restrictionAuthority = 'Instructor / Administrator';
+
+      if (mentorIds.length > 0) {
+        const mentor = await User.findOne({
+          _id: { $in: mentorIds },
+          restrictStudentLaptopOnly: true,
+        }).select('name role');
+
+        if (mentor) {
+          isRestricted = true;
+          restrictionAuthority = mentor.role === 'FACULTY' ? `Faculty (${mentor.name})` : `Administrator (${mentor.name})`;
+        }
+      }
+
+      // Check organization administrator setting if not already restricted
+      if (!isRestricted && user.organization && user.organization.trim()) {
+        const escapedOrg = user.organization.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        const orgAdmin = await User.findOne({
+          role: 'ADMIN',
+          organization: { $regex: new RegExp(`^${escapedOrg}$`, 'i') },
+          restrictStudentLaptopOnly: true,
+        }).select('name');
+
+        if (orgAdmin) {
+          isRestricted = true;
+          restrictionAuthority = `Institution Admin (${orgAdmin.name})`;
+        }
+      }
+
+      if (isRestricted) {
+        const ua = (userAgent || '').toLowerCase();
+        const isMobileUA = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(ua);
+
+        const screenWidth = Number(deviceInfo?.screenWidth || deviceInfo?.width || 0);
+        const windowWidth = Number(deviceInfo?.windowWidth || 0);
+        const isMobileDevice = Boolean(deviceInfo?.isMobile || isMobileUA);
+
+        // A laptop screen is >= 1024px width in standard landscape without mobile user agent
+        const isSmallScreen = screenWidth > 0 && screenWidth < 1024;
+        const isSmallWindow = windowWidth > 0 && windowWidth < 1024;
+
+        if (isMobileDevice || isSmallScreen || isSmallWindow) {
+          const error = new Error(
+            `Login restricted: Laptop / Desktop screen required. Your ${restrictionAuthority} requires examinations and assessments to be accessed on a laptop or desktop computer. Mobile phones, tablets, and small screen devices are not permitted.`
+          );
+          error.statusCode = 403;
+          error.errorCode = 'LAPTOP_ONLY_RESTRICTION';
+          throw error;
+        }
+      }
     }
 
     // Enforce single active device session for students within 2-hour window

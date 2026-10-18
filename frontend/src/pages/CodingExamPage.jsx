@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import Editor from "@monaco-editor/react";
 import api from "../api/axios";
 import { useSocket } from "../context/SocketContext";
+import { useTheme } from "../context/ThemeContext";
 import logo from "../assets/logo.jpeg";
 import {
   Clock,
@@ -26,6 +27,9 @@ import {
   ChevronUp,
   ChevronDown,
   CheckSquare,
+  Sun,
+  Moon,
+  RotateCcw,
 } from "lucide-react";
 
 const DEFAULT_TEMPLATES = {
@@ -48,6 +52,18 @@ export default function CodingExamPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { socket } = useSocket();
+  const { theme: appTheme, isDark, toggleTheme } = useTheme();
+
+  // Student editor theme choice: 'auto' | 'vs-dark' | 'vs'
+  const [editorThemeChoice, setEditorThemeChoice] = useState(() => {
+    return localStorage.getItem("cdt_editor_theme") || "auto";
+  });
+
+  const activeMonacoTheme = useMemo(() => {
+    if (editorThemeChoice === "vs-dark") return "vs-dark";
+    if (editorThemeChoice === "vs") return "vs";
+    return isDark ? "vs-dark" : "vs";
+  }, [editorThemeChoice, isDark]);
 
   const [exam, setExam] = useState(null);
   const [attempt, setAttempt] = useState(null);
@@ -680,6 +696,26 @@ export default function CodingExamPage() {
     }));
   };
 
+  // Reset Code to default starter template
+  const handleResetCode = () => {
+    const currentQ = validQuestions[currentQIndex];
+    if (!currentQ || !currentQ._id) return;
+    const currentLang = answers[currentQ._id]?.language || "java";
+    const template =
+      currentQ.starterCode?.[currentLang] ||
+      DEFAULT_TEMPLATES[currentLang] ||
+      "";
+    setAnswers((prev) => ({
+      ...prev,
+      [currentQ._id]: {
+        ...prev[currentQ._id],
+        language: currentLang,
+        code: template,
+      },
+    }));
+    showToast("Code reset to initial starter template.");
+  };
+
   // Submit Exam Handler
   const handleFinalSubmit = async (forced = false) => {
     if (isSubmitting) return;
@@ -851,9 +887,9 @@ export default function CodingExamPage() {
 
   if (loading) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 text-slate-800 gap-3">
-        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-        <p className="text-sm text-slate-500 font-mono">
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 gap-3">
+        <Loader2 className="w-8 h-8 text-blue-600 dark:text-blue-400 animate-spin" />
+        <p className="text-sm text-slate-500 dark:text-slate-400 font-mono">
           Loading secure examination workspace...
         </p>
       </div>
@@ -862,13 +898,13 @@ export default function CodingExamPage() {
 
   if (error || !exam || validQuestions.length === 0) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 text-slate-800 p-6">
-        <div className="p-6 rounded-2xl bg-white border border-slate-200 max-w-md text-center space-y-4 shadow-sm">
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 p-6">
+        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 max-w-md text-center space-y-4 shadow-sm">
           <AlertCircle className="w-12 h-12 text-rose-500 mx-auto" />
-          <h2 className="text-lg font-bold text-slate-800">
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">
             {error ? "Assessment Access Error" : "Assessment Unavailable"}
           </h2>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {error || "No questions have been configured for this examination yet."}
           </p>
           <button
@@ -884,7 +920,7 @@ export default function CodingExamPage() {
 
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-slate-50 text-slate-800 overflow-hidden font-sans select-none">
+    <div className="h-screen w-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 overflow-hidden font-sans select-none">
       {/* Toast Notification for Proctoring Warnings */}
       {toastMessage && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl bg-amber-500 text-white font-bold text-xs shadow-lg flex items-center gap-2 animate-bounce">
@@ -894,7 +930,7 @@ export default function CodingExamPage() {
       )}
 
       {/* Top Header Bar */}
-      <header className="h-14 bg-white border-b border-slate-200 px-4 flex items-center justify-between shrink-0 z-30 shadow-sm">
+      <header className="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 flex items-center justify-between shrink-0 z-30 shadow-sm">
         <div className="flex items-center gap-3 min-w-0 py-6">
           <div className="w-32 h-14 rounded-xl bg-gradient-to-tr from-blue-600 to-blue-500 flex items-center justify-center shadow-md shadow-blue-600/15">
             {/* <Code2 className="w-5 h-5 text-white" /> */}
@@ -905,10 +941,10 @@ export default function CodingExamPage() {
             />
           </div>
           <div className="min-w-0">
-            <h1 className="font-bold text-sm text-slate-800 truncate max-w-xs sm:max-w-md">
+            <h1 className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate max-w-xs sm:max-w-md">
               {exam.title}
             </h1>
-            <p className="text-[11px] text-slate-500 truncate">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
               Question {currentQIndex + 1} of {validQuestions.length} • Total:{" "}
               {exam.totalMarks} Marks
             </p>
@@ -921,8 +957,8 @@ export default function CodingExamPage() {
           <div
             className={`hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold border ${
               violationCount > 0
-                ? "bg-rose-50 text-rose-600 border-rose-200"
-                : "bg-slate-100 text-slate-600 border-slate-200"
+                ? "bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
             }`}
           >
             <ShieldAlert className="w-3.5 h-3.5" />
@@ -935,19 +971,33 @@ export default function CodingExamPage() {
           <div
             className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-mono font-bold border transition-colors ${
               remainingSeconds < 300
-                ? "bg-rose-50 text-rose-600 border-rose-200 animate-pulse"
-                : "bg-blue-50 text-blue-700 border-blue-200"
+                ? "bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900 animate-pulse"
+                : "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900"
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
             <span>{formatTime(remainingSeconds)}</span>
           </div>
 
+          {/* Global Light / Dark Mode Toggle */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            title={isDark ? "Switch workspace to Light Mode" : "Switch workspace to Dark Mode"}
+            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+          >
+            {isDark ? (
+              <Sun className="w-4 h-4 text-amber-400" />
+            ) : (
+              <Moon className="w-4 h-4 text-slate-600" />
+            )}
+          </button>
+
           {/* Fullscreen Button */}
           <button
             onClick={toggleFullscreen}
             title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-            className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200 transition-colors"
+            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
           >
             {isFullscreen ? (
               <Minimize2 className="w-4 h-4" />
@@ -974,7 +1024,7 @@ export default function CodingExamPage() {
             className={`flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-xl transition-all ${
               allQuestionsVisited
                 ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20 cursor-pointer"
-                : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60 shadow-none"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60 shadow-none"
             }`}
           >
             <Send className="w-3.5 h-3.5" />
@@ -986,9 +1036,9 @@ export default function CodingExamPage() {
       {/* Main Assessment Body: Left Question List + Center Description + Right Monaco Editor */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Side: Question List & Status */}
-        <aside className="w-56 bg-white border-r border-slate-200 flex flex-col shrink-0 overflow-y-auto">
-          <div className="p-3 border-b border-slate-200">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+        <aside className="w-56 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 overflow-y-auto">
+          <div className="p-3 border-b border-slate-200 dark:border-slate-800">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Questions ({attemptedCount}/{validQuestions.length})
             </span>
           </div>
@@ -1005,10 +1055,10 @@ export default function CodingExamPage() {
                 <button
                   key={q._id || idx}
                   onClick={() => setCurrentQIndex(idx)}
-                  className={`w-full text-left px-3 py-2.5 rounded-xl text-xs flex items-center justify-between ${
+                  className={`w-full text-left px-3 py-2.5 rounded-xl text-xs flex items-center justify-between transition-colors ${
                     isSelected
-                      ? "bg-blue-50 text-blue-700 border border-blue-200 font-semibold"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                      ? "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-semibold"
+                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100"
                   }`}
                 >
                   <div className="flex items-center gap-1.5 min-w-0">
@@ -1016,8 +1066,10 @@ export default function CodingExamPage() {
                       Q{idx + 1}
                     </span>
                     <span
-                      className={`text-[8px] font-bold px-1 rounded uppercase shrink-0 ${
-                        isCoding ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'
+                      className={`text-[8px] font-bold px-1 rounded uppercase shrink-0 border ${
+                        isCoding
+                          ? 'bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border-blue-200/50 dark:border-blue-800/60'
+                          : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border-emerald-200/50 dark:border-emerald-800/60'
                       }`}
                     >
                       {isCoding ? 'Code' : 'MCQ'}
@@ -1026,21 +1078,21 @@ export default function CodingExamPage() {
                   </div>
                   {isAttempted ? (
                     <span
-                      className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0"
+                      className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0"
                       title="Attempted"
                     >
                       Attempted
                     </span>
                   ) : isVisited ? (
                     <span
-                      className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shrink-0"
+                      className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0"
                       title="Visited"
                     >
                       Visited
                     </span>
                   ) : (
                     <span
-                      className="w-2 h-2 rounded-full bg-slate-300 shrink-0"
+                      className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0"
                       title="Not Visited"
                     />
                   )}
@@ -1049,29 +1101,29 @@ export default function CodingExamPage() {
             })}
           </div>
 
-          <div className="mt-auto p-3 border-t border-slate-200 text-[11px] text-slate-500 space-y-1.5 bg-slate-50/80">
+          <div className="mt-auto p-3 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 space-y-1.5 bg-slate-50/80 dark:bg-slate-950/60">
             <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-emerald-600 font-medium">
-                <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Attempted
+              <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> Attempted
               </span>
-              <span className="font-mono text-emerald-600 font-bold">
+              <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">
                 {attemptedCount}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-amber-600 font-medium">
-                <Eye className="w-3 h-3 text-amber-600" /> Visited
+              <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-medium">
+                <Eye className="w-3 h-3 text-amber-600 dark:text-amber-400" /> Visited
               </span>
-              <span className="font-mono text-amber-600 font-bold">
+              <span className="font-mono text-amber-600 dark:text-amber-400 font-bold">
                 {visitedCount}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-slate-500">
-                <span className="w-2 h-2 rounded-full bg-slate-300 ml-0.5" />{" "}
+              <span className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 ml-0.5" />{" "}
                 Not Visited
               </span>
-              <span className="font-mono text-slate-600 font-bold">
+              <span className="font-mono text-slate-600 dark:text-slate-300 font-bold">
                 {notVisitedCount}
               </span>
             </div>
@@ -1079,38 +1131,38 @@ export default function CodingExamPage() {
         </aside>
 
         {/* Center: Problem Statement */}
-        <section className="flex-1 flex flex-col min-w-0 border-r border-slate-200 overflow-y-auto bg-slate-50">
+        <section className="flex-1 flex flex-col min-w-0 border-r border-slate-200 dark:border-slate-800 overflow-y-auto bg-slate-50 dark:bg-slate-950">
           <div className="p-6 space-y-6 max-w-3xl">
             {/* Title & Metadata */}
-            <div className="space-y-2 border-b border-slate-200 pb-4">
+            <div className="space-y-2 border-b border-slate-200 dark:border-slate-800 pb-4">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-bold text-blue-600 px-2 py-0.5 rounded bg-blue-50 border border-blue-200">
+                <span className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800">
                   Question {currentQIndex + 1}
                 </span>
-                <span className="text-xs font-semibold text-blue-600 px-2 py-0.5 rounded bg-blue-50 border border-blue-200">
+                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800">
                   {currentQ.marks} Marks
                 </span>
-                <span className="text-xs font-semibold text-slate-600 px-2 py-0.5 rounded bg-slate-100 border border-slate-200">
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
                   {currentQ.difficulty}
                 </span>
               </div>
-              <h2 className="text-2xl font-bold text-slate-800 tracking-tight">
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">
                 {currentQ.title}
               </h2>
             </div>
 
             {/* Problem Description */}
-            <div className="text-slate-700 text-sm leading-relaxed whitespace-pre-line">
+            <div className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-line">
               {currentQ.description}
             </div>
 
             {/* Input & Output Format */}
             {currentQ.inputFormat && (
               <div className="space-y-1.5">
-                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Input Format
                 </h4>
-                <div className="p-3 rounded-xl bg-white border border-slate-200 text-xs font-mono text-slate-700 whitespace-pre-line shadow-sm">
+                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono text-slate-700 dark:text-slate-300 whitespace-pre-line shadow-sm">
                   {currentQ.inputFormat}
                 </div>
               </div>
@@ -1118,10 +1170,10 @@ export default function CodingExamPage() {
 
             {currentQ.outputFormat && (
               <div className="space-y-1.5">
-                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Output Format
                 </h4>
-                <div className="p-3 rounded-xl bg-white border border-slate-200 text-xs font-mono text-slate-700 whitespace-pre-line shadow-sm">
+                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono text-slate-700 dark:text-slate-300 whitespace-pre-line shadow-sm">
                   {currentQ.outputFormat}
                 </div>
               </div>
@@ -1130,10 +1182,10 @@ export default function CodingExamPage() {
             {/* Constraints */}
             {currentQ.constraints && (
               <div className="space-y-1.5">
-                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Constraints
                 </h4>
-                <div className="p-3 rounded-xl bg-white border border-slate-200 text-xs font-mono text-slate-700 whitespace-pre-line shadow-sm">
+                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono text-slate-700 dark:text-slate-300 whitespace-pre-line shadow-sm">
                   {currentQ.constraints}
                 </div>
               </div>
@@ -1142,33 +1194,33 @@ export default function CodingExamPage() {
             {/* Examples */}
             {currentQ.examples?.length > 0 && (
               <div className="space-y-3">
-                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Examples
                 </h4>
                 {currentQ.examples.map((ex, idx) => (
                   <div
                     key={idx}
-                    className="p-4 rounded-xl bg-white border border-slate-200 space-y-2 text-xs shadow-sm"
+                    className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2 text-xs shadow-sm"
                   >
-                    <p className="font-bold text-slate-700">
+                    <p className="font-bold text-slate-700 dark:text-slate-200">
                       Example {idx + 1}:
                     </p>
                     <div>
-                      <span className="text-slate-500 font-mono">Input:</span>
-                      <pre className="mt-1 p-2 bg-slate-50 rounded border border-slate-200 font-mono text-slate-800">
+                      <span className="text-slate-500 dark:text-slate-400 font-mono">Input:</span>
+                      <pre className="mt-1 p-2 bg-slate-50 dark:bg-slate-950 rounded border border-slate-200 dark:border-slate-800 font-mono text-slate-800 dark:text-slate-200">
                         {ex.input}
                       </pre>
                     </div>
                     <div>
-                      <span className="text-slate-500 font-mono">
+                      <span className="text-slate-500 dark:text-slate-400 font-mono">
                         Expected Output:
                       </span>
-                      <pre className="mt-1 p-2 bg-slate-50 rounded border border-slate-200 font-mono text-emerald-600 font-semibold">
+                      <pre className="mt-1 p-2 bg-slate-50 dark:bg-slate-950 rounded border border-slate-200 dark:border-slate-800 font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
                         {ex.output}
                       </pre>
                     </div>
                     {ex.explanation && (
-                      <p className="text-slate-500 text-[11px] italic pt-1">
+                      <p className="text-slate-500 dark:text-slate-400 text-[11px] italic pt-1">
                         Explanation: {ex.explanation}
                       </p>
                     )}
@@ -1180,17 +1232,17 @@ export default function CodingExamPage() {
         </section>
 
         {/* Right Side: Monaco Code Editor OR MCQ Option Selection */}
-        <section className="flex-1 flex flex-col min-w-0 bg-white">
+        <section className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-900">
           {currentQIsMcq ? (
             /* MCQ Interactive Selection View */
-            <div className="flex-1 flex flex-col overflow-y-auto p-6 md:p-8 bg-slate-50/50">
+            <div className="flex-1 flex flex-col overflow-y-auto p-6 md:p-8 bg-slate-50/50 dark:bg-slate-950/50">
               <div className="max-w-2xl w-full mx-auto space-y-6">
-                <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
                   <div className="flex items-center gap-2">
-                    <CheckSquare className="w-5 h-5 text-blue-600" />
-                    <span className="font-bold text-slate-800 text-sm">Select Your Answer</span>
+                    <CheckSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">Select Your Answer</span>
                   </div>
-                  <span className="text-[11px] font-mono text-slate-500">
+                  <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
                     Single Choice • {currentQ.marks} Marks
                   </span>
                 </div>
@@ -1209,26 +1261,26 @@ export default function CodingExamPage() {
                         onClick={() => handleOptionSelect(optIdx)}
                         className={`w-full text-left p-4 rounded-xl border transition-all flex items-start gap-3.5 cursor-pointer ${
                           isSelected
-                            ? 'bg-blue-50 border-blue-400 ring-2 ring-blue-400/20 shadow-sm'
-                            : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/80 shadow-xs'
+                            ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-400 dark:border-blue-500 ring-2 ring-blue-400/20 dark:ring-blue-500/20 shadow-sm'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50/80 dark:hover:bg-slate-800/60 shadow-xs'
                         }`}
                       >
                         <div
                           className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 transition-colors ${
                             isSelected
                               ? 'bg-blue-600 text-white shadow-sm'
-                              : 'bg-slate-100 border border-slate-200 text-slate-700'
+                              : 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
                           }`}
                         >
                           {letter}
                         </div>
                         <div className="flex-1 pt-0.5 min-w-0">
-                          <p className={`text-sm leading-relaxed ${isSelected ? 'font-semibold text-blue-900' : 'text-slate-700'}`}>
+                          <p className={`text-sm leading-relaxed ${isSelected ? 'font-semibold text-blue-900 dark:text-blue-200' : 'text-slate-700 dark:text-slate-300'}`}>
                             {opt.text}
                           </p>
                         </div>
                         {isSelected && (
-                          <CheckCircle2 className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                          <CheckCircle2 className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
                         )}
                       </button>
                     );
@@ -1236,21 +1288,21 @@ export default function CodingExamPage() {
                 </div>
 
                 {currentAnswer?.selectedOption !== null && currentAnswer?.selectedOption !== undefined ? (
-                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs text-emerald-700">
+                  <div className="p-3 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-center justify-between text-xs text-emerald-700 dark:text-emerald-300">
                     <span className="flex items-center gap-1.5 font-semibold">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                       Answer Recorded: Option {String.fromCharCode(65 + Number(currentAnswer.selectedOption))}
                     </span>
                     <button
                       type="button"
                       onClick={() => handleOptionSelect(null)}
-                      className="text-emerald-700 hover:underline text-[11px] font-medium"
+                      className="text-emerald-700 dark:text-emerald-400 hover:underline text-[11px] font-medium"
                     >
                       Clear Selection
                     </button>
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-400 italic text-center">
+                  <p className="text-xs text-slate-400 dark:text-slate-500 italic text-center">
                     Click any option above to select your answer.
                   </p>
                 )}
@@ -1259,17 +1311,17 @@ export default function CodingExamPage() {
           ) : (
             /* Coding Monaco Editor View */
             <>
-              {/* Editor Sub-header: Language selector & Notice */}
-              <div className="h-11 bg-white border-b border-slate-200 px-4 flex items-center justify-between shrink-0">
+              {/* Editor Sub-header: Language selector, Reset, Editor Theme & Notice */}
+              <div className="h-11 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
-                  <FileCode className="w-4 h-4 text-blue-600" />
-                  <label className="text-xs font-semibold text-slate-600">
+                  <FileCode className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
                     Language:
                   </label>
                   <select
                     value={currentAnswer.language}
                     onChange={(e) => handleLanguageChange(e.target.value)}
-                    className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-700 font-mono focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                    className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 font-mono focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
                   >
                     {["java", "python", "javascript"].map((lang) => (
                       <option key={lang} value={lang}>
@@ -1279,21 +1331,61 @@ export default function CodingExamPage() {
                       </option>
                     ))}
                   </select>
+
+                  {/* Reset Code to Initial Starter Template */}
+                  <button
+                    type="button"
+                    onClick={handleResetCode}
+                    title="Reset to original starter code"
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-200 dark:border-slate-700 transition-colors ml-1 cursor-pointer"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span className="hidden sm:inline">Reset Code</span>
+                  </button>
                 </div>
 
-                <div className="text-[11px] text-blue-600 font-medium flex items-center gap-1.5">
-                  <span>Auto-saved locally</span>
+                <div className="flex items-center gap-3">
+                  {/* Editor Theme Switcher (Dark / Light) */}
+                  <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="hidden sm:inline text-[11px] font-medium">Editor:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = activeMonacoTheme === "vs-dark" ? "vs" : "vs-dark";
+                        setEditorThemeChoice(next);
+                        localStorage.setItem("cdt_editor_theme", next);
+                      }}
+                      title={`Current editor theme: ${activeMonacoTheme === "vs-dark" ? "Dark (vs-dark)" : "Light (vs)"}. Click to toggle.`}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 transition-colors cursor-pointer"
+                    >
+                      {activeMonacoTheme === "vs-dark" ? (
+                        <>
+                          <Moon className="w-3 h-3 text-blue-400" />
+                          <span>Dark</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sun className="w-3 h-3 text-amber-500" />
+                          <span>Light</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="text-[11px] text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1.5">
+                    <span>Auto-saved locally</span>
+                  </div>
                 </div>
               </div>
 
               {/* Monaco Editor Container */}
-              <div className="flex-1 relative overflow-hidden flex flex-col">
+              <div className="flex-1 relative overflow-hidden flex flex-col bg-white dark:bg-[#1e1e1e]">
                 <div className="flex-1 relative overflow-hidden min-h-[160px]">
                   <Editor
                     height="100%"
-                    theme="vs-dark"
+                    theme={activeMonacoTheme}
                     loading={
-                      <div className="flex flex-col items-center justify-center h-full gap-2 text-slate-400 bg-[#1e1e1e] font-sans text-xs">
+                      <div className="flex flex-col items-center justify-center h-full gap-2 text-slate-500 dark:text-slate-400 bg-white dark:bg-[#1e1e1e] font-sans text-xs">
                         <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
                         <span>Initializing code editor...</span>
                       </div>
@@ -1310,36 +1402,42 @@ export default function CodingExamPage() {
                     options={{
                       fontSize: 13,
                       fontFamily:
-                        "'Fira Code', 'JetBrains Mono', Consolas, monospace",
+                        "'Fira Code', 'JetBrains Mono', 'Cascadia Code', Consolas, monospace",
                       minimap: { enabled: false },
                       scrollBeyondLastLine: false,
                       wordWrap: "on",
                       automaticLayout: true,
                       tabSize: 4,
                       suggestOnTriggerCharacters: true,
+                      padding: { top: 12, bottom: 12 },
+                      lineNumbers: "on",
+                      renderLineHighlight: "all",
+                      roundedSelection: true,
+                      cursorBlinking: "smooth",
+                      smoothScrolling: true,
                     }}
                   />
                 </div>
 
                 {/* Collapsible Console Drawer (when question or exam allows code run) */}
                 {Boolean(currentQ?.allowCodeRun) && showConsoleDrawer && (
-                  <div className="h-64 sm:h-72 border-t border-slate-200 bg-white flex flex-col shrink-0 animate-in slide-in-from-bottom-2 duration-150 shadow-lg">
+                  <div className="h-64 sm:h-72 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0 animate-in slide-in-from-bottom-2 duration-150 shadow-lg">
                     {/* Console Drawer Header with Tabs */}
-                    <div className="h-9 bg-slate-50 border-b border-slate-200 px-3 flex items-center justify-between shrink-0">
+                    <div className="h-9 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 px-3 flex items-center justify-between shrink-0">
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
                           onClick={() => setActiveConsoleTab("input")}
-                          className={`px-3 py-1 text-[11px] font-semibold rounded-md transition-colors flex items-center gap-1.5 ${
+                          className={`px-3 py-1 text-[11px] font-semibold rounded-md transition-colors flex items-center gap-1.5 cursor-pointer ${
                             activeConsoleTab === "input"
-                              ? "bg-white text-blue-600 shadow-sm border border-slate-200"
-                              : "text-slate-600 hover:text-slate-900"
+                              ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200 dark:border-slate-700"
+                              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
                           }`}
                         >
                           <Terminal className="w-3 h-3" />
                           Test Cases
                           {availableCases.length > 0 && (
-                            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-50 text-blue-600 border border-blue-200 font-mono">
+                            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-mono">
                               {availableCases.length}
                             </span>
                           )}
@@ -1347,10 +1445,10 @@ export default function CodingExamPage() {
                         <button
                           type="button"
                           onClick={() => setActiveConsoleTab("output")}
-                          className={`px-3 py-1 text-[11px] font-semibold rounded-md transition-colors flex items-center gap-1.5 ${
+                          className={`px-3 py-1 text-[11px] font-semibold rounded-md transition-colors flex items-center gap-1.5 cursor-pointer ${
                             activeConsoleTab === "output"
-                              ? "bg-white text-blue-600 shadow-sm border border-slate-200"
-                              : "text-slate-600 hover:text-slate-900"
+                              ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200 dark:border-slate-700"
+                              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
                           }`}
                         >
                           <Code2 className="w-3 h-3" />
@@ -1373,26 +1471,26 @@ export default function CodingExamPage() {
                         {activeConsoleTab === "output" && currentRunOutput && (
                           <div className="flex items-center gap-2 text-[10px]">
                             {currentRunOutput.passed === true ? (
-                              <span className="px-2 py-0.5 rounded-full font-bold bg-emerald-50 text-emerald-700 border border-emerald-300">
+                              <span className="px-2 py-0.5 rounded-full font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
                                 ✓ Passed
                               </span>
                             ) : currentRunOutput.passed === false ? (
-                              <span className="px-2 py-0.5 rounded-full font-bold bg-rose-50 text-rose-700 border border-rose-300">
+                              <span className="px-2 py-0.5 rounded-full font-bold bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
                                 ✗ Wrong Answer
                               </span>
                             ) : (
                               <span
                                 className={`px-1.5 py-0.5 rounded font-bold font-mono ${
                                   currentRunOutput.status === "SUCCESS"
-                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                    : "bg-rose-50 text-rose-700 border border-rose-200"
+                                    ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                                    : "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
                                 }`}
                               >
                                 {currentRunOutput.status}
                               </span>
                             )}
                             {currentRunOutput.executionTime !== undefined && (
-                              <span className="text-slate-500 font-mono">
+                              <span className="text-slate-500 dark:text-slate-400 font-mono">
                                 {currentRunOutput.executionTime}s
                               </span>
                             )}
@@ -1401,7 +1499,7 @@ export default function CodingExamPage() {
                         <button
                           type="button"
                           onClick={() => setShowConsoleDrawer(false)}
-                          className="p-1 text-slate-400 hover:text-slate-600 rounded transition-colors"
+                          className="p-1 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 rounded transition-colors cursor-pointer"
                           title="Close Console"
                         >
                           <X className="w-3.5 h-3.5" />
@@ -1410,7 +1508,7 @@ export default function CodingExamPage() {
                     </div>
 
                     {/* Console Drawer Body */}
-                    <div className="flex-1 p-3 overflow-auto bg-slate-50 font-mono text-xs">
+                    <div className="flex-1 p-3 overflow-auto bg-slate-50 dark:bg-slate-950 font-mono text-xs">
                       {activeConsoleTab === "input" ? (
                         <div className="h-full flex flex-col space-y-2">
                           {/* Case Selection Tabs (LeetCode Style) */}
@@ -1428,7 +1526,7 @@ export default function CodingExamPage() {
                                 className={`px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                                   activeCaseKey === idx
                                     ? "bg-blue-600 text-white shadow-sm shadow-blue-600/20 font-bold"
-                                    : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-100"
+                                    : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
                                 }`}
                               >
                                 Case {idx + 1}
@@ -1445,7 +1543,7 @@ export default function CodingExamPage() {
                               className={`px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                                 activeCaseKey === "custom"
                                   ? "bg-blue-600 text-white shadow-sm shadow-blue-600/20 font-bold"
-                                  : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-100"
+                                  : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
                               }`}
                             >
                               + Custom Input
@@ -1455,7 +1553,7 @@ export default function CodingExamPage() {
                           {/* Selected Case Content */}
                           {activeCaseKey === "custom" ? (
                             <div className="flex-1 flex flex-col">
-                              <div className="text-[11px] text-slate-500 mb-1 font-sans">
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 font-sans">
                                 Custom standard input (stdin) provided to your program:
                               </div>
                               <textarea
@@ -1466,13 +1564,13 @@ export default function CodingExamPage() {
                                 }
                                 onChange={(e) => handleCustomInputChange(e.target.value)}
                                 placeholder="Enter custom input (stdin) here..."
-                                className="flex-1 w-full bg-white border border-slate-200 rounded-lg p-2.5 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none font-mono text-xs leading-relaxed shadow-sm min-h-[80px]"
+                                className="flex-1 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none font-mono text-xs leading-relaxed shadow-sm min-h-[80px]"
                               />
                             </div>
                           ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 min-h-[90px]">
                               <div className="flex flex-col">
-                                <span className="text-[11px] text-slate-500 mb-1 font-sans font-semibold">
+                                <span className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 font-sans font-semibold">
                                   Input (stdin):
                                 </span>
                                 <textarea
@@ -1487,15 +1585,15 @@ export default function CodingExamPage() {
                                       [`${currentQ._id}_case_${activeCaseKey}`]: e.target.value,
                                     }))
                                   }
-                                  className="flex-1 w-full bg-white border border-slate-200 rounded-lg p-2 text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none font-mono text-xs leading-relaxed shadow-sm"
+                                  className="flex-1 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none font-mono text-xs leading-relaxed shadow-sm"
                                 />
                               </div>
 
                               <div className="flex flex-col">
-                                <span className="text-[11px] text-slate-500 mb-1 font-sans font-semibold">
+                                <span className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 font-sans font-semibold">
                                   Expected Output (stdout):
                                 </span>
-                                <div className="flex-1 w-full bg-slate-100 border border-slate-200 rounded-lg p-2 text-emerald-700 font-mono text-xs leading-relaxed overflow-auto whitespace-pre-wrap select-text">
+                                <div className="flex-1 w-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-emerald-700 dark:text-emerald-400 font-mono text-xs leading-relaxed overflow-auto whitespace-pre-wrap select-text">
                                   {availableCases[activeCaseKey]?.expectedOutput || "(empty)"}
                                 </div>
                               </div>
@@ -1505,53 +1603,53 @@ export default function CodingExamPage() {
                       ) : (
                         <div className="h-full space-y-3">
                           {isRunningCode ? (
-                            <div className="flex flex-col items-center justify-center h-full text-blue-600 py-6 gap-2">
+                            <div className="flex flex-col items-center justify-center h-full text-blue-600 dark:text-blue-400 py-6 gap-2">
                               <Loader2 className="w-5 h-5 animate-spin" />
-                              <span className="text-xs font-sans text-slate-600">
+                              <span className="text-xs font-sans text-slate-600 dark:text-slate-300">
                                 Compiling and executing your code in secure sandbox...
                               </span>
                             </div>
                           ) : !currentRunOutput ? (
-                            <div className="flex flex-col items-center justify-center h-full text-slate-500 py-6 text-center font-sans gap-1">
-                              <Terminal className="w-5 h-5 text-slate-400 mb-1" />
+                            <div className="flex flex-col items-center justify-center h-full text-slate-500 dark:text-slate-400 py-6 text-center font-sans gap-1">
+                              <Terminal className="w-5 h-5 text-slate-400 dark:text-slate-500 mb-1" />
                               <span className="text-xs">No execution output yet.</span>
-                              <span className="text-[11px] text-slate-500">
+                              <span className="text-[11px] text-slate-500 dark:text-slate-400">
                                 Click "Run Code" below to test your solution with public testcases or custom input.
                               </span>
                             </div>
                           ) : (
                             <div className="space-y-3">
                               {/* Verdict Banner */}
-                              <div className="flex items-center justify-between pb-1 border-b border-slate-200 font-sans">
+                              <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-800 font-sans">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs font-bold text-slate-700">
+                                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
                                     {currentRunOutput.caseLabel || "Test Case"}
                                   </span>
                                   {currentRunOutput.passed === true ? (
-                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
                                       ✓ Passed
                                     </span>
                                   ) : currentRunOutput.passed === false ? (
-                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1">
+                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800 flex items-center gap-1">
                                       ✗ Wrong Answer
                                     </span>
                                   ) : currentRunOutput.isCompileError ? (
-                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
                                       ✗ Compilation Error
                                     </span>
                                   ) : currentRunOutput.isRuntimeError ? (
-                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
                                       ✗ Runtime Error
                                     </span>
                                   ) : (
-                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-300">
+                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-800">
                                       Finished ({currentRunOutput.status})
                                     </span>
                                   )}
                                 </div>
 
                                 {currentRunOutput.executionTime !== undefined && (
-                                  <span className="text-slate-500 font-mono text-xs">
+                                  <span className="text-slate-500 dark:text-slate-400 font-mono text-xs">
                                     Time: {currentRunOutput.executionTime}s
                                   </span>
                                 )}
@@ -1559,8 +1657,8 @@ export default function CodingExamPage() {
 
                               {/* Compilation Error Message */}
                               {currentRunOutput.compileOutput && (
-                                <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-[11px] whitespace-pre-wrap font-mono">
-                                  <div className="font-bold text-rose-800 mb-1 font-sans">
+                                <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 rounded-lg text-rose-700 dark:text-rose-300 text-[11px] whitespace-pre-wrap font-mono">
+                                  <div className="font-bold text-rose-800 dark:text-rose-200 mb-1 font-sans">
                                     Compilation / Syntax Error:
                                   </div>
                                   {currentRunOutput.compileOutput}
@@ -1569,8 +1667,8 @@ export default function CodingExamPage() {
 
                               {/* Runtime / Stderr Error Message */}
                               {currentRunOutput.stderr && !currentRunOutput.compileOutput && (
-                                <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-[11px] whitespace-pre-wrap font-mono">
-                                  <div className="font-bold text-rose-800 mb-1 font-sans">
+                                <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 rounded-lg text-rose-700 dark:text-rose-300 text-[11px] whitespace-pre-wrap font-mono">
+                                  <div className="font-bold text-rose-800 dark:text-rose-200 mb-1 font-sans">
                                     Runtime Error / Traceback:
                                   </div>
                                   {currentRunOutput.stderr}
@@ -1580,23 +1678,23 @@ export default function CodingExamPage() {
                               {/* Input vs Output Comparison */}
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                  <div className="text-[10px] text-slate-500 font-sans mb-1 font-semibold">
+                                  <div className="text-[10px] text-slate-500 dark:text-slate-400 font-sans mb-1 font-semibold">
                                     Input:
                                   </div>
-                                  <div className="p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 whitespace-pre-wrap font-mono shadow-sm">
+                                  <div className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-800 dark:text-slate-200 whitespace-pre-wrap font-mono shadow-sm">
                                     {currentRunOutput.inputUsed || "(empty)"}
                                   </div>
                                 </div>
 
                                 <div>
-                                  <div className="text-[10px] text-slate-500 font-sans mb-1 font-semibold">
+                                  <div className="text-[10px] text-slate-500 dark:text-slate-400 font-sans mb-1 font-semibold">
                                     Your Output:
                                   </div>
                                   <div
                                     className={`p-2.5 rounded-lg whitespace-pre-wrap font-mono border shadow-sm ${
                                       currentRunOutput.passed === false
-                                        ? "bg-rose-50 border-rose-200 text-rose-800"
-                                        : "bg-white border-slate-200 text-slate-800"
+                                        ? "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-200"
+                                        : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
                                     }`}
                                   >
                                     {currentRunOutput.stdout || "(empty output)"}
@@ -1608,10 +1706,10 @@ export default function CodingExamPage() {
                               {currentRunOutput.expectedOutput !== null &&
                                 currentRunOutput.expectedOutput !== undefined && (
                                   <div>
-                                    <div className="text-[10px] text-slate-500 font-sans mb-1 font-semibold">
+                                    <div className="text-[10px] text-slate-500 dark:text-slate-400 font-sans mb-1 font-semibold">
                                       Expected Output:
                                     </div>
-                                    <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 whitespace-pre-wrap font-mono shadow-sm">
+                                    <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-lg text-emerald-800 dark:text-emerald-300 whitespace-pre-wrap font-mono shadow-sm">
                                       {currentRunOutput.expectedOutput}
                                     </div>
                                   </div>
@@ -1628,12 +1726,12 @@ export default function CodingExamPage() {
           )}
 
           {/* Bottom Editor Bar */}
-          <div className="h-12 bg-white border-t border-slate-200 px-4 flex items-center justify-between shrink-0 shadow-sm">
+          <div className="h-12 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-4 flex items-center justify-between shrink-0 shadow-sm">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setCurrentQIndex(Math.max(0, currentQIndex - 1))}
                 disabled={currentQIndex === 0}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 text-xs font-semibold text-slate-700 disabled:opacity-40 hover:bg-slate-200 transition-colors"
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 disabled:opacity-40 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
               >
                 <ChevronLeft className="w-3.5 h-3.5" /> Previous
               </button>
@@ -1644,7 +1742,7 @@ export default function CodingExamPage() {
                   )
                 }
                 disabled={currentQIndex === validQuestions.length - 1}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 text-xs font-semibold text-slate-700 disabled:opacity-40 hover:bg-slate-200 transition-colors"
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 disabled:opacity-40 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
               >
                 Next <ChevronRight className="w-3.5 h-3.5" />
               </button>
@@ -1661,10 +1759,10 @@ export default function CodingExamPage() {
                       setActiveConsoleTab("input");
                     }
                   }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border cursor-pointer ${
                     showConsoleDrawer
-                      ? "bg-blue-50 text-blue-700 border-blue-300"
-                      : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                      ? "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-800"
+                      : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
                   }`}
                 >
                   <Terminal className="w-3.5 h-3.5" />
@@ -1676,7 +1774,7 @@ export default function CodingExamPage() {
                   type="button"
                   onClick={handleRunCode}
                   disabled={isRunningCode}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-sm shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-sm shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isRunningCode ? (
                     <>
@@ -1692,11 +1790,11 @@ export default function CodingExamPage() {
                 </button>
               </div>
             ) : !currentQIsMcq ? (
-              <div className="text-xs text-slate-500 italic">
+              <div className="text-xs text-slate-500 dark:text-slate-400 italic">
                 Notice: Code is compiled & tested upon final exam submission.
               </div>
             ) : (
-              <div className="text-xs text-slate-500 font-medium">
+              <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                 Multiple choice question • Click option to choose answer
               </div>
             )}
@@ -1706,36 +1804,36 @@ export default function CodingExamPage() {
 
       {/* Confirmation Modal for Final Submit */}
       {showSubmitModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
-            <div className="flex items-center gap-3 text-blue-600">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+            <div className="flex items-center gap-3 text-blue-600 dark:text-blue-400">
               <AlertTriangle className="w-6 h-6 shrink-0" />
-              <h3 className="text-lg font-bold text-slate-800">
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
                 Confirm Final Exam Submission
               </h3>
             </div>
 
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
               Are you sure you want to finalize your assessment? Once submitted,
               you cannot resume or modify any solutions.
             </p>
 
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
-              <div className="flex justify-between text-slate-600">
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+              <div className="flex justify-between text-slate-600 dark:text-slate-400">
                 <span>Solutions Written:</span>
-                <span className="font-bold text-emerald-600">
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">
                   {attemptedCount} of {validQuestions.length}
                 </span>
               </div>
-              <div className="flex justify-between text-slate-600">
+              <div className="flex justify-between text-slate-600 dark:text-slate-400">
                 <span>Unattempted Questions:</span>
-                <span className="font-bold text-rose-600">
+                <span className="font-bold text-rose-600 dark:text-rose-400">
                   {validQuestions.length - attemptedCount}
                 </span>
               </div>
-              <div className="flex justify-between text-slate-600">
+              <div className="flex justify-between text-slate-600 dark:text-slate-400">
                 <span>Time Remaining:</span>
-                <span className="font-mono font-bold text-blue-600">
+                <span className="font-mono font-bold text-blue-600 dark:text-blue-400">
                   {formatTime(remainingSeconds)}
                 </span>
               </div>
@@ -1745,7 +1843,7 @@ export default function CodingExamPage() {
               <button
                 onClick={() => setShowSubmitModal(false)}
                 disabled={isSubmitting}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold bg-white hover:bg-slate-50 transition-colors shadow-sm"
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm cursor-pointer"
               >
                 Return to Editor
               </button>
@@ -1773,37 +1871,37 @@ export default function CodingExamPage() {
 
       {/* Strict Fullscreen Security Enforcement Modal */}
       {showFullscreenModal && (
-        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 select-none">
-          <div className="bg-white border-2 border-rose-500 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 select-none">
+          <div className="bg-white dark:bg-slate-900 border-2 border-rose-500 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0">
                 <ShieldAlert className="w-7 h-7" />
               </div>
               <div>
-                <h3 className="text-lg font-extrabold text-slate-800 tracking-tight">
+                <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
                   SECURITY VIOLATION: FULLSCREEN REQUIRED
                 </h3>
-                <p className="text-xs text-rose-600 font-medium mt-0.5">
+                <p className="text-xs text-rose-600 dark:text-rose-400 font-medium mt-0.5">
                   Assessment access is locked until fullscreen is restored
                 </p>
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-slate-700 space-y-2 leading-relaxed">
+            <div className="p-4 rounded-xl bg-rose-50/80 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-xs text-slate-700 dark:text-slate-300 space-y-2 leading-relaxed">
               <p>
                 Exiting or minimizing full-screen mode is recorded as a serious
                 proctoring violation. You must remain in full-screen mode to
                 prevent unauthorized tab switches or background activity.
               </p>
-              <div className="flex items-center justify-between pt-2 border-t border-rose-200 text-xs font-semibold">
-                <span className="text-slate-500">Recorded Violations:</span>
-                <span className="font-mono text-rose-600 font-bold">
+              <div className="flex items-center justify-between pt-2 border-t border-rose-200 dark:border-rose-900/60 text-xs font-semibold">
+                <span className="text-slate-500 dark:text-slate-400">Recorded Violations:</span>
+                <span className="font-mono text-rose-600 dark:text-rose-400 font-bold">
                   {violationCount} / {exam?.maxViolations || 5} (Limit:{" "}
                   {exam?.maxViolations || 5})
                 </span>
               </div>
               {violationCount >= (exam?.maxViolations || 5) - 1 && (
-                <p className="text-rose-600 font-bold text-[11px] pt-1">
+                <p className="text-rose-600 dark:text-rose-400 font-bold text-[11px] pt-1">
                   ⚠️ WARNING: One more violation will immediately terminate and
                   submit your assessment!
                 </p>
@@ -1825,39 +1923,39 @@ export default function CodingExamPage() {
 
       {/* Screen Resolution Enforcement Blocker (< 1024px width or < 550px height) */}
       {(windowSize.width < 1024 || windowSize.height < 550) && (
-        <div className="fixed inset-0 z-[200] bg-slate-50 flex items-center justify-center p-6 text-center select-none">
-          <div className="bg-white border-2 border-amber-300 rounded-2xl max-w-lg w-full p-8 shadow-xl space-y-6">
-            <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-500 mx-auto">
+        <div className="fixed inset-0 z-[200] bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 text-center select-none">
+          <div className="bg-white dark:bg-slate-900 border-2 border-amber-300 dark:border-amber-600 rounded-2xl max-w-lg w-full p-8 shadow-xl space-y-6">
+            <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 flex items-center justify-center text-amber-500 dark:text-amber-400 mx-auto">
               <Monitor className="w-9 h-9" />
             </div>
 
             <div className="space-y-2">
-              <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">
+              <h2 className="text-xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
                 DESKTOP / LAPTOP RESOLUTION REQUIRED
               </h2>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                 This examination environment requires a standard desktop or
                 laptop screen (minimum width: 1024px) to ensure code
                 readability, fair proctoring, and test integrity.
               </p>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2 font-mono">
-              <div className="flex justify-between text-slate-500">
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs space-y-2 font-mono">
+              <div className="flex justify-between text-slate-500 dark:text-slate-400">
                 <span>Current Resolution:</span>
-                <span className="font-bold text-rose-600">
+                <span className="font-bold text-rose-600 dark:text-rose-400">
                   {windowSize.width}px × {windowSize.height}px
                 </span>
               </div>
-              <div className="flex justify-between text-slate-500">
+              <div className="flex justify-between text-slate-500 dark:text-slate-400">
                 <span>Minimum Required:</span>
-                <span className="font-bold text-emerald-600">
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">
                   1024px × 550px
                 </span>
               </div>
             </div>
 
-            <p className="text-[11px] text-amber-600 font-medium">
+            <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
               Please maximize your browser window or switch to a compatible
               desktop/laptop computer to resume.
             </p>
@@ -1867,32 +1965,32 @@ export default function CodingExamPage() {
 
       {/* Proctoring Rules Violation Termination Custom Modal */}
       {terminatedModal && (
-        <div className="fixed inset-0 z-[300] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 select-none animate-in fade-in duration-150">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-sm sm:max-w-md w-full p-5 shadow-xl space-y-3.5 animate-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-2.5 border-b border-slate-200 pb-3">
-              <div className="w-8 h-8 rounded-lg bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shrink-0">
+        <div className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 select-none animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-sm sm:max-w-md w-full p-5 shadow-xl space-y-3.5 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-2.5 border-b border-slate-200 dark:border-slate-800 pb-3">
+              <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0">
                 <ShieldAlert className="w-4 h-4" />
               </div>
               <div className="min-w-0">
-                <h3 className="text-sm sm:text-base font-semibold text-slate-800 tracking-tight truncate">
+                <h3 className="text-sm sm:text-base font-semibold text-slate-800 dark:text-slate-100 tracking-tight truncate">
                   Examination Terminated
                 </h3>
-                <p className="text-[11px] text-rose-600 font-medium">
+                <p className="text-[11px] text-rose-600 dark:text-rose-400 font-medium">
                   Proctoring Violation Limit Exceeded
                 </p>
               </div>
             </div>
 
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-1.5 leading-relaxed">
-              <p className="text-slate-800 font-medium">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 space-y-1.5 leading-relaxed">
+              <p className="text-slate-800 dark:text-slate-100 font-medium">
                 {terminatedModal.message}
               </p>
-              <p className="text-slate-500 text-[11px]">
+              <p className="text-slate-500 dark:text-slate-400 text-[11px]">
                 All further actions have been locked. Your submitted code has been saved.
               </p>
             </div>
 
-            <div className="flex justify-end pt-2 border-t border-slate-200">
+            <div className="flex justify-end pt-2 border-t border-slate-200 dark:border-slate-800">
               <button
                 onClick={() => {
                   if (terminatedModal.attemptId) {

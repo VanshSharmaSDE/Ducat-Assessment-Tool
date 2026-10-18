@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
 import { getProfilePictureUrl, handleAvatarError } from '../utils/imageUrl';
 import logo from '../assets/logo.jpeg';
 import {
@@ -24,10 +25,13 @@ import {
   CheckSquare,
   Settings,
   FolderTree,
+  MessageSquare,
+  LifeBuoy,
 } from 'lucide-react';
 
 export default function AdminLayout() {
   const { user, logout } = useAuth();
+  const { unreadCount } = useNotification();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -50,6 +54,8 @@ export default function AdminLayout() {
     ...(isSuperAdmin ? [{ label: 'Faculty Management', path: '/admin/faculty', icon: GraduationCap }] : []),
     { label: isSuperAdmin ? 'Results & Reports' : 'Student Results', path: '/admin/results', icon: Award },
     { label: isSuperAdmin ? 'Raw Submissions' : 'Submissions', path: '/admin/submissions', icon: Terminal },
+    { label: isSuperAdmin ? 'Queries' : 'Queries & Support', path: '/admin/queries', icon: MessageSquare },
+    ...(isSuperAdmin ? [{ label: 'Admin Support', path: '/admin/support', icon: LifeBuoy }] : []),
     { label: isSuperAdmin ? 'Admin Profile' : 'Faculty Profile', path: '/admin/profile', icon: User },
     { label: 'Settings', path: '/admin/settings', icon: Settings },
   ];
@@ -66,9 +72,12 @@ export default function AdminLayout() {
         </div>
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+          className="relative p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"
         >
           {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          {unreadCount > 0 && (
+            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-900 animate-pulse" />
+          )}
         </button>
       </div>
 
@@ -108,7 +117,13 @@ export default function AdminLayout() {
                     <Icon className="w-4 h-4" />
                     <span>{item.label}</span>
                   </div>
-                  <ChevronRight className="w-3.5 h-3.5 opacity-40" />
+                  {item.path === '/admin/queries' && unreadCount > 0 ? (
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-rose-500 text-white shadow-md shadow-rose-500/30 animate-pulse flex items-center justify-center min-w-[20px]">
+                      {unreadCount}
+                    </span>
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5 opacity-40" />
+                  )}
                 </NavLink>
               );
             })}

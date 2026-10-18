@@ -39,6 +39,9 @@ import AdminTechnologiesPage from './pages/admin/AdminTechnologiesPage';
 import AdminOrganizationsPage from './pages/admin/AdminOrganizationsPage';
 import AdminMcqQuestionsPage from './pages/admin/AdminMcqQuestionsPage';
 import AdminMcqQuestionEditorPage from './pages/admin/AdminMcqQuestionEditorPage';
+import StudentSupportPage from './pages/StudentSupportPage';
+import AdminQueriesPage from './pages/admin/AdminQueriesPage';
+import AdminDeveloperSupportPage from './pages/admin/AdminDeveloperSupportPage';
 
 // Helper to determine destination by role
 export const getRoleHomeRoute = (role) => {
@@ -129,6 +132,7 @@ export default function App() {
         <Route path="/exams/:id/instructions" element={<ExamInstructionPage />} />
         <Route path="/results" element={<UserResultsPage />} />
         <Route path="/results/:id" element={<ResultDetailPage />} />
+        <Route path="/support" element={<StudentSupportPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
@@ -161,6 +165,7 @@ export default function App() {
         <Route path="questions/:id/edit" element={<AdminQuestionEditorPage />} />
         <Route path="mcq-questions" element={<AdminMcqQuestionsPage />} />
         <Route path="mcq-questions/new" element={<AdminMcqQuestionEditorPage />} />
+        <Route path="mcq-questions/:id/edit" element={<AdminMcqQuestionEditorPage />} />
         <Route path="users" element={<AdminUsersPage />} />
         <Route path="technologies" element={<AdminTechnologiesPage />} />
         <Route path="batches" element={<AdminBatchesPage />} />
@@ -169,6 +174,8 @@ export default function App() {
         <Route path="results" element={<AdminResultsPage />} />
         <Route path="results/:id" element={<AdminResultDetailPage />} />
         <Route path="submissions" element={<AdminSubmissionsPage />} />
+        <Route path="queries" element={<AdminQueriesPage />} />
+        <Route path="support" element={<AdminDeveloperSupportPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>

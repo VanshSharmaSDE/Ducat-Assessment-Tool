@@ -17,7 +17,8 @@ import {
   CheckSquare,
   Code2,
   Terminal,
-  Filter
+  Filter,
+  Laptop
 } from 'lucide-react';
 
 const toLocalDatetimeInput = (dateVal) => {
@@ -65,6 +66,7 @@ export default function AdminExamWizardPage() {
     difficulty: 'INTERMEDIATE',
     maxViolations: 5,
     allowCodeRun: false,
+    restrictToLaptop: false,
     isPublished: true,
     organization: '',
     technology: '',
@@ -154,6 +156,7 @@ export default function AdminExamWizardPage() {
               difficulty: ex.difficulty || 'INTERMEDIATE',
               maxViolations: ex.maxViolations !== undefined ? Number(ex.maxViolations) : 5,
               allowCodeRun: ex.allowCodeRun !== undefined ? Boolean(ex.allowCodeRun) : false,
+              restrictToLaptop: ex.restrictToLaptop !== undefined ? Boolean(ex.restrictToLaptop) : false,
               isPublished: ex.isPublished !== undefined ? Boolean(ex.isPublished) : true,
               organization: examOrg,
               technology: ex.technology || rawTargetTechs[0] || '',
@@ -319,6 +322,7 @@ export default function AdminExamWizardPage() {
         difficulty: formData.difficulty,
         maxViolations: Number(formData.maxViolations),
         allowCodeRun: Boolean(formData.allowCodeRun),
+        restrictToLaptop: Boolean(formData.restrictToLaptop),
         isPublished: formData.isPublished,
         status: formData.isPublished ? 'ACTIVE' : 'DRAFT',
         organization: formData.organization.trim(),
@@ -362,7 +366,7 @@ export default function AdminExamWizardPage() {
   ];
 
   return (
-    <div className="p-6 md:p-10 max-w-4xl mx-auto w-full space-y-8">
+    <div className="p-6 md:p-8 max-w-7xl mx-auto w-full space-y-8">
       <div>
         <Link to="/admin/exams" className="text-xs text-slate-500 hover:text-slate-800 transition-colors mb-3 inline-block">
           &larr; Back to Examinations
@@ -807,6 +811,41 @@ export default function AdminExamWizardPage() {
                   <div className="w-11 h-6 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 dark:after:border-slate-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                 </label>
               </div>
+
+              <div className="sm:col-span-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <Laptop className="w-4 h-4 text-blue-600" />
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider">Laptop / Desktop Only Mode</span>
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${
+                        formData.restrictToLaptop
+                          ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800'
+                          : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-600'
+                      }`}
+                    >
+                      {formData.restrictToLaptop ? 'Enforced' : 'Disabled'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Require students to take this examination exclusively on a laptop or desktop computer (viewport width ≥ 1024px). Mobile devices and small screens will be blocked before viewing instructions or starting the test.
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(formData.restrictToLaptop)}
+                    onChange={(e) => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        restrictToLaptop: e.target.checked,
+                      }));
+                    }}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 dark:after:border-slate-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
             </div>
           </div>
         )}
@@ -1077,6 +1116,12 @@ export default function AdminExamWizardPage() {
                 <span className="text-slate-500 dark:text-slate-400">Candidate Code Testing (Global):</span>
                 <span className={`font-semibold ${formData.allowCodeRun ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
                   {formData.allowCodeRun ? 'Enabled' : 'Disabled (Customized per question)'}
+                </span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
+                <span className="text-slate-500 dark:text-slate-400">Device Requirement:</span>
+                <span className={`font-semibold ${formData.restrictToLaptop ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                  {formData.restrictToLaptop ? 'Laptop / Desktop Screen Only (≥ 1024px)' : 'All Devices Permitted'}
                 </span>
               </div>
               {formData.questions.some((q) => q.type === 'CODING' && q.allowCodeRun) && (

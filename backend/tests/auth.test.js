@@ -45,4 +45,18 @@ describe('Auth Service & Role Protection Unit Tests', () => {
       jwt.verify(token, 'wrong_tampered_secret_key');
     }).toThrow();
   });
+
+  test('User schema initializes restrictStudentLaptopOnly to false by default', async () => {
+    const { User } = await import('../src/models/User.js');
+    const user = new User({
+      name: 'Faculty User',
+      email: 'faculty@assessment.com',
+      passwordHash: 'dummyhash123',
+      role: 'FACULTY',
+    });
+    expect(user.restrictStudentLaptopOnly).toBe(false);
+
+    user.restrictStudentLaptopOnly = true;
+    expect(user.restrictStudentLaptopOnly).toBe(true);
+  });
 });

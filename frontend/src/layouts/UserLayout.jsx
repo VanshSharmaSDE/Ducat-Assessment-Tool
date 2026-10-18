@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
 import { getProfilePictureUrl, handleAvatarError } from '../utils/imageUrl';
 import logo from '../assets/logo.jpeg';
 import {
@@ -15,10 +16,12 @@ import {
   ShieldCheck,
   ChevronRight,
   Settings,
+  LifeBuoy,
 } from 'lucide-react';
 
 export default function UserLayout() {
   const { user, logout } = useAuth();
+  const { unreadCount } = useNotification();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -31,6 +34,7 @@ export default function UserLayout() {
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Available Exams', path: '/exams', icon: BookOpen },
     { label: 'My Results', path: '/results', icon: Award },
+    { label: 'Support', path: '/support', icon: LifeBuoy },
     { label: 'Profile', path: '/profile', icon: User },
     { label: 'Settings', path: '/settings', icon: Settings },
   ];
@@ -45,9 +49,12 @@ export default function UserLayout() {
         </div>
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+          className="relative p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"
         >
           {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          {unreadCount > 0 && (
+            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-900 animate-pulse" />
+          )}
         </button>
       </div>
 
@@ -86,7 +93,21 @@ export default function UserLayout() {
                     <Icon className="w-4 h-4" />
                     <span>{item.label}</span>
                   </div>
-                  <ChevronRight className="w-3.5 h-3.5 opacity-40" />
+                  {item.path === '/support' ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-xs">
+                        NEW
+                      </span>
+                      {unreadCount > 0 && (
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white shadow-sm shadow-rose-500/30 animate-pulse flex items-center justify-center min-w-[18px]">
+                          {unreadCount}
+                        </span>
+                      )}
+                      <ChevronRight className="w-3.5 h-3.5 opacity-40" />
+                    </div>
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5 opacity-40" />
+                  )}
                 </NavLink>
               );
             })}

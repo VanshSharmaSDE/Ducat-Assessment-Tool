@@ -117,6 +117,7 @@ export const createStudent = async (req, res) => {
       studentId: finalStudentId,
       rollNumber: finalStudentId,
       passwordHash: hashedPassword,
+      plainPassword: password,
       role: 'USER',
       phone: phone ? String(phone).trim() : '',
       technology: finalTech,
@@ -149,6 +150,7 @@ export const createStudent = async (req, res) => {
         batch: newStudent.batch,
         organization: newStudent.organization,
         gender: newStudent.gender,
+        plainPassword: newStudent.plainPassword || password,
         createdBy: req.user._id,
       },
     });
@@ -328,6 +330,9 @@ export const uploadStudentsExcel = async (req, res) => {
         if (age !== null && !isNaN(age)) existing.age = age;
         if (row['Password'] || row['password']) {
           existing.passwordHash = await bcrypt.hash(password, 10);
+          existing.plainPassword = password;
+        } else if (!existing.plainPassword) {
+          existing.plainPassword = 'Student@123';
         }
 
         // If uploaded by faculty who is not the creator, link to assignedFaculties
@@ -349,6 +354,7 @@ export const uploadStudentsExcel = async (req, res) => {
         studentId,
         rollNumber: studentId,
         passwordHash: hashedPassword,
+        plainPassword: password,
         role: 'USER',
         phone: phone.trim(),
         technology: finalTech,
@@ -1341,13 +1347,10 @@ export const updateStudent = async (req, res) => {
     if (age !== undefined) user.age = age === '' || age === null ? null : Number(age);
 
     if (password && password.trim().length >= 6) {
-      if (oldPassword && String(oldPassword).trim()) {
-        const isOldMatch = await user.comparePassword(String(oldPassword).trim());
-        if (!isOldMatch) {
-          return res.status(400).json({ success: false, message: 'Old password is incorrect.' });
-        }
-      }
       user.passwordHash = await bcrypt.hash(password.trim(), 10);
+      user.plainPassword = password.trim();
+    } else if (!user.plainPassword) {
+      user.plainPassword = 'Student@123';
     }
 
     await user.save();

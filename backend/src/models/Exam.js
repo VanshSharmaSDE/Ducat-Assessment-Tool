@@ -93,6 +93,10 @@ const examSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    restrictToLaptop: {
+      type: Boolean,
+      default: false,
+    },
     organization: {
       type: String,
       default: '',

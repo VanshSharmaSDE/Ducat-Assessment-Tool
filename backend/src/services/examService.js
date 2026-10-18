@@ -301,7 +301,7 @@ export class ExamService {
     };
   }
 
-  static async startExam(examId, userId, clientIp, userAgent) {
+  static async startExam(examId, userId, clientIp, userAgent, deviceInfo = null) {
     const exam = await Exam.findById(examId);
     if (!exam) {
       const error = new Error('Exam not found');
@@ -315,6 +315,26 @@ export class ExamService {
       error.statusCode = 403;
       error.errorCode = 'EXAM_NOT_PUBLISHED';
       throw error;
+    }
+
+    if (exam.restrictToLaptop) {
+      const ua = (userAgent || '').toLowerCase();
+      const isMobileUA = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(ua);
+      const screenWidth = Number(deviceInfo?.screenWidth || deviceInfo?.width || 0);
+      const windowWidth = Number(deviceInfo?.windowWidth || 0);
+      const isMobileDevice = Boolean(deviceInfo?.isMobile || isMobileUA);
+
+      const isSmallScreen = screenWidth > 0 && screenWidth < 1024;
+      const isSmallWindow = windowWidth > 0 && windowWidth < 1024;
+
+      if (isMobileDevice || isSmallScreen || isSmallWindow) {
+        const error = new Error(
+          'This examination is restricted to laptop and desktop screens only (screen width ≥ 1024px). Mobile devices and small screen viewports are not allowed.'
+        );
+        error.statusCode = 403;
+        error.errorCode = 'LAPTOP_REQUIRED';
+        throw error;
+      }
     }
 
     const studentUser = await User.findById(userId).populate('createdBy', 'role');

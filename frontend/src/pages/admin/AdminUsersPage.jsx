@@ -95,6 +95,7 @@ export default function AdminUsersPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showEditPassword, setShowEditPassword] = useState(false);
   const [showOldPassword, setShowOldPassword] = useState(false);
+  const [copiedOldPassword, setCopiedOldPassword] = useState(false);
   const [excelFile, setExcelFile] = useState(null);
   const [uploadStatus, setUploadStatus] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -382,12 +383,13 @@ export default function AdminUsersPage() {
     const org = (student.organization || '').trim();
     const tech = (student.technology || '').trim();
     const batch = (student.batch || '').trim();
+    const currentPass = student.plainPassword || student.password || 'Student@123';
     setEditFormData({
       name: student.name || '',
       studentId: student.studentId || student.rollNumber || '',
       email: student.email || '',
       password: '',
-      oldPassword: '',
+      oldPassword: currentPass,
       organization: org,
       rollNumber: student.rollNumber || student.studentId || '',
       phone: student.phone || '',
@@ -396,8 +398,9 @@ export default function AdminUsersPage() {
       gender: student.gender || '',
       age: student.age !== undefined && student.age !== null ? student.age : '',
     });
-    setShowOldPassword(false);
+    setShowOldPassword(true);
     setShowEditPassword(false);
+    setCopiedOldPassword(false);
     setShowEditModal(true);
     if (org) {
       loadTechnologiesForOrg(org, true);
@@ -1999,31 +2002,55 @@ export default function AdminUsersPage() {
               </div>
 
               <div>
-                <label className="block font-medium text-slate-700 dark:text-slate-200 mb-1">
-                  Old / Current Password <span className="text-slate-400 font-normal">(Required if changing password)</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-medium text-slate-700 dark:text-slate-200">
+                    Old / Current Password
+                  </label>
+                  <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                    Active Login Password
+                  </span>
+                </div>
                 <div className="relative">
                   <input
                     type={showOldPassword ? 'text' : 'password'}
-                    placeholder="Enter current password"
+                    placeholder="Current active password"
                     value={editFormData.oldPassword || ''}
-                    onChange={(e) => setEditFormData({ ...editFormData, oldPassword: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 pr-10 text-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    readOnly
+                    className="w-full bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 pr-20 text-slate-800 dark:text-slate-100 font-mono text-xs focus:outline-none cursor-text select-all"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowOldPassword(!showOldPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
-                    title={showOldPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showOldPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
+                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (editFormData.oldPassword) {
+                          navigator.clipboard.writeText(editFormData.oldPassword);
+                          setCopiedOldPassword(true);
+                          setTimeout(() => setCopiedOldPassword(false), 2000);
+                        }
+                      }}
+                      className="p-1 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+                      title={copiedOldPassword ? 'Copied!' : 'Copy old password'}
+                    >
+                      {copiedOldPassword ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowOldPassword(!showOldPassword)}
+                      className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                      title={showOldPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showOldPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  This is the student's active password. You can copy it or click the eye icon to view/hide.
+                </p>
               </div>
 
               <div>
                 <label className="block font-medium text-slate-700 dark:text-slate-200 mb-1">
-                  Reset Password <span className="text-slate-400 font-normal">(Leave blank to keep unchanged)</span>
+                  Set New Password <span className="text-slate-400 font-normal">(Leave blank to keep unchanged)</span>
                 </label>
                 <div className="relative">
                   <input
@@ -2031,7 +2058,7 @@ export default function AdminUsersPage() {
                     placeholder="Enter new password if resetting"
                     value={editFormData.password}
                     onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 pr-10 text-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 pr-10 text-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs"
                   />
                   <button
                     type="button"

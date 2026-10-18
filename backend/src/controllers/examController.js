@@ -33,7 +33,7 @@ export class ExamController {
       const clientIp = req.ip || req.connection.remoteAddress;
       const userAgent = req.headers['user-agent'] || '';
 
-      const result = await ExamService.startExam(id, req.user._id, clientIp, userAgent);
+      const result = await ExamService.startExam(id, req.user._id, clientIp, userAgent, req.body?.deviceInfo);
       res.status(200).json({
         success: true,
         message: 'Exam started successfully',

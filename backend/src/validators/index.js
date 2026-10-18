@@ -66,6 +66,7 @@ export const examSchema = z.object({
   randomizeQuestions: z.boolean().optional(),
   maxViolations: z.number().int().min(1).max(20).optional(),
   allowCodeRun: z.boolean().optional(),
+  restrictToLaptop: z.boolean().optional(),
   technology: z.string().optional(),
   organization: z.string().optional(),
   targetTechnologies: z.array(z.string()).optional(),

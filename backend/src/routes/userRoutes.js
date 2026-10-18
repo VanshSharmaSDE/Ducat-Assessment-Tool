@@ -28,6 +28,7 @@ router.post(
 router.delete('/profile/picture', UserController.deleteProfilePicture);
 
 router.put('/theme', UserController.updateTheme);
+router.put('/student-restrictions', UserController.updateStudentRestrictions);
 router.put('/change-password', validate(changePasswordSchema), UserController.changePassword);
 
 export default router;
