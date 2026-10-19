@@ -7,34 +7,63 @@ import { MessageSquare, Shield, GraduationCap, X, ChevronRight, Bell } from 'luc
 
 const NotificationContext = createContext(null);
 
+// AudioContext singleton to comply with modern browser limits & autoplay policies
+let sharedAudioCtx = null;
+
+function getAudioContext() {
+  if (!sharedAudioCtx && typeof window !== 'undefined') {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      sharedAudioCtx = new AudioContextClass();
+    }
+  }
+  return sharedAudioCtx;
+}
+
+// Warm up / unlock audio on first user interaction across modern browsers
+function warmUpAudio() {
+  const ctx = getAudioContext();
+  if (ctx && ctx.state === 'suspended') {
+    ctx.resume().catch(() => {});
+  }
+}
+
+if (typeof window !== 'undefined') {
+  ['click', 'keydown', 'touchstart'].forEach((evt) => {
+    window.addEventListener(evt, warmUpAudio, { once: true, passive: true });
+  });
+}
+
 function playChime() {
   try {
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextClass) return;
-    const ctx = new AudioContextClass();
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
     if (ctx.state === 'suspended') {
-      ctx.resume();
+      ctx.resume().catch(() => {});
     }
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
 
     const now = ctx.currentTime;
-    osc.type = 'sine';
-    // Gentle melodic 3-tone chime
-    osc.frequency.setValueAtTime(587.33, now); // D5
-    osc.frequency.setValueAtTime(880, now + 0.08); // A5
-    osc.frequency.setValueAtTime(1174.66, now + 0.16); // D6
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
 
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.exponentialRampToValueAtTime(0.18, now + 0.05);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc.type = 'sine';
+    // Gentle melodic 3-tone chime (D5 -> A5 -> D6)
+    osc.frequency.setValueAtTime(587.33, now);
+    osc.frequency.setValueAtTime(880, now + 0.08);
+    osc.frequency.setValueAtTime(1174.66, now + 0.16);
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.2, now + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
 
     osc.start(now);
     osc.stop(now + 0.36);
   } catch (e) {
-    // Web Audio blocked before user interaction
+    // Autoplay restricted by browser before user interaction
   }
 }
 
@@ -118,16 +147,19 @@ export function NotificationProvider({ children }) {
     }, 6000);
   };
 
-  // Socket listener for support notifications
+  // Socket listener for support notifications & live updates
   useEffect(() => {
     if (!socket || !user) return;
 
     const handleSupportNotification = (data) => {
       // If user is currently focused on this exact query in the chat window, don't spam them with toast
-      const isCurrentlyViewing = activeQueryIdRef.current && String(activeQueryIdRef.current) === String(data.queryId);
+      const isCurrentlyViewing =
+        activeQueryIdRef.current && String(activeQueryIdRef.current) === String(data.queryId);
+
+      // Always play chime for incoming message notification
+      playChime();
 
       if (!isCurrentlyViewing) {
-        playChime();
         setUnreadCount((prev) => prev + 1);
         if (data.queryId) {
           setUnreadQueryIds((prev) => new Set([...prev, data.queryId]));
@@ -142,27 +174,33 @@ export function NotificationProvider({ children }) {
           ticketId: data.ticketId,
           type: data.type,
         });
-      } else {
-        // Soft chime even when looking at chat
-        playChime();
       }
     };
 
     const handleQueryCreated = (query) => {
       if (user.role === 'ADMIN' || user.role === 'FACULTY') {
-        setUnreadCount((prev) => prev + 1);
-        if (query?._id) {
-          setUnreadQueryIds((prev) => new Set([...prev, query._id]));
-        }
+        fetchUnreadCount();
       }
+    };
+
+    const handleQueryUpdated = () => {
+      fetchUnreadCount();
+    };
+
+    const handleSocketConnect = () => {
+      fetchUnreadCount();
     };
 
     socket.on('support:notification', handleSupportNotification);
     socket.on('support:query_created', handleQueryCreated);
+    socket.on('support:query_updated', handleQueryUpdated);
+    socket.on('connect', handleSocketConnect);
 
     return () => {
       socket.off('support:notification', handleSupportNotification);
       socket.off('support:query_created', handleQueryCreated);
+      socket.off('support:query_updated', handleQueryUpdated);
+      socket.off('connect', handleSocketConnect);
     };
   }, [socket, user]);
 

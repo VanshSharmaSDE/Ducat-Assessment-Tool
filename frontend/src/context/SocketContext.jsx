@@ -1,19 +1,105 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 
 const SocketContext = createContext(null);
 
+/**
+ * Resolves the backend Socket.IO connection URL across environments:
+ * 1. Explicit env variables (VITE_SOCKET_URL, VITE_BACKEND_URL, VITE_API_URL)
+ * 2. Localhost development (proxied by Vite to port 5000)
+ * 3. Production VPS / Custom domain deployment (frontend at domain.com, backend at api.domain.com)
+ */
+export function getSocketUrl() {
+  const envUrl =
+    import.meta.env.VITE_SOCKET_URL ||
+    import.meta.env.VITE_BACKEND_URL ||
+    import.meta.env.VITE_API_URL;
+
+  if (envUrl && typeof envUrl === 'string' && envUrl.trim()) {
+    return envUrl.trim().replace(/\/api\/?$/, '').replace(/\/$/, '');
+  }
+
+  if (typeof window !== 'undefined' && window.location) {
+    const { protocol, hostname } = window.location;
+
+    // Local development - Vite dev server proxies /socket.io
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return window.location.origin;
+    }
+
+    // Already on the API subdomain
+    if (hostname.startsWith('api.')) {
+      return window.location.origin;
+    }
+
+    // Production VPS: frontend is on domain.com or www.domain.com, backend is on api.domain.com
+    const cleanDomain = hostname.replace(/^www\./, '');
+    return `${protocol}//api.${cleanDomain}`;
+  }
+
+  return '';
+}
+
 export function SocketProvider({ children }) {
   const { user } = useAuth();
   const [socket, setSocket] = useState(null);
+  const socketRef = useRef(null);
 
   useEffect(() => {
+    const primaryUrl = getSocketUrl();
     const token = localStorage.getItem('accessToken');
-    const newSocket = io(window.location.origin, {
+
+    const socketOptions = {
       auth: { token },
+      query: token ? { token } : {},
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
       autoConnect: true,
-    });
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+    };
+
+    let activeSocket = io(primaryUrl, socketOptions);
+    socketRef.current = activeSocket;
+
+    let hasConnected = false;
+    let connectErrors = 0;
+
+    const handleConnect = () => {
+      hasConnected = true;
+      connectErrors = 0;
+      const currentToken = localStorage.getItem('accessToken');
+      if (currentToken) {
+        activeSocket.emit('authenticate', { token: currentToken });
+      }
+    };
+
+    const handleReconnect = () => {
+      const currentToken = localStorage.getItem('accessToken');
+      if (currentToken) {
+        activeSocket.emit('authenticate', { token: currentToken });
+      }
+    };
+
+    const handleConnectError = (err) => {
+      connectErrors++;
+      // If primary API subdomain URL fails repeatedly and we have an origin fallback, attempt origin
+      if (!hasConnected && connectErrors >= 2 && primaryUrl !== window.location.origin) {
+        try {
+          activeSocket.disconnect();
+          activeSocket = io(window.location.origin, socketOptions);
+          socketRef.current = activeSocket;
+          attachListeners(activeSocket);
+          setSocket(activeSocket);
+        } catch (e) {
+          // ignore fallback error
+        }
+      }
+    };
 
     const handleSessionTerminated = () => {
       localStorage.removeItem('accessToken');
@@ -22,18 +108,43 @@ export function SocketProvider({ children }) {
       window.location.href = '/login?reason=concurrent_session';
     };
 
-    newSocket.on('session:terminated', handleSessionTerminated);
+    function attachListeners(sock) {
+      sock.on('connect', handleConnect);
+      sock.on('reconnect', handleReconnect);
+      sock.on('connect_error', handleConnectError);
+      sock.on('session:terminated', handleSessionTerminated);
+    }
 
-    setSocket(newSocket);
+    attachListeners(activeSocket);
+    setSocket(activeSocket);
 
     return () => {
-      newSocket.off('session:terminated', handleSessionTerminated);
-      newSocket.disconnect();
+      if (activeSocket) {
+        activeSocket.off('connect', handleConnect);
+        activeSocket.off('reconnect', handleReconnect);
+        activeSocket.off('connect_error', handleConnectError);
+        activeSocket.off('session:terminated', handleSessionTerminated);
+        activeSocket.disconnect();
+      }
+      socketRef.current = null;
     };
+  }, []);
+
+  // When user auth changes (login, logout, switch account), re-authenticate active socket
+  useEffect(() => {
+    if (!socketRef.current) return;
+    const currentToken = localStorage.getItem('accessToken');
+
+    if (user && currentToken) {
+      socketRef.current.auth = { token: currentToken };
+      socketRef.current.emit('authenticate', { token: currentToken });
+    } else if (!user) {
+      socketRef.current.emit('logout');
+    }
   }, [user]);
 
   return (
-    <SocketContext.Provider value={{ socket }}>
+    <SocketContext.Provider value={{ socket, socketRef }}>
       {children}
     </SocketContext.Provider>
   );

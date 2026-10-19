@@ -83,10 +83,17 @@ export default function AdminQueriesPage() {
   // Join/leave real-time chat room for the open query
   useEffect(() => {
     if (!socket || !activeQuery?._id) return;
-    socket.emit('query:join', activeQuery._id);
+
+    const joinRoom = () => {
+      socket.emit('query:join', activeQuery._id);
+    };
+
+    joinRoom();
+    socket.on('connect', joinRoom);
     setActiveQueryId(activeQuery._id);
 
     return () => {
+      socket.off('connect', joinRoom);
       socket.emit('query:leave', activeQuery._id);
       setActiveQueryId(null);
     };

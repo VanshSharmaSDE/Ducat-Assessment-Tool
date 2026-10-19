@@ -35,36 +35,84 @@ export function initSocket(server) {
   });
 
   ioInstance.use((socket, next) => {
-    const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+    const headerToken = socket.handshake.headers?.authorization?.replace(/^Bearer\s+/i, '');
+    const token = socket.handshake.auth?.token || socket.handshake.query?.token || headerToken;
     if (!token) {
-      // allow unauthenticated socket if needed, but associate rooms when token is present
       return next();
     }
 
     try {
       const decoded = jwt.verify(token, config.jwt.secret);
       socket.user = decoded;
-      socket.join(`user:${decoded.userId}`);
-      if (decoded.role === 'ADMIN') {
-        socket.join('admin-room');
-      } else if (decoded.role === 'FACULTY') {
-        socket.join('faculty-room');
-      }
       return next();
     } catch (err) {
+      logger.debug(`Socket handshake token verification failed: ${err.message}`);
       return next();
     }
   });
 
+  function joinUserRooms(socket, user) {
+    if (!user) return;
+    const uid = (user.userId || user._id || user.id)?.toString();
+    if (uid) {
+      socket.join(`user:${uid}`);
+      logger.debug(`Socket ${socket.id} joined user:${uid}`);
+    }
+    if (user.role === 'ADMIN') {
+      socket.join('admin-room');
+      logger.debug(`Socket ${socket.id} joined admin-room`);
+    } else if (user.role === 'FACULTY') {
+      socket.join('faculty-room');
+      logger.debug(`Socket ${socket.id} joined faculty-room`);
+    }
+  }
+
   ioInstance.on('connection', (socket) => {
     logger.debug(`Socket connected: ${socket.id} (user: ${socket.user?.userId || 'anonymous'})`);
 
+    // Auto-join rooms if authenticated during handshake
+    if (socket.user) {
+      joinUserRooms(socket, socket.user);
+    }
+
+    // Dynamic authentication (on login, token refresh, or reconnect)
+    socket.on('authenticate', (data) => {
+      const token = typeof data === 'string' ? data : data?.token;
+      if (!token) return;
+      try {
+        const decoded = jwt.verify(token, config.jwt.secret);
+        socket.user = decoded;
+        joinUserRooms(socket, decoded);
+        socket.emit('authenticated', {
+          userId: (decoded.userId || decoded._id || decoded.id)?.toString(),
+          role: decoded.role,
+        });
+      } catch (err) {
+        logger.debug(`Socket auth error: ${err.message}`);
+        socket.emit('unauthorized', { message: 'Invalid or expired token' });
+      }
+    });
+
+    socket.on('logout', () => {
+      if (socket.user) {
+        const uid = (socket.user.userId || socket.user._id || socket.user.id)?.toString();
+        if (uid) socket.leave(`user:${uid}`);
+        socket.leave('admin-room');
+        socket.leave('faculty-room');
+        socket.user = null;
+      }
+    });
+
     socket.on('join-attempt', (attemptId) => {
-      socket.join(`attempt:${attemptId}`);
+      if (attemptId) {
+        socket.join(`attempt:${attemptId}`);
+      }
     });
 
     socket.on('leave-attempt', (attemptId) => {
-      socket.leave(`attempt:${attemptId}`);
+      if (attemptId) {
+        socket.leave(`attempt:${attemptId}`);
+      }
     });
 
     // Real-time Support Chat Rooms
@@ -103,14 +151,14 @@ export function getIO() {
 }
 
 export function emitToAttempt(attemptId, event, data) {
-  if (ioInstance) {
+  if (ioInstance && attemptId) {
     ioInstance.to(`attempt:${attemptId}`).emit(event, data);
   }
 }
 
 export function emitToUser(userId, event, data) {
   if (ioInstance && userId) {
-    ioInstance.to(`user:${userId}`).emit(event, data);
+    ioInstance.to(`user:${String(userId)}`).emit(event, data);
   }
 }
 
@@ -128,6 +176,6 @@ export function emitToFaculty(event, data) {
 
 export function emitToQuery(queryId, event, data) {
   if (ioInstance && queryId) {
-    ioInstance.to(`query:${queryId}`).emit(event, data);
+    ioInstance.to(`query:${String(queryId)}`).emit(event, data);
   }
 }
