@@ -5,7 +5,6 @@ import examRoutes from './examRoutes.js';
 import questionRoutes from './questionRoutes.js';
 import resultRoutes from './resultRoutes.js';
 import adminRoutes from './adminRoutes.js';
-import supportRoutes from './supportRoutes.js';
 
 const router = Router();
 
@@ -24,6 +23,5 @@ router.use('/questions', questionRoutes);
 router.use('/results', resultRoutes);
 router.use('/admin', adminRoutes);
 router.use('/faculty', adminRoutes);
-router.use('/support', supportRoutes);
 
 export default router;

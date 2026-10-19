@@ -192,7 +192,7 @@ export default function AdminDashboardPage() {
 
         {/* Attempts & Code Runs - Featured Gradient Card 3 */}
         <Link
-          to="/admin/submissions"
+          to="/admin/results"
           className="group p-5 rounded-2xl bg-gradient-to-r from-[#4f6bf7] to-[#6073ea] text-white shadow-lg shadow-[#4f6bf7]/20 hover:shadow-xl hover:shadow-[#4f6bf7]/30 dark:shadow-none dark:border dark:border-[#4f6bf7]/40 transition-all block relative overflow-hidden"
         >
           <div className="flex items-center justify-between relative z-10">
@@ -523,10 +523,10 @@ export default function AdminDashboardPage() {
             </p>
           </div>
           <Link
-            to="/admin/submissions"
+            to="/admin/results"
             className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-500 font-semibold flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 w-fit transition-colors"
           >
-            <span>View All Submissions</span>
+            <span>View Results</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>

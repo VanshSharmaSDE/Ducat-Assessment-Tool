@@ -21,10 +21,7 @@ import {
   Layers,
   Smartphone,
   ShieldCheck,
-  Volume2,
-  VolumeX,
   RefreshCw,
-  Bell,
   Cpu,
   CheckCircle,
   AlertTriangle,
@@ -41,11 +38,6 @@ export default function SettingsPage() {
   const [viewport, setViewport] = useState({
     width: typeof window !== 'undefined' ? window.innerWidth : 1280,
     height: typeof window !== 'undefined' ? window.innerHeight : 800,
-  });
-
-  // Sound effects preference
-  const [audioEnabled, setAudioEnabled] = useState(() => {
-    return localStorage.getItem('cdt_audio_enabled') !== 'false';
   });
 
   const [cacheCleared, setCacheCleared] = useState(false);
@@ -101,32 +93,7 @@ export default function SettingsPage() {
     }, 2500);
   };
 
-  const handleToggleAudio = () => {
-    const next = !audioEnabled;
-    setAudioEnabled(next);
-    localStorage.setItem('cdt_audio_enabled', String(next));
-  };
 
-  const playTestChime = () => {
-    try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.35);
-    } catch (e) {
-      console.error('Audio test failed', e);
-    }
-  };
 
   const handleClearCache = () => {
     try {
@@ -155,7 +122,7 @@ export default function SettingsPage() {
             Settings & Preferences
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Manage your display themes, examination proctoring policies, audio notifications, and device telemetry.
+            Manage your display themes, examination proctoring policies, and device telemetry.
           </p>
         </div>
 
@@ -229,15 +196,9 @@ export default function SettingsPage() {
                   {typeof navigator !== 'undefined' ? navigator.platform || 'Desktop Browser' : 'Web'}
                 </span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex justify-between py-1">
                 <span className="text-slate-500 dark:text-slate-400">Active Theme</span>
                 <span className="font-bold text-[#4f6bf7] capitalize">{theme} Mode</span>
-              </div>
-              <div className="flex justify-between py-1">
-                <span className="text-slate-500 dark:text-slate-400">Audio Chimes</span>
-                <span className={`font-semibold ${audioEnabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
-                  {audioEnabled ? 'Enabled' : 'Muted'}
-                </span>
               </div>
             </div>
           </div>
@@ -314,7 +275,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Right Column (8 Cols on lg): Theme Selector, Laptop Restriction, Audio Preferences */}
+        {/* Right Column (8 Cols on lg): Theme Selector & Laptop Restriction */}
         <div className="lg:col-span-8 space-y-6">
           {/* Card 1: Display Appearance & Theme Selector */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
@@ -532,64 +493,6 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
-
-          {/* Card 3: Notification & Audio Chimes Preferences */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm space-y-5">
-            <div>
-              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <Bell className="w-5 h-5 text-[#4f6bf7]" />
-                Audible & Notification Alerts
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Configure auditory alerts for incoming support chat messages and test evaluation completion.
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-[#4f6bf7] shrink-0">
-                  {audioEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5 text-slate-400" />}
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-800 dark:text-slate-100">
-                    Audio Chime for Real-Time Messages & Events
-                  </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    Plays a gentle chime when a new support message or test submission is received.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 self-end sm:self-center">
-                {audioEnabled && (
-                  <button
-                    type="button"
-                    onClick={playTestChime}
-                    className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold transition-colors cursor-pointer"
-                  >
-                    Test Chime
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={audioEnabled}
-                  onClick={handleToggleAudio}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#4f6bf7] ${
-                    audioEnabled ? 'bg-[#4f6bf7]' : 'bg-slate-200 dark:bg-slate-700'
-                  }`}
-                  title="Toggle sound alerts"
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                      audioEnabled ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

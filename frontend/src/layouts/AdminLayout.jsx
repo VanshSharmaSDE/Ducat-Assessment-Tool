@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useNotification } from '../context/NotificationContext';
 import { getProfilePictureUrl, handleAvatarError } from '../utils/imageUrl';
 import logo from '../assets/logo.jpeg';
 import {
@@ -10,7 +9,6 @@ import {
   HelpCircle,
   Users,
   Award,
-  Terminal,
   LogOut,
   Menu,
   X,
@@ -25,13 +23,10 @@ import {
   CheckSquare,
   Settings,
   FolderTree,
-  MessageSquare,
-  LifeBuoy,
 } from 'lucide-react';
 
 export default function AdminLayout() {
   const { user, logout } = useAuth();
-  const { unreadCount } = useNotification();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -53,9 +48,6 @@ export default function AdminLayout() {
     ...(isSuperAdmin ? [{ label: 'Organizations', path: '/admin/organizations', icon: Building2 }] : []),
     ...(isSuperAdmin ? [{ label: 'Faculty Management', path: '/admin/faculty', icon: GraduationCap }] : []),
     { label: isSuperAdmin ? 'Results & Reports' : 'Student Results', path: '/admin/results', icon: Award },
-    { label: isSuperAdmin ? 'Raw Submissions' : 'Submissions', path: '/admin/submissions', icon: Terminal },
-    { label: isSuperAdmin ? 'Queries' : 'Queries & Support', path: '/admin/queries', icon: MessageSquare },
-    ...(isSuperAdmin ? [{ label: 'Admin Support', path: '/admin/support', icon: LifeBuoy }] : []),
     { label: isSuperAdmin ? 'Admin Profile' : 'Faculty Profile', path: '/admin/profile', icon: User },
     { label: 'Settings', path: '/admin/settings', icon: Settings },
   ];
@@ -75,9 +67,6 @@ export default function AdminLayout() {
           className="relative p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"
         >
           {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          {unreadCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-900 animate-pulse" />
-          )}
         </button>
       </div>
 
@@ -117,13 +106,7 @@ export default function AdminLayout() {
                     <Icon className="w-4 h-4" />
                     <span>{item.label}</span>
                   </div>
-                  {item.path === '/admin/queries' && unreadCount > 0 ? (
-                    <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-rose-500 text-white shadow-md shadow-rose-500/30 animate-pulse flex items-center justify-center min-w-[20px]">
-                      {unreadCount}
-                    </span>
-                  ) : (
-                    <ChevronRight className="w-3.5 h-3.5 opacity-40" />
-                  )}
+                  <ChevronRight className="w-3.5 h-3.5 opacity-40" />
                 </NavLink>
               );
             })}
@@ -147,26 +130,25 @@ export default function AdminLayout() {
                   user?.profilePicture ? 'hidden' : ''
                 }`}
               >
-                {user?.name?.charAt(0).toUpperCase() || 'A'}
+                {user?.name?.charAt(0).toUpperCase() || (isSuperAdmin ? 'A' : 'F')}
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{user?.name}</p>
                 <div className="flex items-center gap-1.5">
-                  <span className="inline-block px-1.5 py-0.2 text-[9px] font-extrabold tracking-wider rounded-md bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
+                  <span className="inline-block px-1.5 py-0.2 text-[9px] font-extrabold tracking-wider rounded-md bg-blue-50 dark:bg-blue-950/60 text-[#4f6bf7] border border-blue-200 dark:border-blue-800">
                     {isSuperAdmin ? 'ADMIN' : 'FACULTY'}
                   </span>
-                  {(user?.adminId || user?.facultyId) && (
-                    <span className="text-[10px] font-mono text-slate-400 dark:text-slate-400 truncate">
-                      {user?.adminId || user?.facultyId}
-                    </span>
-                  )}
+                  <span className="text-[10px] text-slate-400 truncate">
+                    {isSuperAdmin ? 'Super Administrator' : user?.facultyId || 'Instructor'}
+                  </span>
                 </div>
               </div>
             </Link>
+
             <button
               onClick={handleLogout}
+              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors shrink-0 cursor-pointer"
               title="Logout"
-              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -175,9 +157,17 @@ export default function AdminLayout() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 min-h-screen overflow-y-auto bg-[#f4f7fe] dark:bg-slate-950">
-        <Outlet />
+      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+          <Outlet />
       </main>
+
+      {/* Mobile Backdrop */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-xs md:hidden"
+        />
+      )}
     </div>
   );
 }

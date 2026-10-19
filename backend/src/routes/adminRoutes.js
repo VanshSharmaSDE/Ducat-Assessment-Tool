@@ -24,9 +24,6 @@ import {
   importSharedStudents,
   exportResultsExcel,
   exportSubmissionsDocx,
-  getSubmissionsHierarchyExams,
-  getExamStudents,
-  getStudentSubmissions,
   getFacultyList,
   createFaculty,
   updateFaculty,
@@ -135,9 +132,6 @@ router.post('/results/bulk-delete', AdminController.bulkDeleteResults);
 router.get('/results/:id', ResultController.getResultDetails);
 router.get('/submissions', AdminController.getAllSubmissions);
 router.get('/submissions/export-docx', exportSubmissionsDocx);
-router.get('/submissions/hierarchy/exams', getSubmissionsHierarchyExams);
-router.get('/submissions/hierarchy/exams/:examId/students', getExamStudents);
-router.get('/submissions/hierarchy/exams/:examId/students/:userId', getStudentSubmissions);
 
 
 export default router;

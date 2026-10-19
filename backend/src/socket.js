@@ -115,29 +115,6 @@ export function initSocket(server) {
       }
     });
 
-    // Real-time Support Chat Rooms
-    socket.on('query:join', (queryId) => {
-      if (queryId) {
-        socket.join(`query:${queryId}`);
-      }
-    });
-
-    socket.on('query:leave', (queryId) => {
-      if (queryId) {
-        socket.leave(`query:${queryId}`);
-      }
-    });
-
-    socket.on('query:typing', ({ queryId, isTyping }) => {
-      if (queryId) {
-        socket.to(`query:${queryId}`).emit('query:typing', {
-          queryId,
-          userName: socket.user?.name || 'Someone',
-          isTyping,
-        });
-      }
-    });
-
     socket.on('disconnect', () => {
       logger.debug(`Socket disconnected: ${socket.id}`);
     });
@@ -171,11 +148,5 @@ export function emitToAdmin(event, data) {
 export function emitToFaculty(event, data) {
   if (ioInstance) {
     ioInstance.to('faculty-room').emit(event, data);
-  }
-}
-
-export function emitToQuery(queryId, event, data) {
-  if (ioInstance && queryId) {
-    ioInstance.to(`query:${String(queryId)}`).emit(event, data);
   }
 }
