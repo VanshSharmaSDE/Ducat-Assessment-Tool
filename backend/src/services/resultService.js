@@ -391,72 +391,8 @@ export class ResultService {
       languagesUsed: Array.from(attemptLangMap[att._id.toString()] || []),
     }));
 
-    // Aggregate exam-level statistics for exam-centric view
-    const examFilterForSummary = isFaculty ? { createdBy: currentUser._id } : {};
-    const examsList = await Exam.find(examFilterForSummary)
-      .populate('createdBy', 'name email role')
-      .sort({ createdAt: -1 });
-
-    const examIds = examsList.map((e) => e._id);
-    const baseAttemptFilter = { examId: { $in: examIds } };
-    if (filter.userId) {
-      baseAttemptFilter.userId = filter.userId;
-    }
-
-    const examStatsAgg = await ExamAttempt.aggregate([
-      { $match: baseAttemptFilter },
-      {
-        $group: {
-          _id: '$examId',
-          totalAttempts: { $sum: 1 },
-          passedCount: { $sum: { $cond: [{ $eq: ['$resultStatus', 'PASS'] }, 1, 0] } },
-          failedCount: { $sum: { $cond: [{ $eq: ['$resultStatus', 'FAIL'] }, 1, 0] } },
-          evaluatedCount: { $sum: { $cond: [{ $eq: ['$status', 'EVALUATED'] }, 1, 0] } },
-          avgScore: { $avg: '$totalScore' },
-          avgPercentage: { $avg: '$percentage' },
-          highestScore: { $max: '$totalScore' },
-        },
-      },
-    ]);
-
-    const statsMap = new Map();
-    examStatsAgg.forEach((s) => {
-      if (s._id) statsMap.set(String(s._id), s);
-    });
-
-    const examsSummary = examsList.map((ex) => {
-      const st = statsMap.get(String(ex._id)) || {
-        totalAttempts: 0,
-        passedCount: 0,
-        failedCount: 0,
-        evaluatedCount: 0,
-        avgScore: 0,
-        avgPercentage: 0,
-        highestScore: 0,
-      };
-      return {
-        _id: ex._id,
-        title: ex.title,
-        totalMarks: ex.totalMarks,
-        passingMarks: ex.passingMarks,
-        duration: ex.duration,
-        difficulty: ex.difficulty,
-        isPublished: ex.isPublished,
-        createdAt: ex.createdAt,
-        createdBy: ex.createdBy,
-        totalAttempts: st.totalAttempts || 0,
-        passedCount: st.passedCount || 0,
-        failedCount: st.failedCount || 0,
-        evaluatedCount: st.evaluatedCount || 0,
-        avgScore: st.avgScore ? +st.avgScore.toFixed(1) : 0,
-        avgPercentage: st.avgPercentage ? +st.avgPercentage.toFixed(1) : 0,
-        highestScore: st.highestScore || 0,
-      };
-    });
-
     return {
       results: enrichedResults,
-      examsSummary,
       availableOrganizations,
       availableTechnologies,
       availableBatches,

@@ -38,61 +38,6 @@ export class AuthService {
     return token;
   }
 
-  static async register({ name, email, studentId, password, phone, role = 'USER' }) {
-    const cleanEmail = email ? email.toLowerCase().trim() : undefined;
-    const cleanStudentId = studentId ? String(studentId).trim() : undefined;
-
-    if (cleanEmail) {
-      const existing = await User.findOne({ email: cleanEmail });
-      if (existing) {
-        const error = new Error('Email already registered');
-        error.statusCode = 409;
-        error.errorCode = 'EMAIL_ALREADY_EXISTS';
-        throw error;
-      }
-    }
-
-    if (cleanStudentId) {
-      const existingId = await User.findOne({
-        $or: [
-          { studentId: { $regex: new RegExp(`^${cleanStudentId}$`, 'i') } },
-          { rollNumber: { $regex: new RegExp(`^${cleanStudentId}$`, 'i') } },
-        ],
-      });
-      if (existingId) {
-        const error = new Error('Student ID already registered');
-        error.statusCode = 409;
-        error.errorCode = 'STUDENT_ID_EXISTS';
-        throw error;
-      }
-    }
-
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
-    const sessionId = uuidv4();
-
-    const user = await User.create({
-      name,
-      email: cleanEmail,
-      studentId: cleanStudentId,
-      rollNumber: cleanStudentId || '',
-      passwordHash,
-      phone: phone || '',
-      role: role === 'ADMIN' ? 'ADMIN' : 'USER',
-      currentSessionId: sessionId,
-      isActive: true,
-      isVerified: true,
-    });
-
-    const accessToken = AuthService.generateAccessToken(user, sessionId);
-    const refreshToken = await AuthService.generateRefreshToken(user._id);
-
-    return {
-      user: user.toJSON(),
-      accessToken,
-      refreshToken,
-    };
-  }
 
   static async login({ email, identifier, loginId, studentId, facultyId, password, deviceInfo, userAgent }) {
     const rawId = (identifier || email || loginId || studentId || facultyId || '').trim();
@@ -281,46 +226,6 @@ export class AuthService {
     return { success: true };
   }
 
-  static async forgotPassword(email) {
-    const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) {
-      // Return success anyway to avoid user enumeration
-      return { message: 'If this email exists, password reset instructions have been sent.' };
-    }
-
-    const resetToken = uuidv4();
-    user.resetPasswordToken = resetToken;
-    user.resetPasswordExpires = new Date(Date.now() + 3600000); // 1 hour
-    await user.save();
-
-    // In local dev/testing, we return token for ease of testing
-    return {
-      message: 'Password reset token generated.',
-      devToken: config.env === 'development' ? resetToken : undefined,
-    };
-  }
-
-  static async resetPassword({ token, newPassword }) {
-    const user = await User.findOne({
-      resetPasswordToken: token,
-      resetPasswordExpires: { $gt: new Date() },
-    });
-
-    if (!user) {
-      const error = new Error('Invalid or expired password reset token');
-      error.statusCode = 400;
-      error.errorCode = 'INVALID_RESET_TOKEN';
-      throw error;
-    }
-
-    const salt = await bcrypt.genSalt(10);
-    user.passwordHash = await bcrypt.hash(newPassword, salt);
-    user.resetPasswordToken = null;
-    user.resetPasswordExpires = null;
-    await user.save();
-
-    return { message: 'Password has been reset successfully.' };
-  }
 
   static async changePassword(userId, { currentPassword, newPassword }) {
     const user = await User.findById(userId);

@@ -485,7 +485,6 @@ export default function AdminBatchesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2.5">
-            <GraduationCap className="w-7 h-7 text-blue-600" />
             <span>{isAdmin ? 'Batch Management' : 'My Batches'}</span>
           </h1>
           <p className="text-sm text-slate-500 mt-1">

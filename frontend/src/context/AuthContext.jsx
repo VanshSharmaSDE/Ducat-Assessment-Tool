@@ -164,18 +164,6 @@ export function AuthProvider({ children }) {
     return user;
   };
 
-  const register = async (userData) => {
-    const res = await api.post('/auth/register', userData);
-    const { user, accessToken, refreshToken } = res.data.data;
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-    const now = Date.now();
-    lastRecordedActivityRef.current = now;
-    localStorage.setItem('lastActivity', now.toString());
-    setUser(user);
-    return user;
-  };
-
   const logout = async () => {
     try {
       const refreshToken = localStorage.getItem('refreshToken');
@@ -196,7 +184,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

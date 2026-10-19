@@ -261,33 +261,11 @@ export default function ProfilePage() {
             <h1 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
               Account Profile & Security
             </h1>
-            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border flex items-center gap-1.5 ${roleBadgeStyle}`}>
-              {isAdmin ? (
-                <>
-                  <ShieldCheck className="w-3.5 h-3.5" /> Administrator
-                </>
-              ) : isFaculty ? (
-                <>
-                  <GraduationCap className="w-3.5 h-3.5" /> Faculty
-                </>
-              ) : (
-                <>
-                  <User className="w-3.5 h-3.5" /> Student
-                </>
-              )}
-            </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
             Manage your personal credentials, view institutional affiliations, and update account security preferences.
           </p>
         </div>
-
-        {/* <div className="flex items-center gap-2 self-start sm:self-center">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Verified Profile
-          </span>
-        </div> */}
       </div>
 
       {/* Main 12-Column Responsive Grid */}

@@ -7,11 +7,8 @@ import UserLayout from './layouts/UserLayout';
 import AdminLayout from './layouts/AdminLayout';
 import ExamLayout from './layouts/ExamLayout';
 
-// Auth Pages
+// Auth Page
 import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import ResetPasswordPage from './pages/ResetPasswordPage';
 
 // Candidate Pages
 import UserDashboard from './pages/UserDashboard';
@@ -94,11 +91,8 @@ function RequireAuth({ children, allowedRoles }) {
 export default function App() {
   return (
     <Routes>
-      {/* Public Auth Routes */}
+      {/* Public Auth Route */}
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       {/* Root Landing Route - strictly directs by authentication & role */}
       <Route path="/" element={<RoleHomeRedirect />} />

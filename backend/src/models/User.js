@@ -136,14 +136,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
-    resetPasswordToken: {
-      type: String,
-      default: null,
-    },
-    resetPasswordExpires: {
-      type: Date,
-      default: null,
-    },
+
     theme: {
       type: String,
       enum: ['light', 'dark'],
@@ -202,8 +195,6 @@ userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.passwordHash;
   delete obj.verificationToken;
-  delete obj.resetPasswordToken;
-  delete obj.resetPasswordExpires;
   return obj;
 };
 

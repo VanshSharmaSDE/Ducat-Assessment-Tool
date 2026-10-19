@@ -412,44 +412,41 @@ export default function SettingsPage() {
           {(isAdmin || isFaculty) && (
             <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2 text-xs font-bold text-[#4f6bf7] uppercase tracking-wider mb-1">
-                    <ShieldCheck className="w-4 h-4" /> Student Assessment Security
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                    <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Student Assessment Security
                   </div>
-                  <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                    <Laptop className="w-5 h-5 text-[#4f6bf7]" /> Restrict Student Login to Laptop Screen Only
-                  </h2>
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                      <Laptop className="w-5 h-5 text-blue-600" /> Restrict Student Login to Laptop Screen Only
+                    </h2>
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${
+                        laptopOnly
+                          ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800'
+                          : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-600'
+                      }`}
+                    >
+                      {laptopOnly ? 'Enforced' : 'Disabled'}
+                    </span>
+                  </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
                     When enabled, students created by or assigned to you can only log in on a laptop or desktop computer (screen width ≥ 1024px). Mobile phones, tablets, and small screen devices will be strictly blocked during student login.
                   </p>
                 </div>
 
-                {/* Accessible Toggle Switch Button */}
-                <div className="flex items-center gap-3 shrink-0 self-start sm:self-center">
-                  <span
-                    className={`text-xs font-bold transition-colors ${
-                      laptopOnly ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'
-                    }`}
-                  >
-                    {laptopOnly ? 'Active / Enforced' : 'Disabled'}
-                  </span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={laptopOnly}
-                    disabled={togglingLaptop}
-                    onClick={handleToggleLaptopOnly}
-                    className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#4f6bf7] focus:ring-offset-2 ${
-                      laptopOnly ? 'bg-[#4f6bf7]' : 'bg-slate-200 dark:bg-slate-700'
-                    } ${togglingLaptop ? 'opacity-50 cursor-wait' : ''}`}
-                    title={`Click to ${laptopOnly ? 'disable' : 'enable'} laptop-only restriction for your students`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                        laptopOnly ? 'translate-x-7' : 'translate-x-0'
-                      }`}
+                {/* Examination-style Toggle Switch */}
+                <div className="flex items-center shrink-0 self-start sm:self-center">
+                  <label className={`relative inline-flex items-center cursor-pointer shrink-0 ${togglingLaptop ? 'opacity-50 cursor-wait' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(laptopOnly)}
+                      disabled={togglingLaptop}
+                      onChange={handleToggleLaptopOnly}
+                      className="sr-only peer"
                     />
-                  </button>
+                    <div className="w-11 h-6 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 dark:after:border-slate-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
                 </div>
               </div>
 
@@ -458,12 +455,12 @@ export default function SettingsPage() {
                 <div
                   className={`p-4 rounded-2xl border transition-colors ${
                     laptopOnly
-                      ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/50 text-emerald-900 dark:text-emerald-200'
+                      ? 'bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/50 text-blue-900 dark:text-blue-200'
                       : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
                   }`}
                 >
                   <div className="flex items-center gap-2 font-bold mb-1">
-                    <Laptop className="w-4 h-4 text-[#4f6bf7]" />
+                    <Laptop className="w-4 h-4 text-blue-600" />
                     <span>Laptop & Desktop Access (Width ≥ 1024px)</span>
                   </div>
                   <p className="text-[11px] leading-relaxed">

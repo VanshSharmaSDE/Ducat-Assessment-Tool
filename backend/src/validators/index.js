@@ -1,22 +1,6 @@
 import { z } from 'zod';
 import { SUPPORTED_LANGUAGES } from '../utils/starterCode.js';
 
-export const registerSchema = z.object({
-  name: z.string().min(2).max(100),
-  email: z.string().email(),
-  password: z.string().min(6).max(100),
-  confirmPassword: z.string().min(6).max(100).optional(),
-  phone: z.string().optional(),
-}).refine((data) => {
-  if (data.confirmPassword && data.password !== data.confirmPassword) {
-    return false;
-  }
-  return true;
-}, {
-  message: "Passwords do not match",
-  path: ["confirmPassword"],
-});
-
 export const loginSchema = z.object({
   identifier: z.string().min(1).optional(),
   email: z.string().min(1).optional(),
@@ -31,15 +15,6 @@ export const loginSchema = z.object({
 
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),
-  newPassword: z.string().min(6).max(100),
-});
-
-export const forgotPasswordSchema = z.object({
-  email: z.string().email(),
-});
-
-export const resetPasswordSchema = z.object({
-  token: z.string().min(1),
   newPassword: z.string().min(6).max(100),
 });
 

@@ -803,7 +803,6 @@ export default function AdminUsersPage() {
               </button>
             )}
             <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
-              <Users className="w-6 h-6 text-blue-600" />
               {isViewingOrgDirectory
                 ? 'Candidate Organizations'
                 : getSelectedOrgDisplayName()}

@@ -222,7 +222,6 @@ export default function AdminMcqQuestionEditorPage() {
           &larr; Back to MCQ Question Bank
         </Link>
         <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2.5">
-          <CheckSquare className="w-7 h-7 text-blue-600" />
           {isEditing ? 'Edit MCQ Question' : 'Create New MCQ Question'}
         </h1>
         <p className="text-sm text-slate-500 mt-1">
