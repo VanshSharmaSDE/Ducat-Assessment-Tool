@@ -17,8 +17,10 @@ import {
   FileCode,
   Check,
   X,
-  CheckSquare
+  CheckSquare,
+  Download,
 } from 'lucide-react';
+import { generateResultPdf } from '../utils/resultPdfGenerator';
 
 export default function ResultDetailPage() {
   const { id } = useParams();
@@ -28,6 +30,19 @@ export default function ResultDetailPage() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState(null);
   const [activeCodeModal, setActiveCodeModal] = useState(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    if (!data) return;
+    setDownloadingPdf(true);
+    try {
+      generateResultPdf(data);
+    } catch (err) {
+      console.error('Failed to generate PDF scorecard:', err);
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   const fetchResult = async () => {
     try {
@@ -116,20 +131,51 @@ export default function ResultDetailPage() {
   const isPass = !isTerminated && attempt.resultStatus === 'PASS';
 
   return (
-    <div className="p-6 md:p-10 max-w-5xl mx-auto w-full space-y-8">
-      <div>
-        <Link
-          to="/results"
-          className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors mb-4"
-        >
-          <ChevronLeft className="w-4 h-4" /> Back to My Results
-        </Link>
-        <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
-          {attempt.exam?.title || 'Examination'} — Performance Report
-        </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Submitted on {new Date(attempt.submittedAt || attempt.startedAt).toLocaleString()}
-        </p>
+    <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <Link
+            to="/results"
+            className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors mb-3"
+          >
+            <ChevronLeft className="w-4 h-4" /> Back to My Results
+          </Link>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
+              {attempt.exam?.title || 'Examination'} — Performance Report
+            </h1>
+            {attempt.exam?.isPractice && (
+              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                PRACTICE ATTEMPT
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Submitted on {new Date(attempt.submittedAt || attempt.startedAt).toLocaleString()}
+          </p>
+        </div>
+
+        {/* Download PDF Action Button */}
+        <div className="shrink-0 flex items-center gap-2 self-start sm:self-center">
+          <button
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf || isEvaluating}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#4f6bf7] hover:bg-[#3b5bf6] text-white font-semibold text-xs shadow-md shadow-[#4f6bf7]/20 transition-all cursor-pointer disabled:opacity-50"
+            title="Download PDF Scorecard"
+          >
+            {downloadingPdf ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Generating PDF...</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                <span>Download Result (PDF)</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Terminated Alert Banner */}

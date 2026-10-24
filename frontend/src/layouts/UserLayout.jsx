@@ -15,6 +15,8 @@ import {
   ShieldCheck,
   ChevronRight,
   Settings,
+  HelpCircle,
+  FlaskConical,
 } from 'lucide-react';
 
 export default function UserLayout() {
@@ -30,7 +32,9 @@ export default function UserLayout() {
   const navItems = [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Available Exams', path: '/exams', icon: BookOpen },
+    { label: 'Practice Tests', path: '/practice', icon: FlaskConical },
     { label: 'My Results', path: '/results', icon: Award },
+    { label: 'Instructions & FAQ', path: '/faq', icon: HelpCircle },
     { label: 'Profile', path: '/profile', icon: User },
     { label: 'Settings', path: '/settings', icon: Settings },
   ];

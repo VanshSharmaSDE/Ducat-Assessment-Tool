@@ -7,7 +7,9 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --detectOpenHandles"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --detectOpenHandles",
+    "seed:practice": "node src/scripts/seedPracticeExams.js",
+    "seed:practice-questions": "node src/scripts/seedPracticeQuestions.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

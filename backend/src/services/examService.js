@@ -27,6 +27,8 @@ if (typeof setInterval !== 'undefined') {
 export class ExamService {
   static async canStudentAccessExam(exam, studentUser) {
     if (!studentUser) return false;
+    // Practice exams are accessible to all students without restriction
+    if (exam.isPractice) return true;
     // Admins and faculty have privileged access
     if (['ADMIN', 'FACULTY'].includes(studentUser.role)) return true;
 
@@ -88,7 +90,7 @@ export class ExamService {
   }
 
   static async getAvailableExams(userId, query = {}) {
-    const filter = { isPublished: true };
+    const filter = { isPublished: true, isPractice: { $ne: true } };
 
     const student = await User.findById(userId).populate('createdBy', 'role name email');
     if (student && student.role === 'USER') {
@@ -197,6 +199,68 @@ export class ExamService {
     return result;
   }
 
+  static async getPracticeExams(userId) {
+    const filter = { isPublished: true, isPractice: true };
+    const exams = await Exam.find(filter).sort({ title: 1 });
+    const now = new Date();
+
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
+    const examIds = exams.map((e) => e._id);
+    const attempts = await ExamAttempt.find({ userId, examId: { $in: examIds } }).sort({ createdAt: -1 });
+
+    const results = exams.map((exam) => {
+      const examObj = exam.toObject();
+      const examAttempts = attempts.filter((a) => String(a.examId) === String(exam._id));
+
+      // Calculate attempts taken in the current calendar day
+      const attemptsToday = examAttempts.filter((a) => {
+        const t = new Date(a.createdAt);
+        return t >= startOfToday && t <= endOfToday;
+      }).length;
+
+      // Active in-progress attempt currently active
+      const activeAttempt = examAttempts.find(
+        (a) => a.status === 'IN_PROGRESS' && new Date(a.endTime) > now
+      );
+
+      let userStatus = 'NOT_ATTEMPTED';
+      let attemptId = null;
+
+      if (activeAttempt) {
+        userStatus = 'IN_PROGRESS';
+        attemptId = activeAttempt._id;
+      } else if (attemptsToday >= 2) {
+        userStatus = 'LIMIT_REACHED';
+        const latestCompleted = examAttempts.find((a) =>
+          ['EVALUATED', 'SUBMITTED', 'EVALUATING', 'TERMINATED'].includes(a.status)
+        );
+        attemptId = latestCompleted ? latestCompleted._id : null;
+      } else if (examAttempts.length > 0) {
+        userStatus = 'COMPLETED';
+        const latestAttempt = examAttempts[0];
+        attemptId = latestAttempt ? latestAttempt._id : null;
+      }
+
+      return {
+        ...examObj,
+        questionCount: exam.questions.length,
+        examStatus: 'ACTIVE',
+        userStatus,
+        attemptId,
+        attemptsToday,
+        maxDailyAttempts: 2,
+        attemptsRemainingToday: Math.max(0, 2 - attemptsToday),
+        canAttempt: Boolean(activeAttempt) || attemptsToday < 2,
+      };
+    });
+
+    return results;
+  }
+
   static async getExamDetails(examId, userId, isAdmin = false, currentUser = null) {
     const exam = await Exam.findById(examId);
     if (!exam) {
@@ -277,16 +341,56 @@ export class ExamService {
     // Check user attempt
     let activeAttempt = null;
     if (userId) {
-      const attempt = await ExamAttempt.findOne({ userId, examId });
-      if (attempt) {
-        activeAttempt = {
-          _id: attempt._id,
-          status: attempt.status,
-          startedAt: attempt.startedAt,
-          endTime: attempt.endTime,
-          remainingSeconds: Math.max(0, Math.floor((new Date(attempt.endTime) - now) / 1000)),
-          violationCount: attempt.violationCount,
-        };
+      if (exam.isPractice) {
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        const endOfToday = new Date();
+        endOfToday.setHours(23, 59, 59, 999);
+
+        const userAttempts = await ExamAttempt.find({ userId, examId }).sort({ createdAt: -1 });
+        const attemptsToday = userAttempts.filter((a) => {
+          const t = new Date(a.createdAt);
+          return t >= startOfToday && t <= endOfToday;
+        }).length;
+
+        const active = userAttempts.find(
+          (a) => a.status === 'IN_PROGRESS' && new Date(a.endTime) > now
+        );
+
+        if (active) {
+          activeAttempt = {
+            _id: active._id,
+            status: active.status,
+            startedAt: active.startedAt,
+            endTime: active.endTime,
+            remainingSeconds: Math.max(0, Math.floor((new Date(active.endTime) - now) / 1000)),
+            violationCount: active.violationCount,
+            attemptsToday,
+            maxDailyAttempts: 2,
+            attemptsRemainingToday: Math.max(0, 2 - attemptsToday),
+          };
+        } else if (attemptsToday >= 2) {
+          activeAttempt = {
+            status: 'LIMIT_REACHED',
+            attemptsToday,
+            maxDailyAttempts: 2,
+            attemptsRemainingToday: 0,
+          };
+        } else {
+          activeAttempt = null;
+        }
+      } else {
+        const attempt = await ExamAttempt.findOne({ userId, examId });
+        if (attempt) {
+          activeAttempt = {
+            _id: attempt._id,
+            status: attempt.status,
+            startedAt: attempt.startedAt,
+            endTime: attempt.endTime,
+            remainingSeconds: Math.max(0, Math.floor((new Date(attempt.endTime) - now) / 1000)),
+            violationCount: attempt.violationCount,
+          };
+        }
       }
     }
 
@@ -362,49 +466,89 @@ export class ExamService {
     }
 
     // Check existing attempt
-    let attempt = await ExamAttempt.findOne({ userId, examId });
+    let attempt = null;
 
-    if (attempt) {
-      if (attempt.status === 'TERMINATED' || attempt.resultStatus === 'TERMINATED') {
+    if (exam.isPractice) {
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+
+      // Check active in-progress attempt first (resume if time remaining)
+      const activeAttempt = await ExamAttempt.findOne({
+        userId,
+        examId,
+        status: 'IN_PROGRESS',
+        endTime: { $gt: now },
+      });
+
+      if (activeAttempt) {
+        return {
+          attempt: activeAttempt,
+          remainingSeconds: Math.max(0, Math.floor((new Date(activeAttempt.endTime) - now) / 1000)),
+        };
+      }
+
+      // Check daily rate limit: max 2 attempts per single calendar day
+      const attemptsToday = await ExamAttempt.countDocuments({
+        userId,
+        examId,
+        createdAt: { $gte: startOfToday, $lte: endOfToday },
+      });
+
+      if (attemptsToday >= 2) {
         const error = new Error(
-          `Your examination was terminated by the security system. Reason: ${attempt.terminationReason || 'Excessive proctoring violations recorded'}.`
+          'Daily practice limit reached. You can take this practice test up to 2 times per day to conserve server resources. Please try again tomorrow or practice another test.'
         );
-        error.statusCode = 403;
-        error.errorCode = 'EXAM_TERMINATED';
+        error.statusCode = 429;
+        error.errorCode = 'DAILY_PRACTICE_LIMIT_REACHED';
         throw error;
       }
+    } else {
+      attempt = await ExamAttempt.findOne({ userId, examId });
 
-      // If already submitted or evaluated, user cannot retake
-      if (['SUBMITTED', 'EVALUATING', 'EVALUATED'].includes(attempt.status)) {
-        const error = new Error('You have already submitted this examination');
-        error.statusCode = 400;
-        error.errorCode = 'ALREADY_SUBMITTED';
-        throw error;
-      }
+      if (attempt) {
+        if (attempt.status === 'TERMINATED' || attempt.resultStatus === 'TERMINATED') {
+          const error = new Error(
+            `Your examination was terminated by the security system. Reason: ${attempt.terminationReason || 'Excessive proctoring violations recorded'}.`
+          );
+          error.statusCode = 403;
+          error.errorCode = 'EXAM_TERMINATED';
+          throw error;
+        }
 
-      // If in progress, check server timer
-      if (attempt.status === 'IN_PROGRESS') {
-        if (now > attempt.endTime) {
-          attempt.status = 'EXPIRED';
-          await attempt.save();
+        // If already submitted or evaluated, user cannot retake
+        if (['SUBMITTED', 'EVALUATING', 'EVALUATED'].includes(attempt.status)) {
+          const error = new Error('You have already submitted this examination');
+          error.statusCode = 400;
+          error.errorCode = 'ALREADY_SUBMITTED';
+          throw error;
+        }
+
+        // If in progress, check server timer
+        if (attempt.status === 'IN_PROGRESS') {
+          if (now > attempt.endTime) {
+            attempt.status = 'EXPIRED';
+            await attempt.save();
+            const error = new Error('Your examination time has expired');
+            error.statusCode = 400;
+            error.errorCode = 'TIME_EXPIRED';
+            throw error;
+          }
+
+          // Return current active attempt
+          return {
+            attempt,
+            remainingSeconds: Math.max(0, Math.floor((new Date(attempt.endTime) - now) / 1000)),
+          };
+        }
+
+        if (attempt.status === 'EXPIRED') {
           const error = new Error('Your examination time has expired');
           error.statusCode = 400;
           error.errorCode = 'TIME_EXPIRED';
           throw error;
         }
-
-        // Return current active attempt
-        return {
-          attempt,
-          remainingSeconds: Math.max(0, Math.floor((new Date(attempt.endTime) - now) / 1000)),
-        };
-      }
-
-      if (attempt.status === 'EXPIRED') {
-        const error = new Error('Your examination time has expired');
-        error.statusCode = 400;
-        error.errorCode = 'TIME_EXPIRED';
-        throw error;
       }
     }
 

@@ -50,12 +50,20 @@ export default function UserResultsPage() {
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Once you take an assessment and submit your solutions, the results will appear here.
           </p>
-          <Link
-            to="/exams"
-            className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-500 shadow-sm transition-colors"
-          >
-            Browse Available Exams &rarr;
-          </Link>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              to="/exams"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-500 shadow-sm transition-colors"
+            >
+              Browse Available Exams &rarr;
+            </Link>
+            <Link
+              to="/practice"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 shadow-sm transition-colors"
+            >
+              Try Practice Sandbox &rarr;
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -72,27 +80,34 @@ export default function UserResultsPage() {
               >
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span
-                      className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
-                        isTerminated
-                          ? 'bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800'
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span
+                        className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                          isTerminated
+                            ? 'bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800'
+                            : isOngoing
+                            ? 'bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-800'
+                            : isEvaluating
+                            ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800'
+                            : isPass
+                            ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                            : 'bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800'
+                        }`}
+                      >
+                        {isTerminated
+                          ? 'TERMINATED'
                           : isOngoing
-                          ? 'bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-800'
+                          ? 'ONGOING'
                           : isEvaluating
-                          ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800'
-                          : isPass
-                          ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
-                          : 'bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800'
-                      }`}
-                    >
-                      {isTerminated
-                        ? 'TERMINATED'
-                        : isOngoing
-                        ? 'ONGOING'
-                        : isEvaluating
-                        ? 'EVALUATING IN DOCKER'
-                        : res.resultStatus}
-                    </span>
+                          ? 'EVALUATING IN DOCKER'
+                          : res.resultStatus}
+                      </span>
+                      {res.exam?.isPractice && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                          PRACTICE
+                        </span>
+                      )}
+                    </div>
                     <span className="text-xs text-slate-500 dark:text-slate-400">
                       {new Date(res.submittedAt || res.startedAt).toLocaleDateString()}
                     </span>

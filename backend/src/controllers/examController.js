@@ -13,6 +13,18 @@ export class ExamController {
     }
   }
 
+  static async getPracticeExams(req, res, next) {
+    try {
+      const exams = await ExamService.getPracticeExams(req.user._id);
+      res.status(200).json({
+        success: true,
+        data: { exams },
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async getExamDetails(req, res, next) {
     try {
       const { id } = req.params;

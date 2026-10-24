@@ -16,7 +16,9 @@ import {
   Check,
   X,
   RotateCcw,
+  Download,
 } from 'lucide-react';
+import { generateResultPdf } from '../../utils/resultPdfGenerator';
 
 export default function AdminResultDetailPage() {
   const { id } = useParams();
@@ -96,7 +98,7 @@ export default function AdminResultDetailPage() {
   };
 
   return (
-    <div className="p-6 md:p-10 max-w-6xl mx-auto w-full space-y-8">
+    <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <Link
@@ -113,6 +115,14 @@ export default function AdminResultDetailPage() {
           </p>
         </div>
         <div className="shrink-0 flex items-center gap-2">
+          <button
+            onClick={() => generateResultPdf(data)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold text-xs transition-colors shadow-sm cursor-pointer"
+            title="Download Candidate PDF Scorecard"
+          >
+            <Download className="w-4 h-4 text-blue-600" />
+            <span>Download Result (PDF)</span>
+          </button>
           <button
             onClick={handleAllowRetake}
             disabled={retakeLoading}

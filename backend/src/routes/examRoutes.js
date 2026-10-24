@@ -9,6 +9,7 @@ const router = Router();
 router.use(authenticateUser);
 
 router.get('/', ExamController.getAvailableExams);
+router.get('/practice', ExamController.getPracticeExams);
 router.get('/:id', ExamController.getExamDetails);
 router.post('/:id/start', ExamController.startExam);
 router.post('/:id/event', validate(examEventSchema), ExamController.recordEvent);

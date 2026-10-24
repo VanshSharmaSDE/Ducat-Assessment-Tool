@@ -28,7 +28,9 @@ export default function ExamInstructionPage() {
   const [error, setError] = useState('');
   const [isSmallScreen, setIsSmallScreen] = useState(false);
 
-  const isAlreadyTaken = ['SUBMITTED', 'EVALUATING', 'EVALUATED', 'COMPLETED', 'TERMINATED', 'EXPIRED'].includes(
+  const isPractice = Boolean(exam?.isPractice);
+  const isLimitReached = isPractice && activeAttempt?.status === 'LIMIT_REACHED';
+  const isAlreadyTaken = !isPractice && ['SUBMITTED', 'EVALUATING', 'EVALUATED', 'COMPLETED', 'TERMINATED', 'EXPIRED'].includes(
     activeAttempt?.status
   );
 
@@ -62,7 +64,7 @@ export default function ExamInstructionPage() {
   }, [id]);
 
   const handleStartExam = async () => {
-    if (!agreed || isAlreadyTaken) return;
+    if (!agreed || isAlreadyTaken || isLimitReached) return;
 
     if (exam?.restrictToLaptop && isSmallScreen) {
       setError('This exam is restricted to laptop/desktop screens only (width ≥ 1024px). Please open on a laptop or maximize your browser window.');
@@ -138,12 +140,43 @@ export default function ExamInstructionPage() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6">
       {/* Title & Navigation */}
       <div>
-        <Link to="/exams" className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors mb-3">
-          <ChevronLeft className="w-4 h-4" /> Back to Assessments
+        <Link
+          to={isPractice ? "/practice" : "/exams"}
+          className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors mb-3"
+        >
+          <ChevronLeft className="w-4 h-4" /> Back to {isPractice ? 'Practice Tests' : 'Assessments'}
         </Link>
-        <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2.5">{exam.title}</h1>
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2.5">{exam.title}</h1>
+          {isPractice && (
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+              PRACTICE SANDBOX
+            </span>
+          )}
+        </div>
         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">{exam.description}</p>
       </div>
+
+      {/* Daily Practice Limit Reached Banner */}
+      {isLimitReached && (
+        <div className="p-5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border-2 border-rose-200 dark:border-rose-900/60 text-rose-800 dark:text-rose-200 space-y-2">
+          <div className="flex items-center gap-2 font-bold text-sm text-rose-700 dark:text-rose-300">
+            <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0" />
+            <span>Daily Practice Limit Reached (2 / 2 Attempts Used Today)</span>
+          </div>
+          <p className="text-xs text-rose-600 dark:text-rose-400 leading-relaxed">
+            To preserve server Docker execution resources, each practice test is limited to 2 sessions per calendar day. You can take this test again tomorrow, or practice another test!
+          </p>
+          <div className="pt-1">
+            <Link
+              to="/practice"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold shadow-sm"
+            >
+              Browse Other Practice Tests &rarr;
+            </Link>
+          </div>
+        </div>
+      )}
 
       {isAlreadyTaken && (
         <div className="p-5 rounded-3xl bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-200 dark:border-amber-900/60 text-amber-800 dark:text-amber-200 space-y-3">
@@ -317,10 +350,10 @@ export default function ExamInstructionPage() {
 
         <div className="flex justify-end gap-3 pt-2">
           <Link
-            to="/exams"
+            to={isPractice ? "/practice" : "/exams"}
             className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
           >
-            Back to Exams
+            Back to {isPractice ? 'Practice Tests' : 'Exams'}
           </Link>
 
           {isAlreadyTaken ? (
@@ -331,6 +364,13 @@ export default function ExamInstructionPage() {
               <span>View Examination Results</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
+          ) : isLimitReached ? (
+            <button
+              disabled
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-xs font-bold cursor-not-allowed"
+            >
+              Daily Limit Reached (2/2 Used)
+            </button>
           ) : (
             <button
               onClick={handleStartExam}
@@ -341,6 +381,8 @@ export default function ExamInstructionPage() {
                 ? 'Initiating Exam Environment...'
                 : exam?.restrictToLaptop && isSmallScreen
                 ? 'Laptop Screen Required to Start'
+                : isPractice
+                ? 'I Agree & Start Practice Test'
                 : 'I Agree & Start Exam'}
               {!starting && !(exam?.restrictToLaptop && isSmallScreen) && <ArrowRight className="w-4 h-4" />}
             </button>

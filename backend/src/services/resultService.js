@@ -12,7 +12,7 @@ export class ResultService {
       userId,
       status: { $in: ['EVALUATING', 'EVALUATED', 'SUBMITTED', 'TERMINATED'] },
     })
-      .populate('examId', 'title description duration totalMarks passingMarks difficulty')
+      .populate('examId', 'title description duration totalMarks passingMarks difficulty isPractice')
       .sort({ createdAt: -1 });
 
     return attempts.map((att) => {
@@ -49,7 +49,7 @@ export class ResultService {
         })
         .populate({
           path: 'examId',
-          select: 'title description duration totalMarks passingMarks difficulty instructions questions createdBy',
+          select: 'title description duration totalMarks passingMarks difficulty instructions questions isPractice createdBy',
           populate: { path: 'createdBy', select: 'name email role' }
         });
 

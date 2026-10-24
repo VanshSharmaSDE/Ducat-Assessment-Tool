@@ -19,6 +19,8 @@ import UserResultsPage from './pages/UserResultsPage';
 import ResultDetailPage from './pages/ResultDetailPage';
 import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
+import StudentGuideFaqPage from './pages/StudentGuideFaqPage';
+import PracticeExamsPage from './pages/PracticeExamsPage';
 
 // Admin & Faculty Pages
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
@@ -119,9 +121,12 @@ export default function App() {
       >
         <Route path="/dashboard" element={<UserDashboard />} />
         <Route path="/exams" element={<AvailableExamsPage />} />
+        <Route path="/practice" element={<PracticeExamsPage />} />
         <Route path="/exams/:id/instructions" element={<ExamInstructionPage />} />
         <Route path="/results" element={<UserResultsPage />} />
         <Route path="/results/:id" element={<ResultDetailPage />} />
+        <Route path="/faq" element={<StudentGuideFaqPage />} />
+        <Route path="/instructions-faq" element={<StudentGuideFaqPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>

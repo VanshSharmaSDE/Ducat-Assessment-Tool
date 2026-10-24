@@ -253,27 +253,25 @@ export default function ProfilePage() {
   const roleTitle = isAdmin ? 'System Administrator' : isFaculty ? 'Faculty Instructor' : 'Student Candidate';
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
+    <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex flex-wrap items-center gap-2.5 mb-1">
-            <h1 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
-              Account Profile & Security
-            </h1>
-          </div>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+          <h1 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
+            Account Profile & Security
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             Manage your personal credentials, view institutional affiliations, and update account security preferences.
           </p>
         </div>
       </div>
 
       {/* Main 12-Column Responsive Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* Left Column (4 cols on lg): Identity, Avatar, Credentials, Account Health */}
-        <div className="lg:col-span-4 space-y-6">
+        <div className="lg:col-span-4 flex flex-col space-y-6">
           {/* 1. Identity & Avatar Card */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-5">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-5">
             <div className="flex flex-col items-center text-center">
               {/* Avatar Container with Camera Badge */}
               <div className="relative group mb-4">
@@ -383,7 +381,7 @@ export default function ProfilePage() {
           </div>
 
           {/* 2. Institutional Credentials Card */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-[#4f6bf7]" />
@@ -459,7 +457,7 @@ export default function ProfilePage() {
           </div>
 
           {/* 3. Account Security Health Card */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-3.5">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-3.5 flex-1 flex flex-col justify-between">
             <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider pb-2 border-b border-slate-100 dark:border-slate-800">
               <Shield className="w-4 h-4 text-[#4f6bf7]" />
               <span>Account Status & Security</span>
@@ -491,9 +489,9 @@ export default function ProfilePage() {
         </div>
 
         {/* Right Column (8 cols on lg): Personal Details Form + Security & Password Form */}
-        <div className="lg:col-span-8 space-y-6">
+        <div className="lg:col-span-8 flex flex-col space-y-6">
           {/* Card 1: Personal & Academic Information */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
             <div>
               <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                 <User className="w-5 h-5 text-[#4f6bf7]" />
@@ -764,7 +762,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Card 2: Security & Password Management */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
             <div>
               <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                 <Lock className="w-5 h-5 text-[#4f6bf7]" />

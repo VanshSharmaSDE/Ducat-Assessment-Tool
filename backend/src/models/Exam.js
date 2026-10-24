@@ -80,6 +80,11 @@ const examSchema = new mongoose.Schema(
       default: false,
       index: true,
     },
+    isPractice: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     questions: [examQuestionSchema],
     randomizeQuestions: {
       type: Boolean,

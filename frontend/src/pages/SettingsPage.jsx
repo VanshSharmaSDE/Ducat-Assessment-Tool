@@ -114,11 +114,11 @@ export default function SettingsPage() {
   const isLaptopCompliant = viewport.width >= 1024;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
+    <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2.5">
+          <h1 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
             Settings & Preferences
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -141,11 +141,11 @@ export default function SettingsPage() {
       </div>
 
       {/* Main 12-Column Responsive Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* Left Column (4 Cols on lg): Device Telemetry, Security Policy, Account Snapshot */}
-        <div className="lg:col-span-4 space-y-6">
+        <div className="lg:col-span-4 flex flex-col space-y-6">
           {/* 1. Live Device & Viewport Diagnostics Card */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <Laptop className="w-4 h-4 text-[#4f6bf7]" />
@@ -204,7 +204,7 @@ export default function SettingsPage() {
           </div>
 
           {/* 2. Account Profile Snapshot Card */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
             <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider pb-2 border-b border-slate-100 dark:border-slate-800">
               <User className="w-4 h-4 text-[#4f6bf7]" />
               <span>Account Credentials</span>
@@ -244,7 +244,7 @@ export default function SettingsPage() {
           </div>
 
           {/* 3. Session & Security Policy Card */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4 flex-1 flex flex-col justify-between">
             <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider pb-2 border-b border-slate-100 dark:border-slate-800">
               <Shield className="w-4 h-4 text-[#4f6bf7]" />
               <span>Active Security Policy</span>
@@ -276,9 +276,9 @@ export default function SettingsPage() {
         </div>
 
         {/* Right Column (8 Cols on lg): Theme Selector & Laptop Restriction */}
-        <div className="lg:col-span-8 space-y-6">
+        <div className="lg:col-span-8 flex flex-col space-y-6">
           {/* Card 1: Display Appearance & Theme Selector */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
             <div>
               <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-[#4f6bf7]" /> Display Appearance
@@ -410,7 +410,7 @@ export default function SettingsPage() {
 
           {/* Card 2: Student Assessment Security & Laptop Restriction (for Admin & Faculty) */}
           {(isAdmin || isFaculty) && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
@@ -485,6 +485,90 @@ export default function SettingsPage() {
                     {laptopOnly
                       ? 'Access blocked for your students on smartphones, portrait tablets, and small screen windows.'
                       : 'Mobile login is currently permitted.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Card 2: Examination Environment & System Readiness (for Students) */}
+          {!isAdmin && !isFaculty && (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+              <div>
+                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-[#4f6bf7]" />
+                  Examination Readiness & Proctoring Diagnostics
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Ensure your computer and browser meet all technical requirements for secure proctoring and code execution.
+                </p>
+              </div>
+
+              {/* Technical Readiness Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                      <Laptop className="w-4 h-4 text-blue-600" /> Resolution Compliance
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                        isLaptopCompliant
+                          ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                          : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                      }`}
+                    >
+                      {isLaptopCompliant ? 'PASS' : 'WARNING'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Detected viewport {viewport.width} × {viewport.height} px (Minimum required: 1024px width).
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-indigo-600" /> Fullscreen & Tab Monitoring
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                      SUPPORTED
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    HTML5 Fullscreen API and browser blur focus listeners are active and supported.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                      <Cpu className="w-4 h-4 text-purple-600" /> Docker Sandbox Engine
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                      ONLINE
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Direct low-latency socket tunnel connected to isolated compiler containers.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4 text-amber-600" /> Client Session Cache
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleClearCache}
+                      className="text-[10px] font-bold text-[#4f6bf7] hover:underline cursor-pointer"
+                    >
+                      {cacheCleared ? 'Cleared ✓' : 'Clear Storage'}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Purges temporary exam drafts and local session cache without logging you out.
                   </p>
                 </div>
               </div>
