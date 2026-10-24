@@ -15,6 +15,8 @@ import {
   Users,
   RotateCcw,
   FileText,
+  Ban,
+  Radio,
 } from 'lucide-react';
 
 export default function AdminResultsPage() {
@@ -71,9 +73,10 @@ export default function AdminResultsPage() {
     }
   };
 
-  // Real-time proctoring listener to update violation counts live
+  // Real-time proctoring listener to update violation counts live & track started/terminated exams
   useEffect(() => {
     if (!socket) return;
+
     const handleViolation = (data) => {
       setResults((prev) =>
         prev.map((r) => {
@@ -82,6 +85,29 @@ export default function AdminResultsPage() {
               ...r,
               violationCount: data.violationCount,
               status: data.terminated ? 'TERMINATED' : r.status,
+              resultStatus: data.terminated ? 'TERMINATED' : r.resultStatus,
+              terminationReason: data.terminationReason || r.terminationReason,
+            };
+          }
+          return r;
+        })
+      );
+    };
+
+    const handleAttemptStarted = () => {
+      // Reload results when a student begins an exam so they appear as ONGOING live
+      loadResults();
+    };
+
+    const handleExamTerminated = (data) => {
+      setResults((prev) =>
+        prev.map((r) => {
+          if (r._id === data.attemptId) {
+            return {
+              ...r,
+              status: 'TERMINATED',
+              resultStatus: 'TERMINATED',
+              terminationReason: data.reason || r.terminationReason,
             };
           }
           return r;
@@ -90,7 +116,14 @@ export default function AdminResultsPage() {
     };
 
     socket.on('proctoring:violation', handleViolation);
-    return () => socket.off('proctoring:violation', handleViolation);
+    socket.on('attempt:started', handleAttemptStarted);
+    socket.on('exam:terminated', handleExamTerminated);
+
+    return () => {
+      socket.off('proctoring:violation', handleViolation);
+      socket.off('attempt:started', handleAttemptStarted);
+      socket.off('exam:terminated', handleExamTerminated);
+    };
   }, [socket]);
 
   useEffect(() => {
@@ -283,6 +316,38 @@ export default function AdminResultsPage() {
     }
   };
 
+  const handleTerminateAttempt = async (att) => {
+    const studentName = att.userId?.name || 'this candidate';
+    const examTitle = att.examId?.title || 'the exam';
+
+    const reason = window.prompt(
+      `Terminate ${studentName}'s exam for "${examTitle}" immediately?\n\nEnter termination reason:`,
+      'Administrative termination for proctoring/policy non-compliance'
+    );
+    if (reason === null) return; // User pressed Cancel
+
+    const finalReason = reason.trim() || 'Terminated by examination proctor/administrator';
+
+    try {
+      setActionLoading(true);
+      const res = await api.post(`/admin/results/${att._id}/terminate`, { reason: finalReason });
+      await showAlert({
+        title: 'Attempt Terminated',
+        message: res.data?.message || 'Candidate attempt has been terminated.',
+        type: 'warning',
+      });
+      await loadResults();
+    } catch (err) {
+      await showAlert({
+        title: 'Termination Failed',
+        message: err.response?.data?.message || 'Failed to terminate candidate attempt.',
+        type: 'error',
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleBulkDelete = async () => {
     if (selectedResults.length === 0) return;
     const confirmed = await showConfirm({
@@ -440,6 +505,8 @@ export default function AdminResultsPage() {
               <option value="">All Outcomes</option>
               <option value="PASS">Passed Candidates</option>
               <option value="FAIL">Failed Candidates</option>
+              <option value="TERMINATED">Terminated Candidates</option>
+              <option value="ONGOING">Ongoing / Taking Exam</option>
               <option value="PENDING">Pending Evaluation</option>
             </select>
 
@@ -642,29 +709,73 @@ export default function AdminResultsPage() {
                           </span>
                         </td>
                         <td className="py-3 px-4 font-mono font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
-                          {att.totalScore} / {att.maxScore}
+                          {att.status === 'IN_PROGRESS' || att.resultStatus === 'ONGOING' ? (
+                            <span className="text-blue-600 dark:text-blue-400 font-semibold italic text-xs">In Progress</span>
+                          ) : (
+                            `${att.totalScore} / ${att.maxScore}`
+                          )}
                         </td>
                         <td className="py-3 px-4 font-mono font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
-                          {att.percentage}%
+                          {att.status === 'IN_PROGRESS' || att.resultStatus === 'ONGOING' ? (
+                            <span className="text-slate-400 dark:text-slate-500 font-normal">—</span>
+                          ) : (
+                            `${att.percentage}%`
+                          )}
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                              att.resultStatus === 'PASS'
-                                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                                : att.resultStatus === 'FAIL'
-                                ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
-                                : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                            }`}
-                          >
-                            {att.resultStatus}
-                          </span>
+                          {att.resultStatus === 'TERMINATED' ? (
+                            <div className="flex flex-col gap-0.5 max-w-[220px]">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 w-fit">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-ping"></span>
+                                TERMINATED
+                              </span>
+                              {att.terminationReason && (
+                                <span className="text-[10px] text-rose-600 dark:text-rose-400 truncate font-medium" title={att.terminationReason}>
+                                  Reason: {att.terminationReason}
+                                </span>
+                              )}
+                            </div>
+                          ) : att.resultStatus === 'ONGOING' || att.status === 'IN_PROGRESS' ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-800">
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
+                              ONGOING
+                            </span>
+                          ) : att.resultStatus === 'PASS' ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800">
+                              PASS
+                            </span>
+                          ) : att.resultStatus === 'FAIL' ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800">
+                              FAIL
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800">
+                              {att.resultStatus || 'PENDING'}
+                            </span>
+                          )}
                         </td>
                         <td className="py-3 px-4 font-mono text-slate-500 dark:text-slate-400 text-[11px] whitespace-nowrap">
-                          {new Date(att.submittedAt || att.startedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                          {att.status === 'IN_PROGRESS' || att.resultStatus === 'ONGOING' ? (
+                            <span className="text-blue-600 dark:text-blue-400 font-medium">
+                              Started: {new Date(att.startedAt || att.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          ) : (
+                            new Date(att.submittedAt || att.startedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
+                          )}
                         </td>
                         <td className="py-3 px-4 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1.5">
+                            {att.status === 'IN_PROGRESS' && (
+                              <button
+                                onClick={() => handleTerminateAttempt(att)}
+                                disabled={actionLoading}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs font-semibold transition-colors cursor-pointer"
+                                title="Terminate Candidate's Live Exam Session"
+                              >
+                                <Ban className="w-3.5 h-3.5" />
+                                <span>Terminate</span>
+                              </button>
+                            )}
                             <button
                               onClick={() => handleAllowRetake(att)}
                               disabled={actionLoading}

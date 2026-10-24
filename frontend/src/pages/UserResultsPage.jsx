@@ -61,7 +61,9 @@ export default function UserResultsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {results.map((res) => {
             const isEvaluating = res.status === 'EVALUATING';
-            const isPass = res.resultStatus === 'PASS';
+            const isTerminated = res.status === 'TERMINATED' || res.resultStatus === 'TERMINATED';
+            const isOngoing = res.status === 'IN_PROGRESS' || res.resultStatus === 'ONGOING';
+            const isPass = !isTerminated && res.resultStatus === 'PASS';
 
             return (
               <div
@@ -72,14 +74,24 @@ export default function UserResultsPage() {
                   <div className="flex items-center justify-between">
                     <span
                       className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
-                        isEvaluating
-                          ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800'
+                        isTerminated
+                          ? 'bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800'
+                          : isOngoing
+                          ? 'bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-800'
+                          : isEvaluating
+                          ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800'
                           : isPass
                           ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
                           : 'bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800'
                       }`}
                     >
-                      {isEvaluating ? 'EVALUATING IN DOCKER' : res.resultStatus}
+                      {isTerminated
+                        ? 'TERMINATED'
+                        : isOngoing
+                        ? 'ONGOING'
+                        : isEvaluating
+                        ? 'EVALUATING IN DOCKER'
+                        : res.resultStatus}
                     </span>
                     <span className="text-xs text-slate-500 dark:text-slate-400">
                       {new Date(res.submittedAt || res.startedAt).toLocaleDateString()}
@@ -95,11 +107,25 @@ export default function UserResultsPage() {
                     </p>
                   </div>
 
+                  {/* Termination reason pill */}
+                  {isTerminated && (
+                    <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 text-[11px] text-rose-700 dark:text-rose-300">
+                      <p className="font-bold">Terminated:</p>
+                      <p className="text-[10px] mt-0.5">
+                        {res.terminationReason || 'Terminated due to security policy or exceeding violation limit.'}
+                      </p>
+                    </div>
+                  )}
+
                   {/* Score pill */}
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                    <span className="text-xs text-slate-500 dark:text-slate-400">Final Score:</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      {isOngoing ? 'Status:' : 'Final Score:'}
+                    </span>
                     <span className="text-sm font-bold text-slate-800 dark:text-slate-100 font-mono">
-                      {res.totalScore} / {res.maxScore} ({res.percentage}%)
+                      {isOngoing
+                        ? 'Assessment In Progress'
+                        : `${res.totalScore} / ${res.maxScore} (${res.percentage}%)`}
                     </span>
                   </div>
                 </div>

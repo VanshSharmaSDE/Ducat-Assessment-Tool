@@ -653,7 +653,7 @@ export const exportResultsExcel = async (req, res) => {
     const { batch, technology, organization, gender, language, resultStatus, search, attemptIds, timezone } = req.query;
 
     const filter = { 
-      status: { $in: ['EVALUATED', 'SUBMITTED', 'COMPLETED', 'EXPIRED', 'TERMINATED'] } 
+      status: { $in: ['EVALUATED', 'SUBMITTED', 'COMPLETED', 'EXPIRED', 'TERMINATED', 'IN_PROGRESS'] } 
     };
 
     if (examId) {
@@ -661,7 +661,24 @@ export const exportResultsExcel = async (req, res) => {
     }
 
     if (resultStatus) {
-      filter.resultStatus = resultStatus;
+      if (resultStatus === 'PASS') {
+        filter.resultStatus = 'PASS';
+        filter.status = { $ne: 'TERMINATED' };
+      } else if (resultStatus === 'FAIL') {
+        filter.resultStatus = 'FAIL';
+        filter.status = { $ne: 'TERMINATED' };
+      } else if (resultStatus === 'TERMINATED') {
+        filter.$or = [
+          { status: 'TERMINATED' },
+          { resultStatus: 'TERMINATED' },
+        ];
+      } else if (resultStatus === 'ONGOING') {
+        filter.status = 'IN_PROGRESS';
+      } else if (resultStatus === 'PENDING') {
+        filter.status = { $in: ['EVALUATING', 'SUBMITTED'] };
+      } else {
+        filter.resultStatus = resultStatus;
+      }
     }
 
     if (attemptIds) {
@@ -840,10 +857,17 @@ export const exportResultsExcel = async (req, res) => {
       const max = att.maxScore || att.examId?.totalMarks || 100;
       const passMarks = att.examId?.passingMarks ?? 40;
 
-      // Pass/Fail status MUST strictly reflect ground truth from evaluation/dashboard
+      const isTerminated = att.status === 'TERMINATED' || att.resultStatus === 'TERMINATED';
+      const isOngoing = att.status === 'IN_PROGRESS';
+
+      // Pass/Fail/Terminated/Ongoing status
       let outcome = att.resultStatus;
-      if (!outcome || outcome === 'PENDING') {
-        if (att.status === 'TERMINATED' || att.status === 'EXPIRED') {
+      if (isTerminated) {
+        outcome = 'TERMINATED';
+      } else if (isOngoing) {
+        outcome = 'ONGOING';
+      } else if (!outcome || outcome === 'PENDING') {
+        if (att.status === 'EXPIRED') {
           outcome = 'FAIL';
         } else if (att.status === 'EVALUATED') {
           outcome = score >= passMarks ? 'PASS' : 'FAIL';
@@ -851,6 +875,13 @@ export const exportResultsExcel = async (req, res) => {
           outcome = att.resultStatus || 'PENDING';
         }
       }
+
+      const terminationReason = isTerminated
+        ? (att.terminationReason ||
+            (att.violationCount > 0
+              ? `Exceeded maximum proctoring violations (${att.violationCount} violations recorded)`
+              : 'Examination terminated due to security violation'))
+        : '';
 
       const langs = Array.from(attemptLangMap[att._id.toString()] || []).join(', ') || 'N/A';
       const studentCreator = att.userId?.createdBy?.name 
@@ -865,9 +896,11 @@ export const exportResultsExcel = async (req, res) => {
       const formattedDate = formatDateOnly(submissionDateObj, clientTimezone);
       const formattedTime = formatTimeOnly(submissionDateObj, clientTimezone);
 
-      const percentageVal = typeof att.percentage === 'number'
-        ? `${att.percentage}%`
-        : (max > 0 ? `${((score / max) * 100).toFixed(2)}%` : '0%');
+      const percentageVal = isOngoing
+        ? 'In Progress'
+        : (typeof att.percentage === 'number'
+            ? `${att.percentage}%`
+            : (max > 0 ? `${((score / max) * 100).toFixed(2)}%` : '0%'));
 
       return {
         'S.No': idx + 1,
@@ -883,10 +916,11 @@ export const exportResultsExcel = async (req, res) => {
         'Exam Created By': examCreator,
         'Languages Used': langs,
         'Violations': att.violationCount || 0,
-        'Score Obtained': score,
+        'Score Obtained': isOngoing ? 'Ongoing' : score,
         'Max Marks': max,
         'Percentage (%)': percentageVal,
         'Status': outcome,
+        'Termination Reason': terminationReason,
         'Submitted Date & Time': formattedDateTime,
         'Submission Date': formattedDate,
         'Submission Time': formattedTime,
@@ -913,7 +947,8 @@ export const exportResultsExcel = async (req, res) => {
       { wch: 14 }, // Score Obtained
       { wch: 12 }, // Max Marks
       { wch: 14 }, // Percentage (%)
-      { wch: 10 }, // Status
+      { wch: 14 }, // Status
+      { wch: 36 }, // Termination Reason
       { wch: 24 }, // Submitted Date & Time
       { wch: 16 }, // Submission Date
       { wch: 16 }, // Submission Time
@@ -1136,6 +1171,20 @@ export class AdminController {
     try {
       const { id } = req.params;
       const result = await AdminService.allowRetake(id, req.user);
+      res.status(200).json({
+        success: true,
+        ...result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async terminateAttempt(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+      const result = await AdminService.terminateAttempt(id, reason, req.user);
       res.status(200).json({
         success: true,
         ...result,

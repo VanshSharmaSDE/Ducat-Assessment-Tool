@@ -365,6 +365,15 @@ export class ExamService {
     let attempt = await ExamAttempt.findOne({ userId, examId });
 
     if (attempt) {
+      if (attempt.status === 'TERMINATED' || attempt.resultStatus === 'TERMINATED') {
+        const error = new Error(
+          `Your examination was terminated by the security system. Reason: ${attempt.terminationReason || 'Excessive proctoring violations recorded'}.`
+        );
+        error.statusCode = 403;
+        error.errorCode = 'EXAM_TERMINATED';
+        throw error;
+      }
+
       // If already submitted or evaluated, user cannot retake
       if (['SUBMITTED', 'EVALUATING', 'EVALUATED'].includes(attempt.status)) {
         const error = new Error('You have already submitted this examination');
@@ -411,6 +420,14 @@ export class ExamService {
       userAgent: userAgent || '',
     });
 
+    // Notify admin live that candidate has started
+    emitToAdmin('attempt:started', {
+      attemptId: attempt._id,
+      examId: attempt.examId,
+      userId: attempt.userId,
+      startedAt: attempt.startedAt,
+    });
+
     logger.info(`User ${userId} started exam ${examId}. Deadline: ${endTime.toISOString()}`);
 
     return {
@@ -452,9 +469,13 @@ export class ExamService {
     const maxViolations = exam?.maxViolations || 5;
 
     let terminated = false;
+    let terminationReason = '';
     if (attempt.violationCount >= maxViolations) {
+      const cleanType = (type || 'violation').replace(/_/g, ' ');
+      terminationReason = `Exceeded maximum permitted proctoring violations (${attempt.violationCount}/${maxViolations}). Triggered by: ${cleanType}${details ? ` (${details})` : ''}.`;
       attempt.status = 'TERMINATED';
-      attempt.resultStatus = 'FAIL';
+      attempt.resultStatus = 'TERMINATED';
+      attempt.terminationReason = terminationReason;
       attempt.submittedAt = attempt.submittedAt || new Date();
       terminated = true;
       logger.warn(`Attempt ${attempt._id} terminated due to excessive violations (${attempt.violationCount}/${maxViolations})`);
@@ -472,6 +493,7 @@ export class ExamService {
       type,
       details,
       terminated,
+      terminationReason,
     });
 
     // Broadcast update to candidate's socket
@@ -479,6 +501,7 @@ export class ExamService {
       violationCount: attempt.violationCount,
       maxViolations,
       terminated,
+      terminationReason,
       type,
     });
 
@@ -486,6 +509,7 @@ export class ExamService {
       violationCount: attempt.violationCount,
       maxViolations,
       terminated,
+      terminationReason,
     };
   }
 

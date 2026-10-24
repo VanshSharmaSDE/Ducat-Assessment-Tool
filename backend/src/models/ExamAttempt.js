@@ -66,9 +66,13 @@ const examAttemptSchema = new mongoose.Schema(
     },
     resultStatus: {
       type: String,
-      enum: ['PENDING', 'PASS', 'FAIL'],
+      enum: ['PENDING', 'PASS', 'FAIL', 'TERMINATED', 'ONGOING'],
       default: 'PENDING',
       index: true,
+    },
+    terminationReason: {
+      type: String,
+      default: '',
     },
     violationCount: {
       type: Number,

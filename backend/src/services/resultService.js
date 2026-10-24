@@ -15,18 +15,22 @@ export class ResultService {
       .populate('examId', 'title description duration totalMarks passingMarks difficulty')
       .sort({ createdAt: -1 });
 
-    return attempts.map((att) => ({
-      _id: att._id,
-      exam: att.examId,
-      startedAt: att.startedAt,
-      submittedAt: att.submittedAt,
-      status: att.status,
-      totalScore: att.totalScore,
-      maxScore: att.maxScore,
-      percentage: att.percentage,
-      resultStatus: att.resultStatus,
-      violationCount: att.violationCount,
-    }));
+    return attempts.map((att) => {
+      const isTerminated = att.status === 'TERMINATED' || att.resultStatus === 'TERMINATED';
+      return {
+        _id: att._id,
+        exam: att.examId,
+        startedAt: att.startedAt,
+        submittedAt: att.submittedAt,
+        status: isTerminated ? 'TERMINATED' : att.status,
+        totalScore: att.totalScore,
+        maxScore: att.maxScore,
+        percentage: att.percentage,
+        resultStatus: isTerminated ? 'TERMINATED' : att.resultStatus,
+        terminationReason: att.terminationReason || (isTerminated ? `Terminated due to exceeding proctoring violations limit (${att.violationCount || 0} violations).` : ''),
+        violationCount: att.violationCount,
+      };
+    });
   }
 
   static async getResultDetails(attemptId, userId, isAdmin = false, currentUser = null) {
@@ -206,6 +210,23 @@ export class ResultService {
       };
     });
 
+    const isTerminated = attempt.status === 'TERMINATED' || attempt.resultStatus === 'TERMINATED';
+    const isOngoing = attempt.status === 'IN_PROGRESS';
+    let resolvedResultStatus = attempt.resultStatus;
+    if (isTerminated) {
+      resolvedResultStatus = 'TERMINATED';
+    } else if (isOngoing) {
+      resolvedResultStatus = 'ONGOING';
+    }
+
+    const resolvedReason =
+      attempt.terminationReason ||
+      (isTerminated
+        ? (attempt.violationCount > 0
+            ? `Exceeded maximum permitted proctoring violations (${attempt.violationCount} violations recorded).`
+            : 'Examination terminated due to security violation.')
+        : '');
+
     return {
       attempt: {
         _id: attempt._id,
@@ -213,11 +234,13 @@ export class ResultService {
         exam: attempt.examId,
         startedAt: attempt.startedAt,
         submittedAt: attempt.submittedAt,
-        status: attempt.status,
+        endTime: attempt.endTime,
+        status: isTerminated ? 'TERMINATED' : attempt.status,
         totalScore: attempt.totalScore,
         maxScore: attempt.maxScore,
         percentage: attempt.percentage,
-        resultStatus: attempt.resultStatus,
+        resultStatus: resolvedResultStatus,
+        terminationReason: resolvedReason,
         violationCount: attempt.violationCount,
         events: (isAdmin || currentUser) ? attempt.events : undefined,
       },
@@ -285,7 +308,24 @@ export class ResultService {
       }
     }
     if (query.resultStatus) {
-      filter.resultStatus = query.resultStatus;
+      if (query.resultStatus === 'PASS') {
+        filter.resultStatus = 'PASS';
+        filter.status = { $ne: 'TERMINATED' };
+      } else if (query.resultStatus === 'FAIL') {
+        filter.resultStatus = 'FAIL';
+        filter.status = { $ne: 'TERMINATED' };
+      } else if (query.resultStatus === 'TERMINATED') {
+        filter.$or = [
+          { status: 'TERMINATED' },
+          { resultStatus: 'TERMINATED' },
+        ];
+      } else if (query.resultStatus === 'ONGOING') {
+        filter.status = 'IN_PROGRESS';
+      } else if (query.resultStatus === 'PENDING') {
+        filter.status = { $in: ['EVALUATING', 'SUBMITTED'] };
+      } else {
+        filter.resultStatus = query.resultStatus;
+      }
     }
 
     // Filter by student organization, technology, batch, or gender
@@ -386,10 +426,29 @@ export class ResultService {
       attemptLangMap[idStr].add(sub.language);
     });
 
-    const enrichedResults = attempts.map((att) => ({
-      ...att.toJSON(),
-      languagesUsed: Array.from(attemptLangMap[att._id.toString()] || []),
-    }));
+    const enrichedResults = attempts.map((att) => {
+      const isTerminated = att.status === 'TERMINATED' || att.resultStatus === 'TERMINATED';
+      const isOngoing = att.status === 'IN_PROGRESS';
+      let calculatedResultStatus = att.resultStatus;
+      if (isTerminated) {
+        calculatedResultStatus = 'TERMINATED';
+      } else if (isOngoing) {
+        calculatedResultStatus = 'ONGOING';
+      }
+      return {
+        ...att.toJSON(),
+        status: isTerminated ? 'TERMINATED' : att.status,
+        resultStatus: calculatedResultStatus,
+        terminationReason:
+          att.terminationReason ||
+          (isTerminated
+            ? (att.violationCount > 0
+                ? `Exceeded violation limit (${att.violationCount} violations)`
+                : 'Terminated for security violation')
+            : ''),
+        languagesUsed: Array.from(attemptLangMap[att._id.toString()] || []),
+      };
+    });
 
     return {
       results: enrichedResults,

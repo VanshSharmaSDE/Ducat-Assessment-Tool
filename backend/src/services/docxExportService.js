@@ -362,6 +362,8 @@ export class DocxExportService {
     if (attempts.length > 0 && !userId) {
       let passedCount = 0;
       let failedCount = 0;
+      let terminatedCount = 0;
+      let ongoingCount = 0;
       let pendingCount = 0;
       let totalScores = 0;
       let maxRecordedScore = 0;
@@ -372,9 +374,16 @@ export class DocxExportService {
         if (score > maxRecordedScore) maxRecordedScore = score;
 
         const passingScore = currentExam?.passingMarks || 0;
-        if (att.resultStatus === 'PASS' || (passingScore > 0 && score >= passingScore)) {
+        const isTerminated = att.status === 'TERMINATED' || att.resultStatus === 'TERMINATED';
+        const isOngoing = att.status === 'IN_PROGRESS';
+
+        if (isTerminated) {
+          terminatedCount++;
+        } else if (isOngoing) {
+          ongoingCount++;
+        } else if (att.resultStatus === 'PASS' || (passingScore > 0 && score >= passingScore)) {
           passedCount++;
-        } else if (att.resultStatus === 'FAIL' || att.status === 'TERMINATED' || (passingScore > 0 && score < passingScore && att.status === 'EVALUATED')) {
+        } else if (att.resultStatus === 'FAIL' || (passingScore > 0 && score < passingScore && att.status === 'EVALUATED')) {
           failedCount++;
         } else {
           pendingCount++;
@@ -395,6 +404,8 @@ export class DocxExportService {
         { label: 'Total Candidates', value: String(attempts.length) },
         { label: 'Candidates Passed', value: String(passedCount), color: '16A34A' },
         { label: 'Candidates Failed', value: String(failedCount), color: 'DC2626' },
+        { label: 'Terminated Candidates', value: String(terminatedCount), color: '991B1B' },
+        { label: 'Ongoing / In Progress', value: String(ongoingCount), color: '2563EB' },
         { label: 'Pending / Evaluating', value: String(pendingCount), color: 'D97706' },
         { label: 'Average Score', value: `${avgScore} / ${currentExam?.totalMarks || 100}` },
         { label: 'Highest Score Recorded', value: `${maxRecordedScore} / ${currentExam?.totalMarks || 100}`, color: '16A34A' },
@@ -433,13 +444,22 @@ export class DocxExportService {
         const max = currentExam?.totalMarks || att.maxScore || 100;
         const passing = currentExam?.passingMarks || 0;
 
+        const isTerminated = att.status === 'TERMINATED' || att.resultStatus === 'TERMINATED';
+        const isOngoing = att.status === 'IN_PROGRESS';
+
         let statusText = 'PENDING';
         let statusColor = 'D97706';
 
-        if (att.resultStatus === 'PASS') {
+        if (isTerminated) {
+          statusText = 'TERMINATED';
+          statusColor = '991B1B';
+        } else if (isOngoing) {
+          statusText = 'ONGOING';
+          statusColor = '2563EB';
+        } else if (att.resultStatus === 'PASS') {
           statusText = 'PASSED';
           statusColor = '16A34A';
-        } else if (att.resultStatus === 'FAIL' || att.status === 'TERMINATED') {
+        } else if (att.resultStatus === 'FAIL') {
           statusText = 'FAILED';
           statusColor = 'DC2626';
         } else if (passing > 0 && att.status === 'EVALUATED') {
@@ -529,6 +549,9 @@ export class DocxExportService {
       docChildren.push(DocxExportService.createKeyValueTable(studentPairs));
 
       // Determine outcome
+      const isTerminated = attempt.status === 'TERMINATED' || attempt.resultStatus === 'TERMINATED';
+      const isOngoing = attempt.status === 'IN_PROGRESS';
+
       let outcomeText = 'PENDING';
       let outcomeColor = 'D97706';
       const maxMarks = targetExam.totalMarks || attempt.maxScore || 100;
@@ -538,10 +561,16 @@ export class DocxExportService {
         ? attempt.percentage
         : (maxMarks > 0 ? Number(((totalScore / maxMarks) * 100).toFixed(2)) : 0);
 
-      if (attempt.resultStatus === 'PASS') {
+      if (isTerminated) {
+        outcomeText = 'TERMINATED';
+        outcomeColor = '991B1B';
+      } else if (isOngoing) {
+        outcomeText = 'ONGOING';
+        outcomeColor = '2563EB';
+      } else if (attempt.resultStatus === 'PASS') {
         outcomeText = 'PASSED';
         outcomeColor = '16A34A';
-      } else if (attempt.resultStatus === 'FAIL' || attempt.status === 'TERMINATED') {
+      } else if (attempt.resultStatus === 'FAIL') {
         outcomeText = 'FAILED';
         outcomeColor = 'DC2626';
       } else if (attempt.status === 'EXPIRED') {
@@ -567,10 +596,15 @@ export class DocxExportService {
       );
 
       const performancePairs = [
-        { label: 'Attempt Status', value: attempt.status || 'SUBMITTED' },
+        { label: 'Attempt Status', value: isTerminated ? 'TERMINATED' : (isOngoing ? 'IN_PROGRESS' : (attempt.status || 'SUBMITTED')) },
         { label: 'Evaluation Result', value: outcomeText, color: outcomeColor },
-        { label: 'Score Earned', value: `${totalScore} / ${maxMarks} (${percentage}%)`, color: outcomeColor },
+        { label: 'Score Earned', value: isOngoing ? 'Assessment In Progress' : `${totalScore} / ${maxMarks} (${percentage}%)`, color: outcomeColor },
         { label: 'Passing Required', value: `${passMarks} Marks` },
+        ...(isTerminated ? [{
+          label: 'Termination Reason',
+          value: attempt.terminationReason || (attempt.violationCount > 0 ? `Exceeded violation limit (${attempt.violationCount} violations)` : 'Security violation'),
+          color: '991B1B',
+        }] : []),
         { label: 'Exam Started At', value: DocxExportService.formatDateTime(attempt.startedAt || attempt.createdAt, clientTimezone) },
         { label: 'Submitted Date & Time', value: DocxExportService.formatDateTime(attempt.submittedAt || attempt.updatedAt, clientTimezone) },
         { label: 'Proctoring Incidents', value: String(attempt.violationCount || 0), color: (attempt.violationCount || 0) > 0 ? 'DC2626' : '0F172A' },

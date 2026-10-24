@@ -794,6 +794,62 @@ export class AdminService {
     };
   }
 
+  static async terminateAttempt(attemptId, reason, currentUser = null) {
+    const attempt = await ExamAttempt.findById(attemptId).populate('userId', 'name rollNumber studentId').populate('examId', 'title');
+    if (!attempt) {
+      const error = new Error('Result attempt not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (currentUser && currentUser.role === 'FACULTY') {
+      const isMyExam = attempt.examId && (await Exam.exists({ _id: attempt.examId._id || attempt.examId, createdBy: currentUser._id }));
+      const student = await User.findById(attempt.userId?._id || attempt.userId);
+      const isMyStudent = student && (
+        String(student.createdBy) === String(currentUser._id) ||
+        student.assignedFaculties?.some((fId) => String(fId) === String(currentUser._id)) ||
+        (currentUser.organization && student.organization === currentUser.organization)
+      );
+      if (!isMyStudent && !isMyExam) {
+        const error = new Error('Access denied. You can only terminate attempts for your students or your exams.');
+        error.statusCode = 403;
+        throw error;
+      }
+    }
+
+    const cleanReason = reason?.trim() || 'Forcibly terminated by administrator due to academic integrity violation.';
+    attempt.status = 'TERMINATED';
+    attempt.resultStatus = 'TERMINATED';
+    attempt.terminationReason = cleanReason;
+    attempt.submittedAt = attempt.submittedAt || new Date();
+    await attempt.save();
+
+    // Broadcast socket event so student is immediately disqualified & kicked out
+    const { getIO } = await import('../socket.js');
+    const io = getIO();
+    if (io) {
+      io.to(`attempt:${attempt._id}`).emit('exam:terminated', {
+        attemptId: attempt._id,
+        reason: cleanReason,
+      });
+      io.to(`user:${attempt.userId?._id || attempt.userId}`).emit('exam:terminated', {
+        attemptId: attempt._id,
+        reason: cleanReason,
+      });
+      io.to('admin').emit('proctoring:violation', {
+        attemptId: attempt._id,
+        terminated: true,
+        terminationReason: cleanReason,
+      });
+    }
+
+    return {
+      success: true,
+      message: `Attempt for "${attempt.userId?.name || 'candidate'}" has been terminated.`,
+      attempt,
+    };
+  }
+
   static async bulkDeleteResults(attemptIds, currentUser = null) {
     if (!attemptIds || !Array.isArray(attemptIds) || attemptIds.length === 0) {
       const error = new Error('No result IDs provided for deletion');

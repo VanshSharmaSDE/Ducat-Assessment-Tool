@@ -59,7 +59,9 @@ export default function AdminResultDetailPage() {
   }
 
   const { attempt, questionBreakdown } = data;
-  const isPass = attempt.resultStatus === 'PASS';
+  const isTerminated = attempt.status === 'TERMINATED' || attempt.resultStatus === 'TERMINATED';
+  const isOngoing = attempt.status === 'IN_PROGRESS' || attempt.resultStatus === 'ONGOING';
+  const isPass = !isTerminated && attempt.resultStatus === 'PASS';
 
   const handleAllowRetake = async () => {
     const studentName = attempt.user?.name || 'this candidate';
@@ -123,6 +125,39 @@ export default function AdminResultDetailPage() {
         </div>
       </div>
 
+      {/* Terminated Alert Card */}
+      {isTerminated && (
+        <div className="p-6 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border-2 border-rose-400 dark:border-rose-800 space-y-2 shadow-sm">
+          <div className="flex items-center gap-2.5 text-rose-700 dark:text-rose-300 font-extrabold text-base">
+            <ShieldAlert className="w-6 h-6 text-rose-600 shrink-0" />
+            <span>Candidate Attempt Terminated</span>
+          </div>
+          <div className="pl-8.5">
+            <p className="text-sm text-rose-800 dark:text-rose-200 font-semibold">
+              Reason: {attempt.terminationReason || 'This exam attempt was terminated by the proctoring security rules or administrator.'}
+            </p>
+            {attempt.violationCount > 0 && (
+              <p className="text-xs text-rose-600 dark:text-rose-400 mt-1 font-mono">
+                Total recorded proctoring violations: {attempt.violationCount}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Ongoing Live Attempt Card */}
+      {isOngoing && (
+        <div className="p-6 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border-2 border-blue-400 dark:border-blue-800 space-y-2 shadow-sm">
+          <div className="flex items-center gap-2.5 text-blue-700 dark:text-blue-300 font-extrabold text-base">
+            <span className="w-3 h-3 rounded-full bg-blue-600 animate-pulse"></span>
+            <span>Assessment In Progress (Active Session)</span>
+          </div>
+          <p className="text-xs text-blue-700 dark:text-blue-300 pl-5.5">
+            The candidate is currently taking this examination. Results and final test case evaluations will update once submitted or expired.
+          </p>
+        </div>
+      )}
+
       {/* Candidate & Assessment Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
@@ -155,20 +190,30 @@ export default function AdminResultDetailPage() {
           <div>
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Outcome</span>
             <div className="text-3xl font-extrabold text-slate-800 font-mono mt-1">
-              {attempt.totalScore} / {attempt.maxScore}
+              {isOngoing ? (
+                <span className="text-base font-bold text-blue-600">In Progress</span>
+              ) : (
+                `${attempt.totalScore} / ${attempt.maxScore}`
+              )}
             </div>
-            <p className="text-xs text-blue-600 font-bold font-mono">{attempt.percentage}%</p>
+            <p className="text-xs text-blue-600 font-bold font-mono">
+              {isOngoing ? 'Live Session' : `${attempt.percentage}%`}
+            </p>
           </div>
 
           <div>
             <span
               className={`px-3 py-1.5 rounded-full text-xs font-bold border ${
-                isPass
+                isTerminated
+                  ? 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950/80 dark:text-rose-300 dark:border-rose-800'
+                  : isOngoing
+                  ? 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950/80 dark:text-blue-300 dark:border-blue-800'
+                  : isPass
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   : 'bg-rose-50 text-rose-700 border-rose-200'
               }`}
             >
-              {attempt.resultStatus}
+              {isTerminated ? 'TERMINATED' : isOngoing ? 'ONGOING' : attempt.resultStatus}
             </span>
           </div>
         </div>

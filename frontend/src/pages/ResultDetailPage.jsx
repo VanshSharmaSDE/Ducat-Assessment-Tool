@@ -111,7 +111,9 @@ export default function ResultDetailPage() {
 
   const { attempt, questionBreakdown } = data;
   const isEvaluating = attempt.status === 'EVALUATING';
-  const isPass = attempt.resultStatus === 'PASS';
+  const isTerminated = attempt.status === 'TERMINATED' || attempt.resultStatus === 'TERMINATED';
+  const isOngoing = attempt.status === 'IN_PROGRESS' || attempt.resultStatus === 'ONGOING';
+  const isPass = !isTerminated && attempt.resultStatus === 'PASS';
 
   return (
     <div className="p-6 md:p-10 max-w-5xl mx-auto w-full space-y-8">
@@ -129,6 +131,26 @@ export default function ResultDetailPage() {
           Submitted on {new Date(attempt.submittedAt || attempt.startedAt).toLocaleString()}
         </p>
       </div>
+
+      {/* Terminated Alert Banner */}
+      {isTerminated && (
+        <div className="p-6 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border-2 border-rose-400 dark:border-rose-800 space-y-2 shadow-sm">
+          <div className="flex items-center gap-2.5 text-rose-700 dark:text-rose-300 font-extrabold text-base">
+            <XCircle className="w-6 h-6 text-rose-600 shrink-0" />
+            <span>Examination Terminated</span>
+          </div>
+          <div className="pl-8.5">
+            <p className="text-sm text-rose-800 dark:text-rose-200 font-semibold">
+              Reason for termination: {attempt.terminationReason || 'This exam attempt was terminated by the proctoring security rules or administrator.'}
+            </p>
+            {attempt.violationCount > 0 && (
+              <p className="text-xs text-rose-600 dark:text-rose-400 mt-1 font-mono">
+                Total recorded proctoring violations: {attempt.violationCount}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Evaluating Banner if still running in Docker */}
       {isEvaluating && (
@@ -149,7 +171,9 @@ export default function ResultDetailPage() {
           <div>
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Candidate Score</span>
             <div className="flex items-baseline gap-2 mt-2">
-              <span className="text-4xl font-extrabold text-slate-800 dark:text-slate-100 font-mono">{attempt.totalScore}</span>
+              <span className="text-4xl font-extrabold text-slate-800 dark:text-slate-100 font-mono">
+                {isOngoing ? '—' : attempt.totalScore}
+              </span>
               <span className="text-xl font-medium text-slate-500 dark:text-slate-400 font-mono">/ {attempt.maxScore}</span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Passing threshold: {attempt.exam?.passingMarks || 0} Marks</p>
@@ -158,20 +182,26 @@ export default function ResultDetailPage() {
           <div className="text-right">
             <span
               className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
-                isPass
+                isTerminated
+                  ? 'bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800'
+                  : isOngoing
+                  ? 'bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-800'
+                  : isPass
                   ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
                   : 'bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800'
               }`}
             >
-              {isPass ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-              {attempt.resultStatus} ({attempt.percentage}%)
+              {isTerminated ? <XCircle className="w-4 h-4" /> : isOngoing ? <Clock className="w-4 h-4" /> : isPass ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+              {isTerminated ? 'TERMINATED' : isOngoing ? 'ONGOING' : attempt.resultStatus} ({isOngoing ? 'In Progress' : `${attempt.percentage}%`})
             </span>
           </div>
         </div>
 
         <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
           <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Attempt Status</span>
-          <p className="text-xl font-bold text-slate-800 dark:text-slate-100 mt-2 font-mono">{attempt.status}</p>
+          <p className="text-xl font-bold text-slate-800 dark:text-slate-100 mt-2 font-mono">
+            {isTerminated ? 'TERMINATED' : attempt.status}
+          </p>
           <span className="text-xs text-slate-400 dark:text-slate-500">Auto-calculated</span>
         </div>
 
