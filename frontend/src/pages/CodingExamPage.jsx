@@ -46,6 +46,26 @@ public class Main {
 `,
   javascript: `// Write your JavaScript code here
 `,
+  c: `#include <stdio.h>
+
+int main() {
+    // Write your C code here
+    
+    return 0;
+}
+`,
+  cpp: `#include <iostream>
+
+using namespace std;
+
+int main() {
+    // Write your C++ code here
+    
+    return 0;
+}
+`,
+  sql: `-- Write your SQL query here
+`,
 };
 
 export default function CodingExamPage() {
@@ -127,13 +147,16 @@ export default function CodingExamPage() {
   // Alias for testcase references
   const availableCases = currentCases;
 
+  const initialLang = currentQ?.allowedLanguages?.includes("java")
+    ? "java"
+    : (currentQ?.allowedLanguages?.[0] || "java");
   const currentAnswer = (currentQId && answers[currentQId]) || (
     currentQIsMcq
       ? { type: 'MCQ', selectedOption: null }
       : {
           type: 'CODING',
-          language: "java",
-          code: currentQ?.starterCode?.java || DEFAULT_TEMPLATES.java,
+          language: initialLang,
+          code: currentQ?.starterCode?.[initialLang] || DEFAULT_TEMPLATES[initialLang] || "",
         }
   );
 
@@ -1323,11 +1346,20 @@ export default function CodingExamPage() {
                     onChange={(e) => handleLanguageChange(e.target.value)}
                     className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 font-mono focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
                   >
-                    {["java", "python", "javascript"].map((lang) => (
+                    {(currentQ?.allowedLanguages?.length > 0
+                      ? currentQ.allowedLanguages
+                      : ["java", "python", "javascript", "c", "cpp", "sql"]
+                    ).map((lang) => (
                       <option key={lang} value={lang}>
                         {lang === "javascript"
                           ? "JavaScript"
-                          : lang.charAt(0).toUpperCase() + lang.slice(1)}
+                          : lang === "cpp"
+                            ? "C++"
+                            : lang === "sql"
+                              ? "SQL"
+                              : lang === "c"
+                                ? "C"
+                                : lang.charAt(0).toUpperCase() + lang.slice(1)}
                       </option>
                     ))}
                   </select>
@@ -1395,7 +1427,13 @@ export default function CodingExamPage() {
                         ? "javascript"
                         : currentAnswer?.language === "python"
                           ? "python"
-                          : "java"
+                          : currentAnswer?.language === "c"
+                            ? "c"
+                            : currentAnswer?.language === "cpp"
+                              ? "cpp"
+                              : currentAnswer?.language === "sql"
+                                ? "sql"
+                                : "java"
                     }
                     value={currentAnswer?.code || ""}
                     onChange={handleCodeChange}

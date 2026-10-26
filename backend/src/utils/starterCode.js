@@ -1,5 +1,5 @@
-// Supported languages: Java, Python, and JavaScript
-export const SUPPORTED_LANGUAGES = ['java', 'python', 'javascript'];
+// Supported languages: Java, Python, JavaScript, C, C++, and SQL
+export const SUPPORTED_LANGUAGES = ['java', 'python', 'javascript', 'c', 'cpp', 'sql'];
 
 export const DEFAULT_STARTER_CODE = {
   java: `import java.util.*;
@@ -16,5 +16,28 @@ public class Main {
 `,
 
   javascript: `// Write your JavaScript code here
+`,
+
+  c: `#include <stdio.h>
+
+int main() {
+    // Write your C code here
+    
+    return 0;
+}
+`,
+
+  cpp: `#include <iostream>
+
+using namespace std;
+
+int main() {
+    // Write your C++ code here
+    
+    return 0;
+}
+`,
+
+  sql: `-- Write your SQL query here
 `,
 };

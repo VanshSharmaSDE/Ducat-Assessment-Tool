@@ -327,7 +327,7 @@ export default function ExamInstructionPage() {
             <li><strong className="text-slate-800 dark:text-slate-100">Timer Control:</strong> The timer is locked and calculated on the server. Navigating away, reloading, or closing your browser will NOT pause your timer.</li>
             <li><strong className="text-slate-800 dark:text-slate-100">Mandatory Fullscreen:</strong> The assessment runs strictly in full-screen mode. Attempting to exit or minimize fullscreen triggers an immediate proctoring violation and locks the assessment until fullscreen is restored.</li>
             <li><strong className="text-slate-800 dark:text-slate-100">Anti-Cheating Monitoring:</strong> Switching browser tabs, minimizing the window, or losing window focus is automatically tracked. Exceeding {exam.maxViolations || 5} violations will immediately terminate your attempt.</li>
-            <li><strong className="text-slate-800 dark:text-slate-100">Supported Runtimes:</strong> Java 17, Python 3, and JavaScript (Node.js). Switch between languages in the editor as needed.</li>
+            <li><strong className="text-slate-800 dark:text-slate-100">Supported Runtimes:</strong> Java 17, Python 3, JavaScript (Node.js), C, C++, and SQL (SQLite). Switch between languages in the editor as needed.</li>
             <li><strong className="text-slate-800 dark:text-slate-100">Single Attempt Rule:</strong> You cannot retake or restart an examination once submitted or expired.</li>
             <li><strong className="text-slate-800 dark:text-slate-100">Auto-Submit on Time Expiry:</strong> When the countdown reaches zero, all solutions written so far will be submitted automatically.</li>
           </ul>

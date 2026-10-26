@@ -20,14 +20,14 @@ import { dockerExecutionService } from './DockerExecutionService.js';
  */
 
 export const POOL_LABEL = 'codeassess.pool=1';
-const SHORT = { java: 'java', python: 'python', javascript: 'js' };
+const SHORT = { java: 'java', python: 'python', javascript: 'js', c: 'c', cpp: 'cpp', sql: 'sql' };
 
 const exec = config.execution;
 
 /** name -> { name, language, image, active, healthy } */
 const containers = new Map();
 /** language -> [job] */
-const queues = { java: [], python: [], javascript: [] };
+const queues = { java: [], python: [], javascript: [], c: [], cpp: [], sql: [] };
 let handler = null;
 
 export function runDocker(args, { timeoutMs = 60000, input } = {}) {

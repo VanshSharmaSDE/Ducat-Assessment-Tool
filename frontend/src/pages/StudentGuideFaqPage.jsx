@@ -76,7 +76,7 @@ export default function StudentGuideFaqPage() {
       category: 'Code Execution & Grading',
       question: 'Can I switch programming languages midway through solving a question?',
       answer:
-        'Yes. You can select your preferred language (Python, Java, C, C++, or JavaScript) from the language selector dropdown in the code editor. Each language maintains its own starter template. Be sure to test your code before switching questions.',
+        'Yes. You can select your preferred language (Python, Java, C, C++, JavaScript, or SQL) from the language selector dropdown in the code editor. Each language maintains its own starter template. Be sure to test your code before switching questions.',
     },
     {
       category: 'Dashboard & Navigation',

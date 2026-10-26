@@ -245,6 +245,189 @@ export const PRACTICE_QUESTIONS = [
       { input: '6', expectedOutput: '720', isHidden: true, marks: 5 },
     ],
   },
+  {
+    title: 'Select All Records',
+    description: 'Write an SQL query to retrieve all columns and all records from the "students" table.',
+    type: 'CODING',
+    difficulty: 'EASY',
+    marks: 10,
+    inputFormat: 'Pre-populated "students" table with columns: id (INT), name (TEXT), age (INT), department (TEXT).',
+    outputFormat: 'Print all records from the students table.',
+    constraints: '1 <= number of rows <= 1000',
+    allowedLanguages: ['sql'],
+    starterCode: {
+      sql: `-- Write your SQL query here\n`,
+    },
+    examples: [
+      {
+        input: `CREATE TABLE students (id INT, name TEXT, age INT, department TEXT);
+INSERT INTO students VALUES (1, 'Alice', 22, 'Computer Science');
+INSERT INTO students VALUES (2, 'Bob', 20, 'Electrical');
+INSERT INTO students VALUES (3, 'Charlie', 23, 'Mechanical');
+INSERT INTO students VALUES (4, 'Diana', 21, 'Computer Science');`,
+        output: `1|Alice|22|Computer Science
+2|Bob|20|Electrical
+3|Charlie|23|Mechanical
+4|Diana|21|Computer Science`,
+        explanation: 'SELECT * FROM students; returns all columns and records.',
+      },
+    ],
+    testCases: [
+      {
+        input: `CREATE TABLE students (id INT, name TEXT, age INT, department TEXT);
+INSERT INTO students VALUES (1, 'Alice', 22, 'Computer Science');
+INSERT INTO students VALUES (2, 'Bob', 20, 'Electrical');
+INSERT INTO students VALUES (3, 'Charlie', 23, 'Mechanical');
+INSERT INTO students VALUES (4, 'Diana', 21, 'Computer Science');`,
+        expectedOutput: `1|Alice|22|Computer Science
+2|Bob|20|Electrical
+3|Charlie|23|Mechanical
+4|Diana|21|Computer Science`,
+        isHidden: false,
+        marks: 0,
+      },
+      {
+        input: `CREATE TABLE students (id INT, name TEXT, age INT, department TEXT);
+INSERT INTO students VALUES (10, 'Eve', 19, 'Physics');
+INSERT INTO students VALUES (11, 'Frank', 24, 'Mathematics');
+INSERT INTO students VALUES (12, 'Grace', 20, 'Chemistry');`,
+        expectedOutput: `10|Eve|19|Physics
+11|Frank|24|Mathematics
+12|Grace|20|Chemistry`,
+        isHidden: true,
+        marks: 5,
+      },
+      {
+        input: `CREATE TABLE students (id INT, name TEXT, age INT, department TEXT);
+INSERT INTO students VALUES (101, 'Hannah', 21, 'CS');`,
+        expectedOutput: `101|Hannah|21|CS`,
+        isHidden: true,
+        marks: 5,
+      },
+    ],
+  },
+  {
+    title: 'Filter with WHERE',
+    description: 'Write an SQL query to select the "name" of all students from the "students" table who are older than 20 (age > 20).',
+    type: 'CODING',
+    difficulty: 'EASY',
+    marks: 10,
+    inputFormat: 'Pre-populated "students" table with columns: id (INT), name (TEXT), age (INT), department (TEXT).',
+    outputFormat: 'Print the names of students where age > 20, one per line.',
+    constraints: '1 <= number of rows <= 1000',
+    allowedLanguages: ['sql'],
+    starterCode: {
+      sql: `-- Write your SQL query here\n`,
+    },
+    examples: [
+      {
+        input: `CREATE TABLE students (id INT, name TEXT, age INT, department TEXT);
+INSERT INTO students VALUES (1, 'Alice', 22, 'Computer Science');
+INSERT INTO students VALUES (2, 'Bob', 20, 'Electrical');
+INSERT INTO students VALUES (3, 'Charlie', 23, 'Mechanical');
+INSERT INTO students VALUES (4, 'Diana', 21, 'Computer Science');`,
+        output: `Alice
+Charlie
+Diana`,
+        explanation: 'Alice (22), Charlie (23), and Diana (21) have age > 20.',
+      },
+    ],
+    testCases: [
+      {
+        input: `CREATE TABLE students (id INT, name TEXT, age INT, department TEXT);
+INSERT INTO students VALUES (1, 'Alice', 22, 'Computer Science');
+INSERT INTO students VALUES (2, 'Bob', 20, 'Electrical');
+INSERT INTO students VALUES (3, 'Charlie', 23, 'Mechanical');
+INSERT INTO students VALUES (4, 'Diana', 21, 'Computer Science');`,
+        expectedOutput: `Alice
+Charlie
+Diana`,
+        isHidden: false,
+        marks: 0,
+      },
+      {
+        input: `CREATE TABLE students (id INT, name TEXT, age INT, department TEXT);
+INSERT INTO students VALUES (5, 'Ethan', 19, 'Physics');
+INSERT INTO students VALUES (6, 'Fiona', 25, 'Chemistry');
+INSERT INTO students VALUES (7, 'George', 18, 'Biology');
+INSERT INTO students VALUES (8, 'Helen', 22, 'Arts');`,
+        expectedOutput: `Fiona
+Helen`,
+        isHidden: true,
+        marks: 5,
+      },
+      {
+        input: `CREATE TABLE students (id INT, name TEXT, age INT, department TEXT);
+INSERT INTO students VALUES (9, 'Ian', 20, 'Math');
+INSERT INTO students VALUES (10, 'Julia', 20, 'History');`,
+        expectedOutput: ``,
+        isHidden: true,
+        marks: 5,
+      },
+    ],
+  },
+  {
+    title: 'Aggregation',
+    description: 'Write an SQL query to find the department and the total count of students in each department from the "students" table. Group the results by department.',
+    type: 'CODING',
+    difficulty: 'EASY',
+    marks: 10,
+    inputFormat: 'Pre-populated "students" table with columns: id (INT), name (TEXT), age (INT), department (TEXT).',
+    outputFormat: 'Print department and count separated by | for each department, grouped by department.',
+    constraints: '1 <= number of rows <= 1000',
+    allowedLanguages: ['sql'],
+    starterCode: {
+      sql: `-- Write your SQL query here\n`,
+    },
+    examples: [
+      {
+        input: `CREATE TABLE students (id INT, name TEXT, age INT, department TEXT);
+INSERT INTO students VALUES (1, 'Alice', 22, 'Computer Science');
+INSERT INTO students VALUES (2, 'Bob', 20, 'Electrical');
+INSERT INTO students VALUES (3, 'Charlie', 23, 'Mechanical');
+INSERT INTO students VALUES (4, 'Diana', 21, 'Computer Science');`,
+        output: `Computer Science|2
+Electrical|1
+Mechanical|1`,
+        explanation: 'SELECT department, COUNT(*) FROM students GROUP BY department; groups records by department.',
+      },
+    ],
+    testCases: [
+      {
+        input: `CREATE TABLE students (id INT, name TEXT, age INT, department TEXT);
+INSERT INTO students VALUES (1, 'Alice', 22, 'Computer Science');
+INSERT INTO students VALUES (2, 'Bob', 20, 'Electrical');
+INSERT INTO students VALUES (3, 'Charlie', 23, 'Mechanical');
+INSERT INTO students VALUES (4, 'Diana', 21, 'Computer Science');`,
+        expectedOutput: `Computer Science|2
+Electrical|1
+Mechanical|1`,
+        isHidden: false,
+        marks: 0,
+      },
+      {
+        input: `CREATE TABLE students (id INT, name TEXT, age INT, department TEXT);
+INSERT INTO students VALUES (1, 'Sam', 20, 'Physics');
+INSERT INTO students VALUES (2, 'Sara', 21, 'Physics');
+INSERT INTO students VALUES (3, 'John', 22, 'Physics');
+INSERT INTO students VALUES (4, 'Jake', 23, 'Math');`,
+        expectedOutput: `Math|1
+Physics|3`,
+        isHidden: true,
+        marks: 5,
+      },
+      {
+        input: `CREATE TABLE students (id INT, name TEXT, age INT, department TEXT);
+INSERT INTO students VALUES (1, 'Liam', 21, 'Bio');
+INSERT INTO students VALUES (2, 'Noah', 22, 'Chem');
+INSERT INTO students VALUES (3, 'Emma', 20, 'Bio');`,
+        expectedOutput: `Bio|2
+Chem|1`,
+        isHidden: true,
+        marks: 5,
+      },
+    ],
+  },
 ];
 
 export async function ensurePracticeQuestionsExist(adminId) {
@@ -266,8 +449,8 @@ export async function ensurePracticeQuestionsExist(adminId) {
         outputFormat: qDef.outputFormat || '',
         constraints: qDef.constraints || '',
         examples: qDef.examples || [],
-        allowedLanguages: SUPPORTED_LANGUAGES,
-        starterCode: DEFAULT_STARTER_CODE,
+        allowedLanguages: qDef.allowedLanguages || SUPPORTED_LANGUAGES,
+        starterCode: qDef.starterCode || DEFAULT_STARTER_CODE,
         timeLimit: 2,
         memoryLimit: 256,
         comparisonMode: 'TRIMMED',
@@ -286,6 +469,11 @@ export async function ensurePracticeQuestionsExist(adminId) {
     } else {
       questionId = existing._id;
       existingCount++;
+      if (qDef.allowedLanguages && JSON.stringify(existing.allowedLanguages) !== JSON.stringify(qDef.allowedLanguages)) {
+        existing.allowedLanguages = qDef.allowedLanguages;
+        if (qDef.starterCode) existing.starterCode = qDef.starterCode;
+        await existing.save();
+      }
     }
 
     // Verify / add test cases if coding problem

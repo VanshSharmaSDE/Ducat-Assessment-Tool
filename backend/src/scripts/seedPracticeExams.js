@@ -4,13 +4,14 @@ import { Question } from '../models/Question.js';
 import { User } from '../models/User.js';
 import { ensurePracticeQuestionsExist } from './seedPracticeQuestions.js';
 
-async function seedPracticeExams() {
+export async function seedPracticeExams(exitOnComplete = false) {
   await connectDB();
 
   const admin = await User.findOne({ role: 'ADMIN' });
   if (!admin) {
-    console.error('No admin user found to attribute practice exams to.');
-    process.exit(1);
+    console.warn('[Practice Seeder] No admin user found to attribute practice exams to. Skipping practice exams seed.');
+    if (exitOnComplete) process.exit(1);
+    return;
   }
 
   // Ensure all practice questions and test cases exist first
@@ -67,9 +68,18 @@ async function seedPracticeExams() {
       questionTitles: ['Greatest Common Divisor', 'Matrix Diagonal Sum', 'Factorial'],
       passingMarks: 15,
     },
+    {
+      title: 'Practice 6: SQL Fundamentals & Querying',
+      description: 'Master relational database queries, record retrieval, conditional filtering, and group aggregations against in-memory SQLite sandbox databases.',
+      difficulty: 'BEGINNER',
+      duration: 45,
+      instructions: 'Write standard SQL queries to solve each problem. Each question environment initializes the database tables automatically; write queries against the pre-populated schema.',
+      questionTitles: ['Select All Records', 'Filter with WHERE', 'Aggregation'],
+      passingMarks: 12,
+    },
   ];
 
-  console.log(`Seeding 5 practice exams...`);
+  console.log(`Seeding ${practicePacks.length} practice exams...`);
 
   for (const pack of practicePacks) {
     const questionsForExam = [];
@@ -131,11 +141,16 @@ async function seedPracticeExams() {
     }
   }
 
-  console.log('Successfully configured 5 practice exams!');
-  process.exit(0);
+  console.log(`Successfully configured ${practicePacks.length} practice exams!`);
+  if (exitOnComplete) {
+    process.exit(0);
+  }
 }
 
-seedPracticeExams().catch((err) => {
-  console.error('Failed to seed practice exams:', err);
-  process.exit(1);
-});
+// Run directly if called as main module
+if (process.argv[1]?.endsWith('seedPracticeExams.js')) {
+  seedPracticeExams(true).catch((err) => {
+    console.error('Failed to seed practice exams:', err);
+    process.exit(1);
+  });
+}

@@ -17,7 +17,7 @@ import {
   Layers
 } from 'lucide-react';
 
-const ALL_LANGUAGES = ['java', 'python', 'javascript'];
+const ALL_LANGUAGES = ['java', 'python', 'javascript', 'c', 'cpp', 'sql'];
 
 export default function AdminQuestionEditorPage() {
   const { id } = useParams();

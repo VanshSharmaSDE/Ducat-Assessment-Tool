@@ -19,19 +19,25 @@ export const config = {
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   },
 
-  // Docker sandbox used ONLY for compiling/running submitted code (Java, Python, JS)
+  // Docker sandbox used ONLY for compiling/running submitted code (Java, Python, JS, C, C++, SQL)
   execution: {
     // One dedicated image per language
     images: {
       java: process.env.JAVA_IMAGE || 'codeassess-java',
       python: process.env.PYTHON_IMAGE || 'codeassess-python',
       javascript: process.env.JS_IMAGE || 'codeassess-js',
+      c: process.env.C_IMAGE || 'codeassess-c',
+      cpp: process.env.CPP_IMAGE || 'codeassess-cpp',
+      sql: process.env.SQL_IMAGE || 'codeassess-sql',
     },
     // Warm containers started at boot, per language (scale the busy language up)
     containersPerLanguage: {
       java: parseInt(process.env.JAVA_CONTAINERS || '1', 10),
       python: parseInt(process.env.PYTHON_CONTAINERS || '1', 10),
       javascript: parseInt(process.env.JS_CONTAINERS || '1', 10),
+      c: parseInt(process.env.C_CONTAINERS || '1', 10),
+      cpp: parseInt(process.env.CPP_CONTAINERS || '1', 10),
+      sql: parseInt(process.env.SQL_CONTAINERS || '1', 10),
     },
     // Submissions evaluated in parallel inside ONE container
     jobsPerContainer: parseInt(process.env.JOBS_PER_CONTAINER || '4', 10),

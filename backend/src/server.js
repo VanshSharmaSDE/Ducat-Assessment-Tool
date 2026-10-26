@@ -9,6 +9,7 @@ import { connectDB } from './config/db.js';
 import { initSocket } from './socket.js';
 import { startContainerPool, stopContainerPool } from './execution/containerPool.js';
 import { startWorker } from './workers/evaluationWorker.js';
+import { seedPracticeExams } from './scripts/seedPracticeExams.js';
 import { generalLimiter } from './middleware/rateLimiter.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import apiRouter from './routes/index.js';
@@ -100,7 +101,12 @@ export async function startServer() {
     // 1. Connect MongoDB
     await connectDB();
 
-    // 2. Start the warm sandbox containers (java / python / js). Non-fatal without Docker.
+    // Auto-seed practice exams & questions in the background (non-blocking)
+    seedPracticeExams(false).catch((err) => {
+      logger.warn(`[Auto-Seed] Practice exams auto-seed failed: ${err.message}`);
+    });
+
+    // 2. Start the warm sandbox containers (java / python / js / c / cpp / sql). Non-fatal without Docker.
     await startContainerPool();
 
     // 3. Start evaluation worker

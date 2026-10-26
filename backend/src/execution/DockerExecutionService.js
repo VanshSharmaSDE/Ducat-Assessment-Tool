@@ -15,7 +15,7 @@ import { restartContainer } from './containerPool.js';
  * no capabilities and runs as an unprivileged uid.
  */
 
-export const SUPPORTED = ['java', 'python', 'javascript'];
+export const SUPPORTED = ['java', 'python', 'javascript', 'c', 'cpp', 'sql'];
 const CLASS_NAME_RE = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 const DAEMON_ERROR_RE = /Error response from daemon|No such container|is not running|Cannot connect to the Docker daemon/i;
 const OOM_RE = /OutOfMemoryError|JavaScript heap out of memory|MemoryError|Cannot allocate memory/;
@@ -56,10 +56,38 @@ export class DockerExecutionService {
         run: ['sh', '-c', `ulimit -v ${memoryMb * 1024 + 65536}; exec "$@"`, 'sh', ...t, 'python3', '-u', `${dir}/solution.py`],
       };
     }
+    if (language === 'javascript') {
+      return {
+        file: 'solution.js',
+        compile: ['node', '--check', `${dir}/solution.js`],
+        run: [...t, 'node', `--max-old-space-size=${memoryMb}`, `${dir}/solution.js`],
+      };
+    }
+    if (language === 'c') {
+      return {
+        file: 'solution.c',
+        compile: ['gcc', '-O2', '-o', `${dir}/solution`, `${dir}/solution.c`, '-lm'],
+        run: [...t, `${dir}/solution`],
+      };
+    }
+    if (language === 'cpp') {
+      return {
+        file: 'solution.cpp',
+        compile: ['g++', '-O2', '-std=c++17', '-o', `${dir}/solution`, `${dir}/solution.cpp`],
+        run: [...t, `${dir}/solution`],
+      };
+    }
+    if (language === 'sql') {
+      return {
+        file: 'solution.sql',
+        compile: null,
+        run: [...t, 'sh', '-c', `(cat; echo ''; cat '${dir}/solution.sql') | sqlite3 :memory:`],
+      };
+    }
     return {
-      file: 'solution.js',
-      compile: ['node', '--check', `${dir}/solution.js`],
-      run: [...t, 'node', `--max-old-space-size=${memoryMb}`, `${dir}/solution.js`],
+      file: 'solution.txt',
+      compile: null,
+      run: [...t, 'cat', `${dir}/solution.txt`],
     };
   }
 
@@ -74,7 +102,7 @@ export class DockerExecutionService {
   }) {
     const lang = (language || '').toLowerCase();
     if (!SUPPORTED.includes(lang)) {
-      return this.#failure('SYSTEM_ERROR', `Unsupported language: ${language}. Allowed: Java, Python, JavaScript.`, testCases);
+      return this.#failure('SYSTEM_ERROR', `Unsupported language: ${language}. Allowed: ${SUPPORTED.join(', ')}.`, testCases);
     }
 
     const sourceBytes = Buffer.byteLength(sourceCode, 'utf-8');
@@ -105,13 +133,16 @@ export class DockerExecutionService {
       }
 
       // 2. Compile / syntax check
-      const compile = await this.#exec(container, dir, plan.compile, { timeoutMs: this.compileTimeoutSec * 1000 });
-      if (compile.daemonError) return this.#failure('SYSTEM_ERROR', compile.stderr.trim(), testCases);
-      if (compile.code !== 0) {
-        const msg = compile.timedOut ? 'Compilation timed out' : (compile.stderr || compile.stdout).trim();
-        return this.#failure('COMPILE_ERROR', msg.replaceAll(`${dir}/`, ''), testCases);
+      let compileOutput = '';
+      if (plan.compile) {
+        const compile = await this.#exec(container, dir, plan.compile, { timeoutMs: this.compileTimeoutSec * 1000 });
+        if (compile.daemonError) return this.#failure('SYSTEM_ERROR', compile.stderr.trim(), testCases);
+        if (compile.code !== 0) {
+          const msg = compile.timedOut ? 'Compilation timed out' : (compile.stderr || compile.stdout).trim();
+          return this.#failure('COMPILE_ERROR', msg.replaceAll(`${dir}/`, ''), testCases);
+        }
+        compileOutput = (compile.stderr || '').trim();
       }
-      const compileOutput = (compile.stderr || '').trim();
 
       // 3. Run every test case
       const testResults = [];
@@ -201,7 +232,7 @@ export class DockerExecutionService {
       return {
         status: 'SYSTEM_ERROR',
         stdout: '',
-        stderr: `Unsupported language: ${language}. Allowed: Java, Python, JavaScript.`,
+        stderr: `Unsupported language: ${language}. Allowed: ${SUPPORTED.join(', ')}.`,
         compileOutput: '',
         executionTime: 0,
       };
@@ -249,27 +280,30 @@ export class DockerExecutionService {
       }
 
       // 2. Compile / syntax check
-      const compile = await this.#exec(container, dir, plan.compile, { timeoutMs: this.compileTimeoutSec * 1000 });
-      if (compile.daemonError) {
-        return {
-          status: 'SYSTEM_ERROR',
-          stdout: '',
-          stderr: compile.stderr.trim(),
-          compileOutput: '',
-          executionTime: 0,
-        };
+      let compileOutput = '';
+      if (plan.compile) {
+        const compile = await this.#exec(container, dir, plan.compile, { timeoutMs: this.compileTimeoutSec * 1000 });
+        if (compile.daemonError) {
+          return {
+            status: 'SYSTEM_ERROR',
+            stdout: '',
+            stderr: compile.stderr.trim(),
+            compileOutput: '',
+            executionTime: 0,
+          };
+        }
+        if (compile.code !== 0) {
+          const msg = compile.timedOut ? 'Compilation timed out' : (compile.stderr || compile.stdout).trim();
+          return {
+            status: 'COMPILE_ERROR',
+            stdout: '',
+            stderr: msg.replaceAll(`${dir}/`, ''),
+            compileOutput: msg.replaceAll(`${dir}/`, ''),
+            executionTime: 0,
+          };
+        }
+        compileOutput = (compile.stderr || '').trim();
       }
-      if (compile.code !== 0) {
-        const msg = compile.timedOut ? 'Compilation timed out' : (compile.stderr || compile.stdout).trim();
-        return {
-          status: 'COMPILE_ERROR',
-          stdout: '',
-          stderr: msg.replaceAll(`${dir}/`, ''),
-          compileOutput: msg.replaceAll(`${dir}/`, ''),
-          executionTime: 0,
-        };
-      }
-      const compileOutput = (compile.stderr || '').trim();
 
       // 3. Run with custom input
       const run = await this.#exec(container, dir, plan.run, {

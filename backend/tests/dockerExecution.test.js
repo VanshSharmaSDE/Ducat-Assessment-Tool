@@ -5,8 +5,8 @@ import { config } from '../src/config/index.js';
 describe('Java Docker Execution Engine', () => {
   const service = new DockerExecutionService();
 
-  test('Supports Java, Python, and JavaScript', () => {
-    expect(SUPPORTED_LANGUAGES).toEqual(['java', 'python', 'javascript']);
+  test('Supports Java, Python, JavaScript, C, C++, and SQL', () => {
+    expect(SUPPORTED_LANGUAGES).toEqual(['java', 'python', 'javascript', 'c', 'cpp', 'sql']);
   });
 
   test('detects the main class name from source', () => {
@@ -29,10 +29,10 @@ describe('Java Docker Execution Engine', () => {
     expect(result.testResults).toHaveLength(1);
   });
 
-  test('rejects unsupported languages such as cpp or ruby', async () => {
+  test('rejects unsupported languages such as ruby or rust', async () => {
     const result = await service.evaluateSubmission({
-      language: 'cpp',
-      sourceCode: '#include <iostream>',
+      language: 'ruby',
+      sourceCode: 'puts "hello"',
       testCases: [],
     });
 

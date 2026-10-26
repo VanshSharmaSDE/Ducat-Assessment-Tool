@@ -12,7 +12,12 @@ async function migrate() {
     let changed = false;
     const currentAllowed = q.allowedLanguages || [];
     
-    // Ensure all 3 languages are allowed
+    // Skip SQL-only questions
+    if (currentAllowed.length === 1 && currentAllowed[0] === 'sql') {
+      continue;
+    }
+
+    // Ensure all supported coding languages are allowed
     const hasAll = SUPPORTED_LANGUAGES.every((l) => currentAllowed.includes(l));
     if (!hasAll) {
       q.allowedLanguages = SUPPORTED_LANGUAGES;
