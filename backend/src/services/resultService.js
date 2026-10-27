@@ -5,6 +5,7 @@ import { SubmissionResult } from '../models/SubmissionResult.js';
 import { Exam } from '../models/Exam.js';
 import { Question } from '../models/Question.js';
 import { User } from '../models/User.js';
+import { Batch } from '../models/Batch.js';
 
 export class ResultService {
   static async getUserResults(userId) {
@@ -82,7 +83,7 @@ export class ResultService {
       throw error;
     }
 
-    // Role check: Faculty can only view results of students they created or exams they created
+    // Role check: Faculty can only view results of students they created, are assigned to, who belong to their batches, or exams they created
     if (currentUser && currentUser.role === 'FACULTY') {
       const studentCreatedBy = attempt.userId?.createdBy?._id || attempt.userId?.createdBy;
       const examCreatedBy = attempt.examId?.createdBy?._id || attempt.examId?.createdBy;
@@ -92,8 +93,19 @@ export class ResultService {
         (f) => String(f._id || f) === String(currentUser._id)
       );
 
-      if (!isCreatorOfStudent && !isCreatorOfExam && !isAssignedFaculty) {
-        const error = new Error('Access denied. You can only view results for students or exams you created.');
+      // Check if student belongs to a batch created by or assigned to this faculty
+      const myBatchDocs = await Batch.find({
+        $or: [{ createdBy: currentUser._id }, { assignedFaculties: currentUser._id }],
+      });
+      const myBatchIds = myBatchDocs.map((b) => String(b._id));
+      const myBatchNames = myBatchDocs.map((b) => b.name.toLowerCase());
+      const studentBatchId = attempt.userId?.batchId ? String(attempt.userId.batchId) : '';
+      const studentBatchName = (attempt.userId?.batch || '').toLowerCase();
+      const isInMyBatch = (studentBatchId && myBatchIds.includes(studentBatchId)) ||
+                          (studentBatchName && myBatchNames.includes(studentBatchName));
+
+      if (!isCreatorOfStudent && !isCreatorOfExam && !isAssignedFaculty && !isInMyBatch) {
+        const error = new Error('Access denied. You can only view results for your own assigned batches, students, or exams.');
         error.statusCode = 403;
         error.errorCode = 'FORBIDDEN';
         throw error;
@@ -279,18 +291,33 @@ export class ResultService {
 
     if (isFaculty) {
       myExamIds = await Exam.find({ createdBy: currentUser._id }).distinct('_id');
-      const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
-      allowedStudentIds = await User.find({
+
+      // Fetch ONLY batches created by or assigned to this faculty
+      const myBatchDocs = await Batch.find({
+        $or: [
+          { createdBy: currentUser._id },
+          { assignedFaculties: currentUser._id },
+        ],
+      });
+      const myBatchIds = myBatchDocs.map((b) => b._id);
+      const myBatchNames = myBatchDocs.map((b) => b.name);
+
+      // Faculty can ONLY see students created by them, assigned to them, or in their batches
+      const studentQuery = {
         role: 'USER',
         $or: [
           { createdBy: currentUser._id },
           { assignedFaculties: currentUser._id },
-          { organization: currentUser.organization || '__NONE__' },
-          { createdBy: { $in: adminIds } },
-          { createdBy: null },
-          { createdBy: { $exists: false } },
+          { batchId: { $in: myBatchIds } },
+          { batch: { $in: myBatchNames } },
         ],
-      }).distinct('_id');
+      };
+      if (currentUser.organization && currentUser.organization.trim()) {
+        const escapedOrg = currentUser.organization.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        studentQuery.organization = { $regex: new RegExp(`^${escapedOrg}$`, 'i') };
+      }
+
+      allowedStudentIds = await User.find(studentQuery).distinct('_id');
 
       if (query.examId) {
         const isMyExam = myExamIds.map(String).includes(String(query.examId));

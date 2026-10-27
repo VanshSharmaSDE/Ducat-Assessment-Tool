@@ -12,12 +12,14 @@ export class BatchController {
       const filter = {};
 
       if (!isSuperAdmin) {
-        // Faculty is scoped to their organization or created batches
+        // Faculty is strictly scoped to batches they created or were assigned to
+        filter.$or = [
+          { createdBy: req.user._id },
+          { assignedFaculties: req.user._id },
+        ];
         if (req.user?.organization && req.user.organization.trim()) {
           const escapedOrg = req.user.organization.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
           filter.organization = { $regex: new RegExp(`^${escapedOrg}$`, 'i') };
-        } else {
-          filter.createdBy = req.user._id;
         }
       } else if (req.query.organization && req.query.organization !== '__ALL__') {
         const escapedOrg = req.query.organization.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
@@ -42,6 +44,7 @@ export class BatchController {
 
       const batches = await Batch.find(filter)
         .populate('createdBy', 'name email role')
+        .populate('assignedFaculties', 'name email role')
         .sort({ createdAt: -1 });
 
       // Compute student count for each batch scoped to organization, technology, and batch name
@@ -83,17 +86,21 @@ export class BatchController {
   static async getBatchById(req, res, next) {
     try {
       const { id } = req.params;
-      const batch = await Batch.findById(id).populate('createdBy', 'name email role');
+      const batch = await Batch.findById(id)
+        .populate('createdBy', 'name email role')
+        .populate('assignedFaculties', 'name email role');
       if (!batch) {
         return res.status(404).json({ success: false, message: 'Batch not found' });
       }
 
       const isSuperAdmin = req.user?.role === 'ADMIN';
       if (!isSuperAdmin) {
-        const userOrg = (req.user?.organization || '').toLowerCase();
-        const batchOrg = (batch.organization || '').toLowerCase();
-        if (userOrg && batchOrg && userOrg !== batchOrg && String(batch.createdBy?._id || batch.createdBy) !== String(req.user._id)) {
-          return res.status(403).json({ success: false, message: 'Access denied to this batch.' });
+        const isCreator = String(batch.createdBy?._id || batch.createdBy) === String(req.user._id);
+        const isAssigned = (batch.assignedFaculties || []).some(
+          (fId) => String(fId._id || fId) === String(req.user._id)
+        );
+        if (!isCreator && !isAssigned) {
+          return res.status(403).json({ success: false, message: 'Access denied. You can only view batches you created or are assigned to.' });
         }
       }
 
@@ -185,9 +192,12 @@ export class BatchController {
         description: description ? description.trim() : '',
         department: department ? department.trim() : '',
         createdBy: req.user._id,
+        assignedFaculties: req.user?.role === 'FACULTY' ? [req.user._id] : [],
       });
 
-      const populated = await Batch.findById(batch._id).populate('createdBy', 'name email role');
+      const populated = await Batch.findById(batch._id)
+        .populate('createdBy', 'name email role')
+        .populate('assignedFaculties', 'name email role');
 
       res.status(201).json({
         success: true,
@@ -219,8 +229,12 @@ export class BatchController {
       }
 
       const isSuperAdmin = req.user?.role === 'ADMIN';
-      if (!isSuperAdmin && String(batch.createdBy) !== String(req.user._id)) {
-        return res.status(403).json({ success: false, message: 'Access denied. You can only update batches you created.' });
+      const isCreator = String(batch.createdBy?._id || batch.createdBy) === String(req.user._id);
+      const isAssigned = (batch.assignedFaculties || []).some(
+        (fId) => String(fId._id || fId) === String(req.user._id)
+      );
+      if (!isSuperAdmin && !isCreator && !isAssigned) {
+        return res.status(403).json({ success: false, message: 'Access denied. You can only update batches you created or are assigned to.' });
       }
 
       const oldName = batch.name;
@@ -340,6 +354,16 @@ export class BatchController {
       }
 
       const isSuperAdmin = req.user?.role === 'ADMIN';
+      if (!isSuperAdmin) {
+        const isCreator = String(batch.createdBy?._id || batch.createdBy) === String(req.user._id);
+        const isAssigned = (batch.assignedFaculties || []).some(
+          (fId) => String(fId._id || fId) === String(req.user._id)
+        );
+        if (!isCreator && !isAssigned) {
+          return res.status(403).json({ success: false, message: 'Access denied. You can only manage batches you created or are assigned to.' });
+        }
+      }
+
       const studentFilter = { _id: { $in: studentIds }, role: 'USER' };
       if (!isSuperAdmin) {
         studentFilter.$or = [
@@ -385,12 +409,26 @@ export class BatchController {
       }
 
       const isSuperAdmin = req.user?.role === 'ADMIN';
+      if (!isSuperAdmin) {
+        const isCreator = String(batch.createdBy?._id || batch.createdBy) === String(req.user._id);
+        const isAssigned = (batch.assignedFaculties || []).some(
+          (fId) => String(fId._id || fId) === String(req.user._id)
+        );
+        if (!isCreator && !isAssigned) {
+          return res.status(403).json({ success: false, message: 'Access denied. You can only manage batches you created or are assigned to.' });
+        }
+      }
+
       const user = await User.findById(studentId);
       if (!user) {
         return res.status(404).json({ success: false, message: 'Student not found.' });
       }
 
-      if (!isSuperAdmin && String(user.createdBy) !== String(req.user._id)) {
+      const isUserCreator = String(user.createdBy) === String(req.user._id);
+      const isUserAssignedFaculty = (user.assignedFaculties || []).some(
+        (fId) => String(fId._id || fId) === String(req.user._id)
+      );
+      if (!isSuperAdmin && !isUserCreator && !isUserAssignedFaculty) {
         return res.status(403).json({ success: false, message: 'Access denied.' });
       }
 

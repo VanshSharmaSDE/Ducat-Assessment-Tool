@@ -484,9 +484,19 @@ export const generateStudentShareToken = async (req, res) => {
       organization: { $regex: new RegExp(`^${organization.trim()}$`, 'i') },
     };
     if (req.user.role === 'FACULTY') {
+      const myBatchDocs = await Batch.find({
+        $or: [
+          { createdBy: req.user._id },
+          { assignedFaculties: req.user._id },
+        ],
+      });
+      const myBatchIds = myBatchDocs.map((b) => b._id);
+      const myBatchNames = myBatchDocs.map((b) => b.name);
       filter.$or = [
         { createdBy: req.user._id },
         { assignedFaculties: req.user._id },
+        { batchId: { $in: myBatchIds } },
+        { batch: { $in: myBatchNames } },
       ];
     }
     if (batches && Array.isArray(batches) && batches.length > 0) {
@@ -688,21 +698,35 @@ export const exportResultsExcel = async (req, res) => {
       }
     }
 
-    // Role check: Faculty can export results for their students (created, assigned, or institutional) or their exams
+    // Role check: Faculty can only export results for their students (created, assigned, or in their batches) or their exams
+    let myBatchIds = [];
+    let myBatchNames = [];
     if (req.user?.role === 'FACULTY') {
       const myExamIds = await Exam.find({ createdBy: req.user._id }).distinct('_id');
-      const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
-      const allowedStudentIds = await User.find({
+      const myBatchDocs = await Batch.find({
+        $or: [
+          { createdBy: req.user._id },
+          { assignedFaculties: req.user._id },
+        ],
+      });
+      myBatchIds = myBatchDocs.map((b) => b._id);
+      myBatchNames = myBatchDocs.map((b) => b.name);
+
+      const studentQuery = {
         role: 'USER',
         $or: [
           { createdBy: req.user._id },
           { assignedFaculties: req.user._id },
-          { organization: req.user.organization || '__NONE__' },
-          { createdBy: { $in: adminIds } },
-          { createdBy: null },
-          { createdBy: { $exists: false } },
+          { batchId: { $in: myBatchIds } },
+          { batch: { $in: myBatchNames } },
         ],
-      }).distinct('_id');
+      };
+      if (req.user.organization && req.user.organization.trim()) {
+        const escapedOrg = req.user.organization.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        studentQuery.organization = { $regex: new RegExp(`^${escapedOrg}$`, 'i') };
+      }
+
+      const allowedStudentIds = await User.find(studentQuery).distinct('_id');
 
       if (examId) {
         const isMyExam = myExamIds.map(String).includes(String(examId));
@@ -720,15 +744,16 @@ export const exportResultsExcel = async (req, res) => {
     // Filter by student organization, technology, batch, gender, or search keyword
     const userFilter = {};
     if (req.user?.role === 'FACULTY') {
-      const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
       userFilter.$or = [
         { createdBy: req.user._id },
         { assignedFaculties: req.user._id },
-        { organization: req.user.organization || '__NONE__' },
-        { createdBy: { $in: adminIds } },
-        { createdBy: null },
-        { createdBy: { $exists: false } },
+        { batchId: { $in: myBatchIds } },
+        { batch: { $in: myBatchNames } },
       ];
+      if (req.user.organization && req.user.organization.trim()) {
+        const escapedOrg = req.user.organization.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        userFilter.organization = { $regex: new RegExp(`^${escapedOrg}$`, 'i') };
+      }
     }
     if (organization) userFilter.organization = organization;
     if (technology) userFilter.technology = technology;
@@ -1218,14 +1243,30 @@ export class AdminController {
       let filter = {};
       if (req.user?.role === 'FACULTY') {
         const myExamIds = await Exam.find({ createdBy: req.user._id }).distinct('_id');
-        const myStudentIds = await User.find({
+        const myBatchDocs = await Batch.find({
+          $or: [
+            { createdBy: req.user._id },
+            { assignedFaculties: req.user._id },
+          ],
+        });
+        const myBatchIds = myBatchDocs.map((b) => b._id);
+        const myBatchNames = myBatchDocs.map((b) => b.name);
+
+        const studentQuery = {
           role: 'USER',
           $or: [
             { createdBy: req.user._id },
             { assignedFaculties: req.user._id },
-            { organization: req.user.organization || '__NONE__' },
+            { batchId: { $in: myBatchIds } },
+            { batch: { $in: myBatchNames } },
           ],
-        }).distinct('_id');
+        };
+        if (req.user.organization && req.user.organization.trim()) {
+          const escapedOrg = req.user.organization.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+          studentQuery.organization = { $regex: new RegExp(`^${escapedOrg}$`, 'i') };
+        }
+
+        const myStudentIds = await User.find(studentQuery).distinct('_id');
         filter.$or = [
           { examId: { $in: myExamIds } },
           { userId: { $in: myStudentIds } },
@@ -1422,10 +1463,21 @@ export const exportSubmissionsDocx = async (req, res) => {
       if (userId) {
         const student = await User.findById(userId).populate('createdBy', 'role');
         const isMyStudent = student && String(student.createdBy?._id || student.createdBy) === String(req.user._id);
-        const isSameOrg = student && student.organization && student.organization === req.user.organization;
-        const isAdminStudent = !student?.createdBy || student?.createdBy?.role === 'ADMIN';
-        if (!isMyStudent && !isSameOrg && !isAdminStudent) {
-          return res.status(403).json({ success: false, message: 'Access denied. You can only export submissions for your own organization or students.' });
+        const isAssigned = (student?.assignedFaculties || []).some(
+          (fId) => String(fId._id || fId) === String(req.user._id)
+        );
+        const myBatchDocs = await Batch.find({
+          $or: [{ createdBy: req.user._id }, { assignedFaculties: req.user._id }],
+        });
+        const myBatchIds = myBatchDocs.map((b) => String(b._id));
+        const myBatchNames = myBatchDocs.map((b) => b.name.toLowerCase());
+        const studentBatchId = student?.batchId ? String(student.batchId) : '';
+        const studentBatchName = (student?.batch || '').toLowerCase();
+        const isInMyBatch = (studentBatchId && myBatchIds.includes(studentBatchId)) ||
+                            (studentBatchName && myBatchNames.includes(studentBatchName));
+
+        if (!isMyStudent && !isAssigned && !isInMyBatch) {
+          return res.status(403).json({ success: false, message: 'Access denied. You can only export submissions for your own assigned batches or students.' });
         }
       }
     }

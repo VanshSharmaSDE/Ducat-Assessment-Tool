@@ -28,15 +28,22 @@ export class QuestionService {
 
     const qType = data.type || 'CODING';
     if (qType === 'CODING') {
-      const cases = Array.isArray(data.testCases) ? data.testCases : [];
-      const hasPublic = cases.some((tc) => !tc.isHidden);
-      const hasHidden = cases.some((tc) => tc.isHidden);
+      const allowedLangs = data.allowedLanguages && data.allowedLanguages.length > 0
+        ? data.allowedLanguages
+        : SUPPORTED_LANGUAGES;
+      const isSqlOnly = allowedLangs.length === 1 && String(allowedLangs[0]).toLowerCase() === 'sql';
 
-      if (!hasPublic || !hasHidden) {
-        const error = new Error('Coding questions require at least one public test case and at least one hidden (private) test case.');
-        error.statusCode = 400;
-        error.errorCode = 'TEST_CASES_REQUIRED';
-        throw error;
+      if (!isSqlOnly) {
+        const cases = Array.isArray(data.testCases) ? data.testCases : [];
+        const hasPublic = cases.some((tc) => !tc.isHidden);
+        const hasHidden = cases.some((tc) => tc.isHidden);
+
+        if (!hasPublic || !hasHidden) {
+          const error = new Error('Coding questions require at least one public test case and at least one hidden (private) test case.');
+          error.statusCode = 400;
+          error.errorCode = 'TEST_CASES_REQUIRED';
+          throw error;
+        }
       }
     }
 

@@ -80,10 +80,19 @@ export class TechnologyController {
         return res.status(404).json({ success: false, message: 'Technology not found' });
       }
 
-      const batches = await Batch.find({
+      const isSuperAdmin = req.user?.role === 'ADMIN';
+      const batchQuery = {
         technology: technology.name,
         organization: technology.organization,
-      }).sort({ name: 1 });
+      };
+      if (!isSuperAdmin) {
+        batchQuery.$or = [
+          { createdBy: req.user._id },
+          { assignedFaculties: req.user._id },
+        ];
+      }
+
+      const batches = await Batch.find(batchQuery).sort({ name: 1 });
 
       const studentCount = await User.countDocuments({
         role: 'USER',

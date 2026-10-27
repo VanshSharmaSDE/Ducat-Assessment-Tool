@@ -47,15 +47,19 @@ export class TestCaseService {
 
     const question = await Question.findById(testCase.questionId);
     if (question && (question.type || 'CODING') === 'CODING') {
-      const allCases = await TestCase.find({ questionId: testCase.questionId });
-      const remaining = allCases.filter((c) => c._id.toString() !== id.toString());
-      const hasPublic = remaining.some((c) => !c.isHidden);
-      const hasHidden = remaining.some((c) => c.isHidden);
-      if (!hasPublic || !hasHidden) {
-        const error = new Error('Cannot delete this test case: Coding problems require at least one public and one hidden (private) test case.');
-        error.statusCode = 400;
-        error.errorCode = 'TEST_CASES_REQUIRED';
-        throw error;
+      const allowed = question.allowedLanguages || [];
+      const isSqlOnly = allowed.length === 1 && String(allowed[0]).toLowerCase() === 'sql';
+      if (!isSqlOnly) {
+        const allCases = await TestCase.find({ questionId: testCase.questionId });
+        const remaining = allCases.filter((c) => c._id.toString() !== id.toString());
+        const hasPublic = remaining.some((c) => !c.isHidden);
+        const hasHidden = remaining.some((c) => c.isHidden);
+        if (!hasPublic || !hasHidden) {
+          const error = new Error('Cannot delete this test case: Coding problems require at least one public and one hidden (private) test case.');
+          error.statusCode = 400;
+          error.errorCode = 'TEST_CASES_REQUIRED';
+          throw error;
+        }
       }
     }
 

@@ -26,22 +26,36 @@ export class AdminService {
     let techFilter = {};
 
     if (isFaculty) {
-      userFilter.$or = [
+      batchFilter.$or = [
         { createdBy: currentUser._id },
         { assignedFaculties: currentUser._id },
       ];
-      examFilter.createdBy = currentUser._id;
-      examActiveFilter.createdBy = currentUser._id;
-      questionFilter.createdBy = currentUser._id;
-
       if (currentUser?.organization && currentUser.organization.trim()) {
         const escapedOrg = currentUser.organization.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
         batchFilter.organization = { $regex: new RegExp(`^${escapedOrg}$`, 'i') };
         techFilter.organization = { $regex: new RegExp(`^${escapedOrg}$`, 'i') };
       } else {
-        batchFilter.createdBy = currentUser._id;
         techFilter.createdBy = currentUser._id;
       }
+
+      const myBatchDocs = await Batch.find(batchFilter);
+      const myBatchIds = myBatchDocs.map((b) => b._id);
+      const myBatchNames = myBatchDocs.map((b) => b.name);
+
+      userFilter.$or = [
+        { createdBy: currentUser._id },
+        { assignedFaculties: currentUser._id },
+        { batchId: { $in: myBatchIds } },
+        { batch: { $in: myBatchNames } },
+      ];
+      if (currentUser?.organization && currentUser.organization.trim()) {
+        const escapedOrg = currentUser.organization.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        userFilter.organization = { $regex: new RegExp(`^${escapedOrg}$`, 'i') };
+      }
+
+      examFilter.createdBy = currentUser._id;
+      examActiveFilter.createdBy = currentUser._id;
+      questionFilter.createdBy = currentUser._id;
 
       const myStudentIds = await User.find(userFilter).distinct('_id');
       const myExamIds = await Exam.find(examFilter).distinct('_id');
@@ -219,13 +233,30 @@ export class AdminService {
 
   static async getUsers(query = {}, currentUser = null) {
     const conditions = [{ role: 'USER' }];
+    let myBatchIds = [];
+    let myBatchNames = [];
     if (currentUser && currentUser.role === 'FACULTY') {
-      conditions.push({
+      const myBatchDocs = await Batch.find({
         $or: [
           { createdBy: currentUser._id },
           { assignedFaculties: currentUser._id },
         ],
       });
+      myBatchIds = myBatchDocs.map((b) => b._id);
+      myBatchNames = myBatchDocs.map((b) => b.name);
+
+      conditions.push({
+        $or: [
+          { createdBy: currentUser._id },
+          { assignedFaculties: currentUser._id },
+          { batchId: { $in: myBatchIds } },
+          { batch: { $in: myBatchNames } },
+        ],
+      });
+      if (currentUser.organization && currentUser.organization.trim()) {
+        const escapedOrg = currentUser.organization.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        conditions.push({ organization: { $regex: new RegExp(`^${escapedOrg}$`, 'i') } });
+      }
     }
 
     if (query.search) {
@@ -280,7 +311,13 @@ export class AdminService {
       baseFacultyFilter.$or = [
         { createdBy: currentUser._id },
         { assignedFaculties: currentUser._id },
+        { batchId: { $in: myBatchIds } },
+        { batch: { $in: myBatchNames } },
       ];
+      if (currentUser.organization && currentUser.organization.trim()) {
+        const escapedOrg = currentUser.organization.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        baseFacultyFilter.organization = { $regex: new RegExp(`^${escapedOrg}$`, 'i') };
+      }
     }
 
     let availableBatches = [];
@@ -726,6 +763,24 @@ export class AdminService {
     return { count: res.deletedCount, message: `Successfully deleted ${res.deletedCount} faculty member(s).` };
   }
 
+  static async isStudentAccessibleByFaculty(student, facultyUser) {
+    if (!student || !facultyUser) return false;
+    const sCreatorId = student.createdBy?._id || student.createdBy;
+    if (String(sCreatorId) === String(facultyUser._id)) return true;
+    if (student.assignedFaculties?.some((fId) => String(fId._id || fId) === String(facultyUser._id))) return true;
+    const myBatchDocs = await Batch.find({
+      $or: [{ createdBy: facultyUser._id }, { assignedFaculties: facultyUser._id }],
+    });
+    const myBatchIds = myBatchDocs.map((b) => String(b._id));
+    const myBatchNames = myBatchDocs.map((b) => b.name.toLowerCase());
+    const studentBatchId = student.batchId ? String(student.batchId) : '';
+    const studentBatchName = (student.batch || '').toLowerCase();
+    return Boolean(
+      (studentBatchId && myBatchIds.includes(studentBatchId)) ||
+      (studentBatchName && myBatchNames.includes(studentBatchName))
+    );
+  }
+
   static async deleteResult(attemptId, currentUser = null) {
     const attempt = await ExamAttempt.findById(attemptId);
     if (!attempt) {
@@ -737,11 +792,7 @@ export class AdminService {
     if (currentUser && currentUser.role === 'FACULTY') {
       const isMyExam = attempt.examId && (await Exam.exists({ _id: attempt.examId, createdBy: currentUser._id }));
       const student = await User.findById(attempt.userId);
-      const isMyStudent = student && (
-        String(student.createdBy) === String(currentUser._id) ||
-        student.assignedFaculties?.some((fId) => String(fId) === String(currentUser._id)) ||
-        (currentUser.organization && student.organization === currentUser.organization)
-      );
+      const isMyStudent = await AdminService.isStudentAccessibleByFaculty(student, currentUser);
       if (!isMyStudent && !isMyExam) {
         const error = new Error('Access denied. You can only delete results for your students or your exams.');
         error.statusCode = 403;
@@ -766,11 +817,7 @@ export class AdminService {
     if (currentUser && currentUser.role === 'FACULTY') {
       const isMyExam = attempt.examId && (await Exam.exists({ _id: attempt.examId._id || attempt.examId, createdBy: currentUser._id }));
       const student = await User.findById(attempt.userId?._id || attempt.userId);
-      const isMyStudent = student && (
-        String(student.createdBy) === String(currentUser._id) ||
-        student.assignedFaculties?.some((fId) => String(fId) === String(currentUser._id)) ||
-        (currentUser.organization && student.organization === currentUser.organization)
-      );
+      const isMyStudent = await AdminService.isStudentAccessibleByFaculty(student, currentUser);
       if (!isMyStudent && !isMyExam) {
         const error = new Error('Access denied. You can only grant retakes for your students or your exams.');
         error.statusCode = 403;
@@ -803,11 +850,7 @@ export class AdminService {
     if (currentUser && currentUser.role === 'FACULTY') {
       const isMyExam = attempt.examId && (await Exam.exists({ _id: attempt.examId._id || attempt.examId, createdBy: currentUser._id }));
       const student = await User.findById(attempt.userId?._id || attempt.userId);
-      const isMyStudent = student && (
-        String(student.createdBy) === String(currentUser._id) ||
-        student.assignedFaculties?.some((fId) => String(fId) === String(currentUser._id)) ||
-        (currentUser.organization && student.organization === currentUser.organization)
-      );
+      const isMyStudent = await AdminService.isStudentAccessibleByFaculty(student, currentUser);
       if (!isMyStudent && !isMyExam) {
         const error = new Error('Access denied. You can only terminate attempts for your students or your exams.');
         error.statusCode = 403;
@@ -858,17 +901,33 @@ export class AdminService {
     let filter = { _id: { $in: attemptIds } };
     if (currentUser && currentUser.role === 'FACULTY') {
       const myExamIds = await Exam.find({ createdBy: currentUser._id }).distinct('_id');
-      const allowedStudentIds = await User.find({
+      const myBatchDocs = await Batch.find({
+        $or: [
+          { createdBy: currentUser._id },
+          { assignedFaculties: currentUser._id },
+        ],
+      });
+      const myBatchIds = myBatchDocs.map((b) => b._id);
+      const myBatchNames = myBatchDocs.map((b) => b.name);
+
+      const studentQuery = {
         role: 'USER',
         $or: [
           { createdBy: currentUser._id },
           { assignedFaculties: currentUser._id },
-          { organization: currentUser.organization || '__NONE__' },
-        ]
-      }).distinct('_id');
+          { batchId: { $in: myBatchIds } },
+          { batch: { $in: myBatchNames } },
+        ],
+      };
+      if (currentUser.organization && currentUser.organization.trim()) {
+        const escapedOrg = currentUser.organization.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        studentQuery.organization = { $regex: new RegExp(`^${escapedOrg}$`, 'i') };
+      }
+
+      const allowedStudentIds = await User.find(studentQuery).distinct('_id');
       filter.$or = [
         { examId: { $in: myExamIds } },
-        { userId: { $in: allowedStudentIds } }
+        { userId: { $in: allowedStudentIds } },
       ];
     }
 

@@ -35,6 +35,12 @@ const batchSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    assignedFaculties: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
     isActive: {
       type: Boolean,
       default: true,

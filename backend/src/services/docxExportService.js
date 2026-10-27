@@ -18,6 +18,7 @@ import { User } from '../models/User.js';
 import { ExamAttempt } from '../models/ExamAttempt.js';
 import { Submission } from '../models/Submission.js';
 import { SubmissionResult } from '../models/SubmissionResult.js';
+import { Batch } from '../models/Batch.js';
 
 export class DocxExportService {
   /**
@@ -234,18 +235,30 @@ export class DocxExportService {
 
     // Faculty scoping
     if (requestingUser?.role === 'FACULTY' && !userId) {
-      const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
-      const allowedStudentIds = await User.find({
+      const myBatchDocs = await Batch.find({
+        $or: [
+          { createdBy: requestingUser._id },
+          { assignedFaculties: requestingUser._id },
+        ],
+      });
+      const myBatchIds = myBatchDocs.map((b) => b._id);
+      const myBatchNames = myBatchDocs.map((b) => b.name);
+
+      const studentQuery = {
         role: 'USER',
         $or: [
           { createdBy: requestingUser._id },
           { assignedFaculties: requestingUser._id },
-          { organization: requestingUser.organization || '__NONE__' },
-          { createdBy: { $in: adminIds } },
-          { createdBy: null },
-          { createdBy: { $exists: false } },
+          { batchId: { $in: myBatchIds } },
+          { batch: { $in: myBatchNames } },
         ],
-      }).distinct('_id');
+      };
+      if (requestingUser.organization && requestingUser.organization.trim()) {
+        const escapedOrg = requestingUser.organization.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        studentQuery.organization = { $regex: new RegExp(`^${escapedOrg}$`, 'i') };
+      }
+
+      const allowedStudentIds = await User.find(studentQuery).distinct('_id');
       attemptQuery.userId = { $in: allowedStudentIds };
     }
 
