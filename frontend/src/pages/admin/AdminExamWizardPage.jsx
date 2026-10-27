@@ -317,7 +317,6 @@ export default function AdminExamWizardPage() {
         duration: Number(formData.duration),
         startDate: new Date(formData.startDate),
         endDate: new Date(formData.endDate),
-        totalMarks: Number(formData.totalMarks),
         passingMarks: Number(formData.passingMarks),
         difficulty: formData.difficulty,
         maxViolations: Number(formData.maxViolations),
@@ -335,6 +334,7 @@ export default function AdminExamWizardPage() {
           order: idx + 1,
           allowCodeRun: q.type === 'MCQ' ? false : (q.allowCodeRun !== undefined ? Boolean(q.allowCodeRun) : null),
         })),
+        totalMarks: formData.questions.reduce((sum, q) => sum + Number(q.marks || 0), 0) || Number(formData.totalMarks) || 100,
       };
 
       if (isEditing) {
@@ -756,6 +756,14 @@ export default function AdminExamWizardPage() {
                   onChange={(e) => setFormData({ ...formData, passingMarks: Number(e.target.value) })}
                   className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                 />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Passing score threshold in marks (e.g. 10). Assessment total: <strong className="text-blue-600 font-mono">{formData.totalMarks}</strong> marks.
+                </p>
+                {formData.totalMarks > 0 && formData.passingMarks > formData.totalMarks && (
+                  <p className="text-[11px] text-amber-600 font-semibold mt-0.5">
+                    Note: Passing marks ({formData.passingMarks}) exceed current total marks ({formData.totalMarks}).
+                  </p>
+                )}
               </div>
 
               <div>

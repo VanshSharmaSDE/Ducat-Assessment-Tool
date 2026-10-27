@@ -210,6 +210,22 @@ export class ResultService {
       };
     });
 
+    // Self-healing for maxScore and resultStatus if attempt was saved out of sync
+    const questionMarksSum = (exam?.questions || []).reduce((acc, q) => acc + Number(q.marks || 0), 0);
+    const expectedMax = questionMarksSum > 0 ? questionMarksSum : (exam?.totalMarks || 100);
+
+    if (expectedMax > 0 && (attempt.maxScore !== expectedMax || (!attempt.totalScore && submissionResults.length > 0))) {
+      let calcScore = 0;
+      submissionResults.forEach((r) => { calcScore += r.score || 0; });
+      attempt.totalScore = calcScore;
+      attempt.maxScore = expectedMax;
+      attempt.percentage = expectedMax > 0 ? +((calcScore / expectedMax) * 100).toFixed(2) : 0;
+      if (!isTerminated && !isOngoing) {
+        attempt.resultStatus = calcScore >= (exam?.passingMarks || 0) ? 'PASS' : 'FAIL';
+      }
+      await attempt.save().catch(() => {});
+    }
+
     const isTerminated = attempt.status === 'TERMINATED' || attempt.resultStatus === 'TERMINATED';
     const isOngoing = attempt.status === 'IN_PROGRESS';
     let resolvedResultStatus = attempt.resultStatus;

@@ -25,11 +25,6 @@ export class QuestionService {
         )
       : [];
 
-    if ((data.type === 'CODING' || !data.type) && (!cleanedExamples || cleanedExamples.length === 0 || !cleanedExamples.some((ex) => ex.output && ex.output.trim()))) {
-      const error = new Error('At least one example with Expected Output is required for coding problems');
-      error.statusCode = 400;
-      throw error;
-    }
 
     const question = await Question.create({
       ...data,

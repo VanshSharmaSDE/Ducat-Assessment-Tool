@@ -772,7 +772,7 @@ export const exportResultsExcel = async (req, res) => {
       })
       .populate({
         path: 'examId',
-        select: 'title totalMarks passingMarks createdBy',
+        select: 'title totalMarks passingMarks questions createdBy',
         populate: { path: 'createdBy', select: 'name email role' }
       })
       .sort({ createdAt: -1 });
@@ -854,7 +854,8 @@ export const exportResultsExcel = async (req, res) => {
 
     const rows = attempts.length > 0 ? attempts.map((att, idx) => {
       const score = att.totalScore ?? att.totalScoreObtained ?? 0;
-      const max = att.maxScore || att.examId?.totalMarks || 100;
+      const qSum = (att.examId?.questions || []).reduce((sum, q) => sum + Number(q.marks || 0), 0);
+      const max = qSum > 0 ? qSum : (att.maxScore || att.examId?.totalMarks || 100);
       const passMarks = att.examId?.passingMarks ?? 40;
 
       const isTerminated = att.status === 'TERMINATED' || att.resultStatus === 'TERMINATED';

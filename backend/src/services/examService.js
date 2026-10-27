@@ -10,6 +10,7 @@ import { User } from '../models/User.js';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../utils/logger.js';
 import { emitToAdmin, emitToAttempt } from '../socket.js';
+import { isUnattemptedCode } from '../utils/starterCode.js';
 
 const userLastRunTime = new Map();
 if (typeof setInterval !== 'undefined') {
@@ -686,7 +687,17 @@ export class ExamService {
     const now = new Date();
     if (now.getTime() > new Date(attempt.endTime).getTime() + graceMs) {
       attempt.status = 'EXPIRED';
-      attempt.resultStatus = attempt.resultStatus === 'PASS' ? 'PASS' : 'FAIL';
+      const { checkAndFinalizeExamAttempt } = await import('../workers/evaluationWorker.js');
+      await checkAndFinalizeExamAttempt(attempt._id);
+      const reloaded = await ExamAttempt.findById(attempt._id);
+      if (reloaded && reloaded.totalScore !== undefined) {
+        attempt.totalScore = reloaded.totalScore;
+        attempt.maxScore = reloaded.maxScore;
+        attempt.percentage = reloaded.percentage;
+        attempt.resultStatus = reloaded.resultStatus;
+      } else {
+        attempt.resultStatus = attempt.resultStatus === 'PASS' ? 'PASS' : 'FAIL';
+      }
       attempt.submittedAt = attempt.submittedAt || now;
       await attempt.save();
       const error = new Error('Exam deadline has passed. Late submissions are not accepted.');
@@ -788,15 +799,68 @@ export class ExamService {
         continue;
       }
 
-      // 2. Handle Coding Questions: Queue for Docker execution
+      // 2. Handle Coding Questions
       const sourceCode = ans.code || '';
       const chosenLang = ans.language || question.allowedLanguages?.[0] || 'java';
+      const assignedMarks = Number(eq?.marks || question.marks || 20);
 
       if (!question.allowedLanguages.includes(chosenLang)) {
         logger.warn(`Language ${chosenLang} not allowed for question ${question._id}`);
       }
 
-      // Upsert submission
+      const unattempted = isUnattemptedCode(sourceCode, chosenLang, question.starterCode);
+
+      if (unattempted) {
+        // Candidate did not answer or left default starter code -> mark COMPLETED with 0 marks immediately
+        let submission = await Submission.findOne({ attemptId: attempt._id, questionId: question._id });
+        if (!submission) {
+          submission = await Submission.create({
+            attemptId: attempt._id,
+            userId,
+            examId: exam._id,
+            questionId: question._id,
+            questionType: 'CODING',
+            language: chosenLang,
+            sourceCode,
+            status: 'COMPLETED',
+            submittedAt: now,
+          });
+        } else {
+          submission.questionType = 'CODING';
+          submission.language = chosenLang;
+          submission.sourceCode = sourceCode;
+          submission.status = 'COMPLETED';
+          submission.submittedAt = now;
+          await submission.save();
+        }
+
+        const tcCount = await TestCase.countDocuments({ questionId: question._id });
+        const { SubmissionResult } = await import('../models/SubmissionResult.js');
+        await SubmissionResult.findOneAndUpdate(
+          { submissionId: submission._id },
+          {
+            submissionId: submission._id,
+            attemptId: attempt._id,
+            questionId: question._id,
+            questionType: 'CODING',
+            score: 0,
+            maxScore: assignedMarks,
+            passedTests: 0,
+            totalTests: tcCount,
+            status: 'NOT_ATTEMPTED',
+            executionTime: 0,
+            memoryUsed: 0,
+            compileOutput: '',
+            testResults: [],
+          },
+          { upsert: true, new: true }
+        );
+
+        createdSubmissions.push(submission);
+        continue;
+      }
+
+      // Candidate provided code: queue for Docker execution
       let submission = await Submission.findOne({ attemptId: attempt._id, questionId: question._id });
       if (!submission) {
         submission = await Submission.create({

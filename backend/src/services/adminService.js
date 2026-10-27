@@ -545,7 +545,7 @@ export class AdminService {
 
     const exam = await Exam.create({
       ...data,
-      totalMarks: data.totalMarks || totalMarks || 100,
+      totalMarks: totalMarks > 0 ? totalMarks : (Number(data.totalMarks) || 100),
       questions,
       createdBy: adminId,
     });
@@ -580,9 +580,7 @@ export class AdminService {
           allowCodeRun: q.allowCodeRun !== undefined && q.allowCodeRun !== null ? Boolean(q.allowCodeRun) : null,
         };
       });
-      if (!data.totalMarks) {
-        data.totalMarks = totalMarks;
-      }
+      data.totalMarks = totalMarks > 0 ? totalMarks : (Number(data.totalMarks) || exam.totalMarks || 100);
     }
 
     Object.assign(exam, data);

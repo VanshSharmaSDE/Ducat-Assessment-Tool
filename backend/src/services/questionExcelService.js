@@ -141,28 +141,21 @@ export class QuestionExcelService {
       const hiddenIn1 = row['HiddenInput1 *'] ?? row['HiddenInput1'] ?? row['HiddenInput'] ?? row['hidden_input'];
       const hiddenOut1 = row['HiddenOutput1 *'] ?? row['HiddenOutput1'] ?? row['HiddenOutput'] ?? row['hidden_output'];
 
-      if (sampleIn1 === undefined || sampleOut1 === undefined) {
-        errors.push(`Row ${rowNum}: Public unhidden test case (SampleInput1 * and SampleOutput1 *) is mandatory.`);
-        continue;
-      }
-
-      if (hiddenIn1 === undefined || hiddenOut1 === undefined) {
-        errors.push(`Row ${rowNum}: Hidden test case (HiddenInput1 * and HiddenOutput1 *) is mandatory.`);
-        continue;
-      }
-
+      // Build examples & public test cases (optional)
       const examples = [];
-      examples.push({
-        input: String(sampleIn1),
-        output: String(sampleOut1),
-        explanation: String(row['Explanation1'] || row['Explanation'] || ''),
-      });
+      if (sampleOut1 !== undefined && sampleOut1 !== null && String(sampleOut1).trim() !== '') {
+        examples.push({
+          input: sampleIn1 !== undefined && sampleIn1 !== null ? String(sampleIn1) : '',
+          output: String(sampleOut1),
+          explanation: String(row['Explanation1'] || row['Explanation'] || ''),
+        });
+      }
 
       const sampleIn2 = row['SampleInput2'];
       const sampleOut2 = row['SampleOutput2'];
-      if (sampleIn2 !== undefined && sampleOut2 !== undefined) {
+      if (sampleOut2 !== undefined && sampleOut2 !== null && String(sampleOut2).trim() !== '') {
         examples.push({
-          input: String(sampleIn2),
+          input: sampleIn2 !== undefined && sampleIn2 !== null ? String(sampleIn2) : '',
           output: String(sampleOut2),
           explanation: String(row['Explanation2'] || ''),
         });

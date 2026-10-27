@@ -149,44 +149,6 @@ export default function AdminQuestionEditorPage() {
       return;
     }
 
-    // 1. Mandatory Example validation: at least 1 example with Expected Output
-    const filledExamples = (formData.examples || []).filter(
-      (ex) => ex && ex.output && String(ex.output).trim().length > 0
-    );
-    if (filledExamples.length === 0) {
-      setError('At least one example with Expected Output is mandatory.');
-      await showAlert({
-        title: 'Validation Error',
-        message: 'At least one public example with Expected Output is mandatory for coding problems.',
-        type: 'warning',
-      });
-      return;
-    }
-
-    // 2. Mandatory Test Cases validation: at least 1 public and 1 hidden
-    const publicCases = testCases.filter((tc) => !tc.isHidden);
-    const hiddenCases = testCases.filter((tc) => tc.isHidden);
-
-    if (publicCases.length === 0) {
-      setError('At least 1 unhidden (public) test case is required.');
-      await showAlert({
-        title: 'Validation Error',
-        message: 'Please add at least 1 Unhidden (Public) test case before creating the problem.',
-        type: 'warning',
-      });
-      return;
-    }
-
-    if (hiddenCases.length === 0) {
-      setError('At least 1 hidden (private) test case is required.');
-      await showAlert({
-        title: 'Validation Error',
-        message: 'Please add at least 1 Hidden (Private) test case before creating the problem.',
-        type: 'warning',
-      });
-      return;
-    }
-
     const isNew = !isEditing;
     const confirmed = await showConfirm({
       title: isNew ? 'Create Coding Problem' : 'Update Coding Problem',
@@ -624,7 +586,7 @@ export default function AdminQuestionEditorPage() {
         <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-              <Eye className="w-4 h-4 text-emerald-600" /> Public Problem Examples (At least 1 Mandatory <span className="text-red-500 font-bold">*</span>)
+              <Eye className="w-4 h-4 text-emerald-600" /> Public Problem Examples (Optional)
             </h2>
             <button
               type="button"
@@ -639,7 +601,7 @@ export default function AdminQuestionEditorPage() {
             <div key={idx} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-700">
-                  Example #{idx + 1} {idx === 0 && <span className="text-red-500 font-bold ml-1">* Mandatory</span>}
+                  Example #{idx + 1}
                 </span>
                 {formData.examples.length > 1 && (
                   <button
@@ -702,35 +664,37 @@ export default function AdminQuestionEditorPage() {
                 <Shield className="w-4 h-4 text-blue-600" /> Test Suite Management (Unhidden & Hidden Cases)
               </h2>
               <p className="text-xs text-slate-500 mt-1">
-                Configure test cases for code execution. Exactly at least 1 Unhidden (Public) test case and 1 Hidden (Private) test case are required.
+                Configure test cases for automated code judging. Test cases are optional; problems can be saved without test cases and configured later.
               </p>
             </div>
 
-            {/* Test Case Requirement Badges */}
+            {/* Test Case Status Badges */}
             <div className="flex flex-wrap items-center gap-2">
-              {testCases.filter((tc) => !tc.isHidden).length > 0 ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+                testCases.filter((tc) => !tc.isHidden).length > 0
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  : 'bg-slate-100 text-slate-600 border border-slate-200'
+              }`}>
+                {testCases.filter((tc) => !tc.isHidden).length > 0 ? (
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  Public Case Added ({testCases.filter((tc) => !tc.isHidden).length})
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-300 animate-pulse">
-                  <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
-                  1 Public Case Required <span className="text-red-500 font-bold ml-0.5">*</span>
-                </span>
-              )}
+                ) : (
+                  <Eye className="w-3.5 h-3.5 text-slate-400" />
+                )}
+                Public Cases ({testCases.filter((tc) => !tc.isHidden).length})
+              </span>
 
-              {testCases.filter((tc) => tc.isHidden).length > 0 ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+                testCases.filter((tc) => tc.isHidden).length > 0
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  : 'bg-slate-100 text-slate-600 border border-slate-200'
+              }`}>
+                {testCases.filter((tc) => tc.isHidden).length > 0 ? (
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  Hidden Case Added ({testCases.filter((tc) => tc.isHidden).length})
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-300 animate-pulse">
-                  <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
-                  1 Hidden Case Required <span className="text-red-500 font-bold ml-0.5">*</span>
-                </span>
-              )}
+                ) : (
+                  <EyeOff className="w-3.5 h-3.5 text-slate-400" />
+                )}
+                Hidden Cases ({testCases.filter((tc) => tc.isHidden).length})
+              </span>
             </div>
           </div>
 

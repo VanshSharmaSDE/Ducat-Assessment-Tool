@@ -9,6 +9,7 @@ import { Exam } from '../models/Exam.js';
 import { dockerExecutionService } from '../execution/DockerExecutionService.js';
 import { emitToAttempt, emitToUser, emitToAdmin } from '../socket.js';
 import { logger } from '../utils/logger.js';
+import { isUnattemptedCode } from '../utils/starterCode.js';
 
 export async function processSubmissionJob(job) {
   const { submissionId, attemptId, questionId, language, sourceCode, jobId } = job.data;
@@ -70,8 +71,14 @@ export async function processSubmissionJob(job) {
     let finalStatus = evalResult.overallStatus || 'PENDING';
 
     if (totalTests === 0) {
-      earnedScore = evalResult.overallStatus === 'PASSED' ? assignedMarks : 0;
-      finalStatus = evalResult.overallStatus === 'PASSED' ? 'PASSED' : 'WRONG_ANSWER';
+      const unattempted = isUnattemptedCode(sourceCode, language, question.starterCode);
+      if (unattempted) {
+        earnedScore = 0;
+        finalStatus = 'NOT_ATTEMPTED';
+      } else {
+        earnedScore = evalResult.overallStatus === 'PASSED' ? assignedMarks : 0;
+        finalStatus = evalResult.overallStatus === 'PASSED' ? 'PASSED' : 'WRONG_ANSWER';
+      }
     } else if (passedTests === totalTests) {
       earnedScore = assignedMarks;
       finalStatus = 'PASSED';
@@ -131,6 +138,26 @@ export async function processSubmissionJob(job) {
     await Submission.findByIdAndUpdate(submissionId, { status: 'FAILED' });
     await ExecutionJob.findOneAndUpdate({ jobId }, { status: 'FAILED', error: err.message, completedAt: new Date() });
 
+    // Always create SubmissionResult record so attempt aggregation never misses questions
+    await SubmissionResult.findOneAndUpdate(
+      { submissionId },
+      {
+        submissionId,
+        attemptId,
+        questionId,
+        passedTests: 0,
+        totalTests: 0,
+        score: 0,
+        maxScore: assignedMarks,
+        executionTime: 0,
+        memoryUsed: 0,
+        status: 'RUNTIME_ERROR',
+        compileOutput: err.message || 'Sandbox execution failed',
+        testResults: [],
+      },
+      { upsert: true, new: true }
+    );
+
     emitToAttempt(attemptId, 'submission:status', {
       submissionId,
       status: 'FAILED',
@@ -173,7 +200,7 @@ export async function checkAndFinalizeExamAttempt(attemptId) {
     }
 
     const questionMarksSum = (exam.questions || []).reduce((acc, q) => acc + Number(q.marks || 0), 0);
-    const maxScore = exam.totalMarks || questionMarksSum || 100;
+    const maxScore = questionMarksSum > 0 ? questionMarksSum : (exam.totalMarks || 100);
     const percentage = maxScore > 0 ? +((totalScore / maxScore) * 100).toFixed(2) : 0;
     const resultStatus = totalScore >= (exam.passingMarks || 0) ? 'PASS' : 'FAIL';
 
@@ -184,6 +211,12 @@ export async function checkAndFinalizeExamAttempt(attemptId) {
     attempt.status = 'EVALUATED';
     attempt.submittedAt = attempt.submittedAt || new Date();
     await attempt.save();
+
+    // Keep exam.totalMarks synchronized with actual question sum
+    if (questionMarksSum > 0 && exam.totalMarks !== questionMarksSum) {
+      exam.totalMarks = questionMarksSum;
+      await exam.save();
+    }
 
     logger.info(`Exam attempt ${attemptId} finalized. Total Score: ${totalScore}/${maxScore} (${percentage}%) - ${resultStatus}`);
 
