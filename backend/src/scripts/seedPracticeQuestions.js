@@ -3,7 +3,7 @@ import { Question } from '../models/Question.js';
 import { TestCase } from '../models/TestCase.js';
 import { Exam } from '../models/Exam.js';
 import { User } from '../models/User.js';
-import { DEFAULT_STARTER_CODE, SUPPORTED_LANGUAGES } from '../utils/starterCode.js';
+import { DEFAULT_STARTER_CODE, SUPPORTED_LANGUAGES, CODING_LANGUAGES } from '../utils/starterCode.js';
 
 export const PRACTICE_QUESTIONS = [
   {
@@ -428,6 +428,452 @@ Chem|1`,
       },
     ],
   },
+  {
+    title: 'Count Set Bits',
+    description: 'Given a non-negative integer N, count and print the total number of set bits (1s) in its binary representation.',
+    type: 'CODING',
+    difficulty: 'EASY',
+    marks: 10,
+    inputFormat: 'A single non-negative integer N.',
+    outputFormat: 'Print a single integer representing the count of set bits in the binary representation of N.',
+    constraints: '0 <= N <= 10^9',
+    allowedLanguages: ['java', 'python', 'javascript', 'c', 'cpp'],
+    examples: [
+      { input: '7', output: '3', explanation: '7 in binary is 111 (3 set bits).' },
+      { input: '16', output: '1', explanation: '16 in binary is 10000 (1 set bit).' },
+    ],
+    testCases: [
+      { input: '7', expectedOutput: '3', isHidden: false, marks: 0 },
+      { input: '16', expectedOutput: '1', isHidden: true, marks: 5 },
+      { input: '0', expectedOutput: '0', isHidden: true, marks: 5 },
+      { input: '255', expectedOutput: '8', isHidden: true, marks: 5 },
+    ],
+  },
+  {
+    title: 'Reverse an Array',
+    description: 'Given an array of N integers, reverse the array in place and print its elements separated by a single space.',
+    type: 'CODING',
+    difficulty: 'EASY',
+    marks: 10,
+    inputFormat: 'Line 1: Integer N.\nLine 2: N space-separated integers.',
+    outputFormat: 'Print the N integers in reversed order separated by a single space.',
+    constraints: '1 <= N <= 10^5\n-10^9 <= elements <= 10^9',
+    allowedLanguages: ['java', 'python', 'javascript', 'c', 'cpp'],
+    examples: [
+      { input: "5\n1 2 3 4 5", output: '5 4 3 2 1', explanation: 'Array [1, 2, 3, 4, 5] reversed is [5, 4, 3, 2, 1].' },
+    ],
+    testCases: [
+      { input: "5\n1 2 3 4 5", expectedOutput: '5 4 3 2 1', isHidden: false, marks: 0 },
+      { input: "1\n42", expectedOutput: '42', isHidden: true, marks: 5 },
+      { input: "4\n10 20 30 40", expectedOutput: '40 30 20 10', isHidden: true, marks: 5 },
+      { input: "6\n-5 0 12 -3 99 4", expectedOutput: '4 99 -3 12 0 -5', isHidden: true, marks: 5 },
+    ],
+  },
+  {
+    title: 'Check If Array Is Sorted',
+    description: 'Given an array of N integers, determine whether the array is sorted in non-decreasing order. Print "YES" if sorted, otherwise print "NO".',
+    type: 'CODING',
+    difficulty: 'EASY',
+    marks: 10,
+    inputFormat: 'Line 1: Integer N.\nLine 2: N space-separated integers.',
+    outputFormat: 'Print "YES" if the array is sorted in non-decreasing order, otherwise print "NO".',
+    constraints: '1 <= N <= 10^5\n-10^9 <= elements <= 10^9',
+    allowedLanguages: ['java', 'python', 'javascript', 'c', 'cpp'],
+    examples: [
+      { input: "5\n1 2 2 4 5", output: 'YES', explanation: 'Elements are in non-decreasing order.' },
+      { input: "4\n10 5 20 30", output: 'NO', explanation: '10 > 5, so the array is not sorted.' },
+    ],
+    testCases: [
+      { input: "5\n1 2 2 4 5", expectedOutput: 'YES', isHidden: false, marks: 0 },
+      { input: "4\n10 5 20 30", expectedOutput: 'NO', isHidden: true, marks: 5 },
+      { input: "1\n100", expectedOutput: 'YES', isHidden: true, marks: 5 },
+      { input: "3\n3 2 1", expectedOutput: 'NO', isHidden: true, marks: 5 },
+      { input: "5\n5 5 5 5 5", expectedOutput: 'YES', isHidden: true, marks: 5 },
+    ],
+  },
+  {
+    title: 'Inner Join Employees and Departments',
+    description: 'Write an SQL query to retrieve employee "name", "salary", and their department "name" (from the departments table) for all employees whose department exists in the departments table. Order by employee "id" ascending.',
+    type: 'CODING',
+    difficulty: 'MEDIUM',
+    marks: 10,
+    inputFormat: 'Two pre-populated tables:\n1. departments: id (INT), name (TEXT)\n2. employees: id (INT), name (TEXT), salary (INT), department_id (INT)',
+    outputFormat: 'Print employee name, salary, and department name separated by | for each employee, ordered by employee id ascending.',
+    constraints: '1 <= rows <= 1000',
+    allowedLanguages: ['sql'],
+    starterCode: {
+      sql: `-- Write your SQL query here\n`,
+    },
+    examples: [
+      {
+        input: `CREATE TABLE departments (id INT, name TEXT);
+INSERT INTO departments VALUES (1, 'Engineering');
+INSERT INTO departments VALUES (2, 'Marketing');
+INSERT INTO departments VALUES (3, 'HR');
+CREATE TABLE employees (id INT, name TEXT, salary INT, department_id INT);
+INSERT INTO employees VALUES (101, 'Alice', 75000, 1);
+INSERT INTO employees VALUES (102, 'Bob', 50000, 2);
+INSERT INTO employees VALUES (103, 'Charlie', 60000, 1);
+INSERT INTO employees VALUES (104, 'Diana', 45000, 3);`,
+        output: `Alice|75000|Engineering
+Bob|50000|Marketing
+Charlie|60000|Engineering
+Diana|45000|HR`,
+        explanation: 'JOIN departments ON employees.department_id = departments.id matches each employee to their department.',
+      },
+    ],
+    testCases: [
+      {
+        input: `CREATE TABLE departments (id INT, name TEXT);
+INSERT INTO departments VALUES (1, 'Engineering');
+INSERT INTO departments VALUES (2, 'Marketing');
+INSERT INTO departments VALUES (3, 'HR');
+CREATE TABLE employees (id INT, name TEXT, salary INT, department_id INT);
+INSERT INTO employees VALUES (101, 'Alice', 75000, 1);
+INSERT INTO employees VALUES (102, 'Bob', 50000, 2);
+INSERT INTO employees VALUES (103, 'Charlie', 60000, 1);
+INSERT INTO employees VALUES (104, 'Diana', 45000, 3);`,
+        expectedOutput: `Alice|75000|Engineering
+Bob|50000|Marketing
+Charlie|60000|Engineering
+Diana|45000|HR`,
+        isHidden: false,
+        marks: 0,
+      },
+      {
+        input: `CREATE TABLE departments (id INT, name TEXT);
+INSERT INTO departments VALUES (10, 'Finance');
+INSERT INTO departments VALUES (20, 'Operations');
+CREATE TABLE employees (id INT, name TEXT, salary INT, department_id INT);
+INSERT INTO employees VALUES (1, 'Evan', 80000, 10);
+INSERT INTO employees VALUES (2, 'Fay', 55000, 20);`,
+        expectedOutput: `Evan|80000|Finance
+Fay|55000|Operations`,
+        isHidden: true,
+        marks: 5,
+      },
+      {
+        input: `CREATE TABLE departments (id INT, name TEXT);
+INSERT INTO departments VALUES (1, 'Sales');
+CREATE TABLE employees (id INT, name TEXT, salary INT, department_id INT);
+INSERT INTO employees VALUES (5, 'George', 40000, 1);
+INSERT INTO employees VALUES (6, 'Hannah', 42000, 99);`,
+        expectedOutput: `George|40000|Sales`,
+        isHidden: true,
+        marks: 5,
+      },
+    ],
+  },
+  {
+    title: 'Left Join Customers and Order Counts',
+    description: 'Write an SQL query to retrieve customer "name" and the total count of orders placed (COUNT(orders.id)) for each customer. Include all customers, even those who have placed 0 orders (use LEFT JOIN). Group by customer id and name, and order by customer id ascending.',
+    type: 'CODING',
+    difficulty: 'MEDIUM',
+    marks: 10,
+    inputFormat: 'Two pre-populated tables:\n1. customers: id (INT), name (TEXT)\n2. orders: id (INT), customer_id (INT), amount INT',
+    outputFormat: 'Print customer name and order count separated by | for each customer, ordered by customer id ascending.',
+    constraints: '1 <= rows <= 1000',
+    allowedLanguages: ['sql'],
+    starterCode: {
+      sql: `-- Write your SQL query here\n`,
+    },
+    examples: [
+      {
+        input: `CREATE TABLE customers (id INT, name TEXT);
+INSERT INTO customers VALUES (1, 'Alice');
+INSERT INTO customers VALUES (2, 'Bob');
+INSERT INTO customers VALUES (3, 'Charlie');
+CREATE TABLE orders (id INT, customer_id INT, amount INT);
+INSERT INTO orders VALUES (101, 1, 200);
+INSERT INTO orders VALUES (102, 1, 150);
+INSERT INTO orders VALUES (103, 3, 400);`,
+        output: `Alice|2
+Bob|0
+Charlie|1`,
+        explanation: 'LEFT JOIN preserves Bob with 0 count because COUNT(orders.id) counts matching order rows.',
+      },
+    ],
+    testCases: [
+      {
+        input: `CREATE TABLE customers (id INT, name TEXT);
+INSERT INTO customers VALUES (1, 'Alice');
+INSERT INTO customers VALUES (2, 'Bob');
+INSERT INTO customers VALUES (3, 'Charlie');
+CREATE TABLE orders (id INT, customer_id INT, amount INT);
+INSERT INTO orders VALUES (101, 1, 200);
+INSERT INTO orders VALUES (102, 1, 150);
+INSERT INTO orders VALUES (103, 3, 400);`,
+        expectedOutput: `Alice|2
+Bob|0
+Charlie|1`,
+        isHidden: false,
+        marks: 0,
+      },
+      {
+        input: `CREATE TABLE customers (id INT, name TEXT);
+INSERT INTO customers VALUES (10, 'David');
+INSERT INTO customers VALUES (20, 'Emma');
+CREATE TABLE orders (id INT, customer_id INT, amount INT);
+INSERT INTO orders VALUES (1, 10, 50);
+INSERT INTO orders VALUES (2, 10, 75);
+INSERT INTO orders VALUES (3, 10, 100);`,
+        expectedOutput: `David|3
+Emma|0`,
+        isHidden: true,
+        marks: 5,
+      },
+      {
+        input: `CREATE TABLE customers (id INT, name TEXT);
+INSERT INTO customers VALUES (100, 'Zack');
+CREATE TABLE orders (id INT, customer_id INT, amount INT);`,
+        expectedOutput: `Zack|0`,
+        isHidden: true,
+        marks: 5,
+      },
+    ],
+  },
+  {
+    title: 'Multi-Table Join with Filtering',
+    description: 'Write an SQL query to retrieve product "name", category "name", and "price" for all products where price >= 100. Join the "products" table with "categories" on category_id = id. Order the results by price descending, then by product name ascending.',
+    type: 'CODING',
+    difficulty: 'MEDIUM',
+    marks: 10,
+    inputFormat: 'Two pre-populated tables:\n1. categories: id (INT), name (TEXT)\n2. products: id (INT), name (TEXT), category_id (INT), price (INT)',
+    outputFormat: 'Print product name, category name, and price separated by | for each matching product, ordered by price DESC, then product name ASC.',
+    constraints: '1 <= rows <= 1000',
+    allowedLanguages: ['sql'],
+    starterCode: {
+      sql: `-- Write your SQL query here\n`,
+    },
+    examples: [
+      {
+        input: `CREATE TABLE categories (id INT, name TEXT);
+INSERT INTO categories VALUES (1, 'Electronics');
+INSERT INTO categories VALUES (2, 'Furniture');
+CREATE TABLE products (id INT, name TEXT, category_id INT, price INT);
+INSERT INTO products VALUES (10, 'Laptop', 1, 1200);
+INSERT INTO products VALUES (11, 'Mouse', 1, 25);
+INSERT INTO products VALUES (12, 'Desk', 2, 300);
+INSERT INTO products VALUES (13, 'Headphones', 1, 100);`,
+        output: `Laptop|Electronics|1200
+Desk|Furniture|300
+Headphones|Electronics|100`,
+        explanation: 'Only products with price >= 100 are included, sorted by price descending.',
+      },
+    ],
+    testCases: [
+      {
+        input: `CREATE TABLE categories (id INT, name TEXT);
+INSERT INTO categories VALUES (1, 'Electronics');
+INSERT INTO categories VALUES (2, 'Furniture');
+CREATE TABLE products (id INT, name TEXT, category_id INT, price INT);
+INSERT INTO products VALUES (10, 'Laptop', 1, 1200);
+INSERT INTO products VALUES (11, 'Mouse', 1, 25);
+INSERT INTO products VALUES (12, 'Desk', 2, 300);
+INSERT INTO products VALUES (13, 'Headphones', 1, 100);`,
+        expectedOutput: `Laptop|Electronics|1200
+Desk|Furniture|300
+Headphones|Electronics|100`,
+        isHidden: false,
+        marks: 0,
+      },
+      {
+        input: `CREATE TABLE categories (id INT, name TEXT);
+INSERT INTO categories VALUES (1, 'Appliances');
+CREATE TABLE products (id INT, name TEXT, category_id INT, price INT);
+INSERT INTO products VALUES (1, 'Toaster', 1, 40);
+INSERT INTO products VALUES (2, 'Microwave', 1, 150);
+INSERT INTO products VALUES (3, 'Blender', 1, 150);`,
+        expectedOutput: `Blender|Appliances|150
+Microwave|Appliances|150`,
+        isHidden: true,
+        marks: 5,
+      },
+      {
+        input: `CREATE TABLE categories (id INT, name TEXT);
+INSERT INTO categories VALUES (1, 'Books');
+CREATE TABLE products (id INT, name TEXT, category_id INT, price INT);
+INSERT INTO products VALUES (1, 'Notebook', 1, 10);`,
+        expectedOutput: ``,
+        isHidden: true,
+        marks: 5,
+      },
+    ],
+  },
+  {
+    title: 'Filter Aggregates with HAVING',
+    description: 'Write an SQL query to retrieve the "salesperson" and their total sales amount (SUM(amount)) from the "sales" table. Only include salespersons whose total sales amount is greater than or equal to 1000 (HAVING SUM(amount) >= 1000). Order results by total sales amount descending.',
+    type: 'CODING',
+    difficulty: 'MEDIUM',
+    marks: 10,
+    inputFormat: 'Pre-populated "sales" table with columns: id (INT), salesperson (TEXT), amount (INT).',
+    outputFormat: 'Print salesperson and total sales separated by | for each qualifying person, ordered by total sales DESC.',
+    constraints: '1 <= rows <= 1000',
+    allowedLanguages: ['sql'],
+    starterCode: {
+      sql: `-- Write your SQL query here\n`,
+    },
+    examples: [
+      {
+        input: `CREATE TABLE sales (id INT, salesperson TEXT, amount INT);
+INSERT INTO sales VALUES (1, 'Sarah', 600);
+INSERT INTO sales VALUES (2, 'Alex', 400);
+INSERT INTO sales VALUES (3, 'Sarah', 800);
+INSERT INTO sales VALUES (4, 'Alex', 500);
+INSERT INTO sales VALUES (5, 'John', 300);`,
+        output: `Sarah|1400`,
+        explanation: 'Sarah total = 1400 (>= 1000), Alex total = 900 (< 1000), John total = 300 (< 1000).',
+      },
+    ],
+    testCases: [
+      {
+        input: `CREATE TABLE sales (id INT, salesperson TEXT, amount INT);
+INSERT INTO sales VALUES (1, 'Sarah', 600);
+INSERT INTO sales VALUES (2, 'Alex', 400);
+INSERT INTO sales VALUES (3, 'Sarah', 800);
+INSERT INTO sales VALUES (4, 'Alex', 500);
+INSERT INTO sales VALUES (5, 'John', 300);`,
+        expectedOutput: `Sarah|1400`,
+        isHidden: false,
+        marks: 0,
+      },
+      {
+        input: `CREATE TABLE sales (id INT, salesperson TEXT, amount INT);
+INSERT INTO sales VALUES (1, 'Emma', 1200);
+INSERT INTO sales VALUES (2, 'Liam', 700);
+INSERT INTO sales VALUES (3, 'Liam', 800);
+INSERT INTO sales VALUES (4, 'Noah', 200);`,
+        expectedOutput: `Liam|1500
+Emma|1200`,
+        isHidden: true,
+        marks: 5,
+      },
+      {
+        input: `CREATE TABLE sales (id INT, salesperson TEXT, amount INT);
+INSERT INTO sales VALUES (1, 'Dave', 100);
+INSERT INTO sales VALUES (2, 'Dave', 200);`,
+        expectedOutput: ``,
+        isHidden: true,
+        marks: 5,
+      },
+    ],
+  },
+  {
+    title: 'Employees Earning Above Average',
+    description: 'Write an SQL query to select the "name" and "salary" of all employees from the "employees" table who earn strictly more than the overall average company salary (salary > (SELECT AVG(salary) FROM employees)). Order by salary descending.',
+    type: 'CODING',
+    difficulty: 'MEDIUM',
+    marks: 10,
+    inputFormat: 'Pre-populated "employees" table with columns: id (INT), name (TEXT), department (TEXT), salary (INT).',
+    outputFormat: 'Print name and salary separated by | for each employee earning above average, ordered by salary DESC.',
+    constraints: '1 <= rows <= 1000',
+    allowedLanguages: ['sql'],
+    starterCode: {
+      sql: `-- Write your SQL query here\n`,
+    },
+    examples: [
+      {
+        input: `CREATE TABLE employees (id INT, name TEXT, department TEXT, salary INT);
+INSERT INTO employees VALUES (1, 'Alice', 'Engineering', 70000);
+INSERT INTO employees VALUES (2, 'Bob', 'Marketing', 40000);
+INSERT INTO employees VALUES (3, 'Charlie', 'Engineering', 90000);
+INSERT INTO employees VALUES (4, 'Diana', 'HR', 40000);`,
+        output: `Charlie|90000
+Alice|70000`,
+        explanation: 'Company average salary is (70000 + 40000 + 90000 + 40000) / 4 = 60000. Charlie and Alice earn > 60000.',
+      },
+    ],
+    testCases: [
+      {
+        input: `CREATE TABLE employees (id INT, name TEXT, department TEXT, salary INT);
+INSERT INTO employees VALUES (1, 'Alice', 'Engineering', 70000);
+INSERT INTO employees VALUES (2, 'Bob', 'Marketing', 40000);
+INSERT INTO employees VALUES (3, 'Charlie', 'Engineering', 90000);
+INSERT INTO employees VALUES (4, 'Diana', 'HR', 40000);`,
+        expectedOutput: `Charlie|90000
+Alice|70000`,
+        isHidden: false,
+        marks: 0,
+      },
+      {
+        input: `CREATE TABLE employees (id INT, name TEXT, department TEXT, salary INT);
+INSERT INTO employees VALUES (1, 'Mark', 'Sales', 50000);
+INSERT INTO employees VALUES (2, 'Lucy', 'Sales', 50000);
+INSERT INTO employees VALUES (3, 'Tom', 'Sales', 80000);`,
+        expectedOutput: `Tom|80000`,
+        isHidden: true,
+        marks: 5,
+      },
+      {
+        input: `CREATE TABLE employees (id INT, name TEXT, department TEXT, salary INT);
+INSERT INTO employees VALUES (1, 'Eve', 'Design', 60000);
+INSERT INTO employees VALUES (2, 'Frank', 'Design', 60000);`,
+        expectedOutput: ``,
+        isHidden: true,
+        marks: 5,
+      },
+    ],
+  },
+  {
+    title: 'Department Highest Salary',
+    description: 'Write an SQL query to retrieve the "department" and the maximum salary (MAX(salary)) in each department from the "employees" table. Group by department and order by department ascending.',
+    type: 'CODING',
+    difficulty: 'EASY',
+    marks: 10,
+    inputFormat: 'Pre-populated "employees" table with columns: id (INT), name (TEXT), department (TEXT), salary (INT).',
+    outputFormat: 'Print department and maximum salary separated by | for each department, ordered by department ASC.',
+    constraints: '1 <= rows <= 1000',
+    allowedLanguages: ['sql'],
+    starterCode: {
+      sql: `-- Write your SQL query here\n`,
+    },
+    examples: [
+      {
+        input: `CREATE TABLE employees (id INT, name TEXT, department TEXT, salary INT);
+INSERT INTO employees VALUES (1, 'Alice', 'Engineering', 80000);
+INSERT INTO employees VALUES (2, 'Bob', 'Marketing', 55000);
+INSERT INTO employees VALUES (3, 'Charlie', 'Engineering', 95000);
+INSERT INTO employees VALUES (4, 'Diana', 'Marketing', 60000);
+INSERT INTO employees VALUES (5, 'Evan', 'HR', 50000);`,
+        output: `Engineering|95000
+HR|50000
+Marketing|60000`,
+        explanation: 'Max salary in Engineering is 95000, HR is 50000, Marketing is 60000.',
+      },
+    ],
+    testCases: [
+      {
+        input: `CREATE TABLE employees (id INT, name TEXT, department TEXT, salary INT);
+INSERT INTO employees VALUES (1, 'Alice', 'Engineering', 80000);
+INSERT INTO employees VALUES (2, 'Bob', 'Marketing', 55000);
+INSERT INTO employees VALUES (3, 'Charlie', 'Engineering', 95000);
+INSERT INTO employees VALUES (4, 'Diana', 'Marketing', 60000);
+INSERT INTO employees VALUES (5, 'Evan', 'HR', 50000);`,
+        expectedOutput: `Engineering|95000
+HR|50000
+Marketing|60000`,
+        isHidden: false,
+        marks: 0,
+      },
+      {
+        input: `CREATE TABLE employees (id INT, name TEXT, department TEXT, salary INT);
+INSERT INTO employees VALUES (1, 'Zach', 'Finance', 72000);
+INSERT INTO employees VALUES (2, 'Yara', 'Finance', 85000);
+INSERT INTO employees VALUES (3, 'Xavier', 'Legal', 91000);`,
+        expectedOutput: `Finance|85000
+Legal|91000`,
+        isHidden: true,
+        marks: 5,
+      },
+      {
+        input: `CREATE TABLE employees (id INT, name TEXT, department TEXT, salary INT);
+INSERT INTO employees VALUES (10, 'Solo', 'Admin', 45000);`,
+        expectedOutput: `Admin|45000`,
+        isHidden: true,
+        marks: 5,
+      },
+    ],
+  },
 ];
 
 export async function ensurePracticeQuestionsExist(adminId) {
@@ -437,6 +883,9 @@ export async function ensurePracticeQuestionsExist(adminId) {
   for (const qDef of PRACTICE_QUESTIONS) {
     const existing = await Question.findOne({ title: qDef.title });
     let questionId;
+
+    const targetAllowed = qDef.allowedLanguages || (qDef.type === 'CODING' ? CODING_LANGUAGES : []);
+    const targetStarterCode = qDef.starterCode || DEFAULT_STARTER_CODE;
 
     if (!existing) {
       const qData = {
@@ -449,8 +898,8 @@ export async function ensurePracticeQuestionsExist(adminId) {
         outputFormat: qDef.outputFormat || '',
         constraints: qDef.constraints || '',
         examples: qDef.examples || [],
-        allowedLanguages: qDef.allowedLanguages || SUPPORTED_LANGUAGES,
-        starterCode: qDef.starterCode || DEFAULT_STARTER_CODE,
+        allowedLanguages: targetAllowed,
+        starterCode: targetStarterCode,
         timeLimit: 2,
         memoryLimit: 256,
         comparisonMode: 'TRIMMED',
@@ -469,10 +918,37 @@ export async function ensurePracticeQuestionsExist(adminId) {
     } else {
       questionId = existing._id;
       existingCount++;
-      if (qDef.allowedLanguages && JSON.stringify(existing.allowedLanguages) !== JSON.stringify(qDef.allowedLanguages)) {
-        existing.allowedLanguages = qDef.allowedLanguages;
-        if (qDef.starterCode) existing.starterCode = qDef.starterCode;
+
+      // Synchronize allowedLanguages and starterCode on existing questions
+      // so C, C++, and multi-language support is immediately available
+      let changed = false;
+      const currentAllowed = existing.allowedLanguages || [];
+      const hasAllTarget = targetAllowed.every((l) => currentAllowed.includes(l));
+      if (!hasAllTarget || currentAllowed.length !== targetAllowed.length) {
+        existing.allowedLanguages = targetAllowed;
+        changed = true;
+      }
+
+      if (!existing.starterCode) {
+        existing.starterCode = new Map();
+        changed = true;
+      }
+
+      for (const lang of targetAllowed) {
+        const code = targetStarterCode[lang] || DEFAULT_STARTER_CODE[lang] || '';
+        if (code && (!existing.starterCode.get || !existing.starterCode.get(lang))) {
+          if (typeof existing.starterCode.set === 'function') {
+            existing.starterCode.set(lang, code);
+          } else {
+            existing.starterCode[lang] = code;
+          }
+          changed = true;
+        }
+      }
+
+      if (changed) {
         await existing.save();
+        console.log(`[Practice Seeder] Updated languages for "${existing.title}" to [${targetAllowed.join(', ')}]`);
       }
     }
 

@@ -1,5 +1,6 @@
 // Supported languages: Java, Python, JavaScript, C, C++, and SQL
 export const SUPPORTED_LANGUAGES = ['java', 'python', 'javascript', 'c', 'cpp', 'sql'];
+export const CODING_LANGUAGES = ['java', 'python', 'javascript', 'c', 'cpp'];
 
 export const DEFAULT_STARTER_CODE = {
   java: `import java.util.*;

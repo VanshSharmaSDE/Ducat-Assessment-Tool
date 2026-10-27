@@ -77,6 +77,33 @@ export async function seedPracticeExams(exitOnComplete = false) {
       questionTitles: ['Select All Records', 'Filter with WHERE', 'Aggregation'],
       passingMarks: 12,
     },
+    {
+      title: 'Practice 7: C & C++ Core Programming',
+      description: 'Hone low-level algorithms, bitwise manipulations, array pointer operations, and sequential scanning using C and C++ compilers.',
+      difficulty: 'INTERMEDIATE',
+      duration: 45,
+      instructions: 'Solve core algorithmic challenges using C (gcc) or C++ (g++ 17). Ensure correct header includes, standard input/output formatting, and edge-case handling.',
+      questionTitles: ['Count Set Bits', 'Reverse an Array', 'Check If Array Is Sorted'],
+      passingMarks: 12,
+    },
+    {
+      title: 'Practice 8: SQL Joins & Multi-Table Queries',
+      description: 'Practice relational joins including INNER JOIN, LEFT JOIN, and multi-table filtering with aggregation in SQLite sandboxes.',
+      difficulty: 'INTERMEDIATE',
+      duration: 45,
+      instructions: 'Write SQL join queries across multiple related tables. Pay attention to join keys, table aliases, and column projection.',
+      questionTitles: ['Inner Join Employees and Departments', 'Left Join Customers and Order Counts', 'Multi-Table Join with Filtering'],
+      passingMarks: 12,
+    },
+    {
+      title: 'Practice 9: SQL Aggregations, Having & Subqueries',
+      description: 'Master advanced SQL filtering with HAVING clauses, scalar subqueries, and group-wise statistical aggregations in SQLite.',
+      difficulty: 'INTERMEDIATE',
+      duration: 45,
+      instructions: 'Construct advanced analytical queries using GROUP BY, HAVING, subqueries, and aggregate functions against SQLite.',
+      questionTitles: ['Filter Aggregates with HAVING', 'Employees Earning Above Average', 'Department Highest Salary'],
+      passingMarks: 12,
+    },
   ];
 
   console.log(`Seeding ${practicePacks.length} practice exams...`);

@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { connectDB } from '../config/db.js';
 import { Question } from '../models/Question.js';
-import { SUPPORTED_LANGUAGES, DEFAULT_STARTER_CODE } from '../utils/starterCode.js';
+import { SUPPORTED_LANGUAGES, CODING_LANGUAGES, DEFAULT_STARTER_CODE } from '../utils/starterCode.js';
 
 async function migrate() {
   await connectDB();
@@ -17,16 +17,16 @@ async function migrate() {
       continue;
     }
 
-    // Ensure all supported coding languages are allowed
-    const hasAll = SUPPORTED_LANGUAGES.every((l) => currentAllowed.includes(l));
-    if (!hasAll) {
-      q.allowedLanguages = SUPPORTED_LANGUAGES;
+    // Ensure all supported coding languages are allowed (C, C++, Java, Python, JavaScript)
+    const hasAll = CODING_LANGUAGES.every((l) => currentAllowed.includes(l));
+    if (!hasAll || currentAllowed.includes('sql')) {
+      q.allowedLanguages = CODING_LANGUAGES;
       changed = true;
     }
 
-    // Ensure starterCode Map has templates for all 3
+    // Ensure starterCode Map has templates for all coding languages
     if (!q.starterCode) q.starterCode = new Map();
-    for (const lang of SUPPORTED_LANGUAGES) {
+    for (const lang of CODING_LANGUAGES) {
       if (!q.starterCode.get(lang)) {
         q.starterCode.set(lang, DEFAULT_STARTER_CODE[lang]);
         changed = true;
@@ -35,7 +35,7 @@ async function migrate() {
 
     if (changed) {
       await q.save();
-      console.log(`Updated question: "${q.title}" with Java, Python, and JavaScript support.`);
+      console.log(`Updated question: "${q.title}" with C, C++, Java, Python, and JavaScript support.`);
     }
   }
 
