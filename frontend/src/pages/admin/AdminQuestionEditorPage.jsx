@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Shield,
   Eye,
+  EyeOff,
   FileCode,
   Terminal,
   Clock,
