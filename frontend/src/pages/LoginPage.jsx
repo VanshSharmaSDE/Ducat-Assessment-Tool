@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useModal } from '../context/ModalContext';
 import {
   Eye,
   EyeOff,
@@ -16,6 +17,7 @@ import loginBg from '../assets/login-bg.jpg';
 export default function LoginPage() {
   const { user, login } = useAuth();
   const { isDark, toggleTheme } = useTheme();
+  const { showAlert } = useModal();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -43,6 +45,19 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!identifier.trim()) {
+      const msg = 'Please enter your Student ID, Faculty ID, or Email address.';
+      setError(msg);
+      showAlert({ title: 'Credentials Required', message: msg, type: 'warning' });
+      return;
+    }
+    if (!password) {
+      const msg = 'Please enter your account password.';
+      setError(msg);
+      showAlert({ title: 'Password Required', message: msg, type: 'warning' });
+      return;
+    }
+
     setError('');
     setLoading(true);
 
@@ -58,7 +73,13 @@ export default function LoginPage() {
         navigate(target, { replace: true });
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid Student ID, Faculty ID, or password');
+      const msg = err.response?.data?.message || 'Invalid Student ID, Faculty ID, or password';
+      setError(msg);
+      showAlert({
+        title: 'Authentication Failed',
+        message: msg,
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }

@@ -135,12 +135,14 @@ export default function UserResultsPage() {
                   {/* Score pill */}
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
                     <span className="text-xs text-slate-500 dark:text-slate-400">
-                      {isOngoing ? 'Status:' : 'Final Score:'}
+                      {isOngoing ? 'Status:' : isEvaluating ? 'Progress:' : 'Final Score:'}
                     </span>
                     <span className="text-sm font-bold text-slate-800 dark:text-slate-100 font-mono">
                       {isOngoing
                         ? 'Assessment In Progress'
-                        : `${res.totalScore} / ${res.maxScore} (${res.percentage}%)`}
+                        : isEvaluating
+                        ? 'Evaluating in Queue...'
+                        : `${res.totalScore ?? 0} / ${res.maxScore} (${res.percentage}%)`}
                     </span>
                   </div>
                 </div>

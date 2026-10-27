@@ -207,16 +207,44 @@ export default function AdminMcqQuestionsPage() {
       });
       setShowExcelModal(false);
       setExcelFile(null);
-      await showAlert({
-        title: 'Upload Successful',
-        message: res.data.message || `Successfully imported MCQ questions from Excel file.`,
-        type: 'success',
-      });
+
+      const imported = res.data?.importedCount ?? res.data?.data?.importedCount ?? 0;
+      const errors = res.data?.errors || res.data?.data?.errors || [];
+
+      let errorSummary = '';
+      if (errors && errors.length > 0) {
+        const displayLimit = 5;
+        const displayedErrors = errors.slice(0, displayLimit);
+        errorSummary = `\n\nSpecific Errors:\n• ${displayedErrors.join('\n• ')}${errors.length > displayLimit ? `\n...and ${errors.length - displayLimit} more error(s)` : ''}`;
+      }
+
+      if (imported === 0 && errors.length > 0) {
+        await showAlert({
+          title: 'MCQ Import Failed',
+          message: `Failed to import MCQ questions from Excel spreadsheet.${errorSummary}`,
+          type: 'error',
+        });
+      } else if (errors.length > 0) {
+        await showAlert({
+          title: 'Import Completed with Warnings',
+          message: `Imported ${imported} MCQ question(s), but ${errors.length} row(s) had errors.${errorSummary}`,
+          type: 'warning',
+        });
+      } else {
+        await showAlert({
+          title: 'Upload Successful',
+          message: res.data.message || `Successfully imported ${imported} MCQ question(s)!`,
+          type: 'success',
+        });
+      }
       loadQuestions();
     } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to process Excel upload';
+      const details = err.response?.data?.errors;
+      const detailStr = Array.isArray(details) && details.length > 0 ? `\n\nDetails:\n• ${details.slice(0, 5).join('\n• ')}` : '';
       await showAlert({
         title: 'Upload Processing Failed',
-        message: err.response?.data?.message || 'Failed to process Excel upload',
+        message: `${errorMsg}${detailStr}`,
         type: 'error',
       });
     } finally {

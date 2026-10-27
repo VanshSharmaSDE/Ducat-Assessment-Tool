@@ -86,6 +86,17 @@ export function ModalProvider({ children }) {
     });
   }, []);
 
+  // Handle global custom events for showing modals anywhere in the app
+  useEffect(() => {
+    const handleGlobalAlert = (e) => {
+      if (e?.detail) {
+        showAlert(e.detail);
+      }
+    };
+    window.addEventListener('app:show-alert', handleGlobalAlert);
+    return () => window.removeEventListener('app:show-alert', handleGlobalAlert);
+  }, [showAlert]);
+
   const showConfirm = useCallback((optionsOrMessage, optionsOverride = {}) => {
     return new Promise((resolve) => {
       resolveRef.current = resolve;
@@ -243,4 +254,14 @@ export function useModal() {
     throw new Error('useModal must be used within a ModalProvider');
   }
   return context;
+}
+
+export function showGlobalAlert(optionsOrMessage, type = 'info') {
+  if (typeof optionsOrMessage === 'string') {
+    window.dispatchEvent(
+      new CustomEvent('app:show-alert', { detail: { message: optionsOrMessage, type } })
+    );
+  } else {
+    window.dispatchEvent(new CustomEvent('app:show-alert', { detail: optionsOrMessage }));
+  }
 }

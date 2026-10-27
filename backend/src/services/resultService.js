@@ -17,16 +17,17 @@ export class ResultService {
 
     return attempts.map((att) => {
       const isTerminated = att.status === 'TERMINATED' || att.resultStatus === 'TERMINATED';
+      const isEvaluating = att.status === 'EVALUATING';
       return {
         _id: att._id,
         exam: att.examId,
         startedAt: att.startedAt,
         submittedAt: att.submittedAt,
         status: isTerminated ? 'TERMINATED' : att.status,
-        totalScore: att.totalScore,
+        totalScore: isEvaluating ? null : att.totalScore,
         maxScore: att.maxScore,
-        percentage: att.percentage,
-        resultStatus: isTerminated ? 'TERMINATED' : att.resultStatus,
+        percentage: isEvaluating ? null : att.percentage,
+        resultStatus: isTerminated ? 'TERMINATED' : (isEvaluating ? 'EVALUATING' : att.resultStatus),
         terminationReason: att.terminationReason || (isTerminated ? `Terminated due to exceeding proctoring violations limit (${att.violationCount || 0} violations).` : ''),
         violationCount: att.violationCount,
       };
@@ -210,29 +211,34 @@ export class ResultService {
       };
     });
 
-    // Self-healing for maxScore and resultStatus if attempt was saved out of sync
+    const isTerminated = attempt.status === 'TERMINATED' || attempt.resultStatus === 'TERMINATED';
+    const isOngoing = attempt.status === 'IN_PROGRESS';
+    const isEvaluating = attempt.status === 'EVALUATING';
+
+    // Self-healing for maxScore and resultStatus if attempt was saved out of sync (ONLY when fully EVALUATED)
     const questionMarksSum = (exam?.questions || []).reduce((acc, q) => acc + Number(q.marks || 0), 0);
     const expectedMax = questionMarksSum > 0 ? questionMarksSum : (exam?.totalMarks || 100);
 
-    if (expectedMax > 0 && (attempt.maxScore !== expectedMax || (!attempt.totalScore && submissionResults.length > 0))) {
-      let calcScore = 0;
-      submissionResults.forEach((r) => { calcScore += r.score || 0; });
-      attempt.totalScore = calcScore;
-      attempt.maxScore = expectedMax;
-      attempt.percentage = expectedMax > 0 ? +((calcScore / expectedMax) * 100).toFixed(2) : 0;
-      if (!isTerminated && !isOngoing) {
+    if (expectedMax > 0 && !isOngoing && !isEvaluating && !isTerminated) {
+      if (attempt.maxScore !== expectedMax || (!attempt.totalScore && submissionResults.length > 0)) {
+        let calcScore = 0;
+        submissionResults.forEach((r) => { calcScore += r.score || 0; });
+        calcScore = Math.round(calcScore * 100) / 100;
+        attempt.totalScore = calcScore;
+        attempt.maxScore = expectedMax;
+        attempt.percentage = expectedMax > 0 ? +((calcScore / expectedMax) * 100).toFixed(2) : 0;
         attempt.resultStatus = calcScore >= (exam?.passingMarks || 0) ? 'PASS' : 'FAIL';
+        await attempt.save().catch(() => {});
       }
-      await attempt.save().catch(() => {});
     }
 
-    const isTerminated = attempt.status === 'TERMINATED' || attempt.resultStatus === 'TERMINATED';
-    const isOngoing = attempt.status === 'IN_PROGRESS';
     let resolvedResultStatus = attempt.resultStatus;
     if (isTerminated) {
       resolvedResultStatus = 'TERMINATED';
     } else if (isOngoing) {
       resolvedResultStatus = 'ONGOING';
+    } else if (isEvaluating) {
+      resolvedResultStatus = 'EVALUATING';
     }
 
     const resolvedReason =
@@ -445,11 +451,14 @@ export class ResultService {
     const enrichedResults = attempts.map((att) => {
       const isTerminated = att.status === 'TERMINATED' || att.resultStatus === 'TERMINATED';
       const isOngoing = att.status === 'IN_PROGRESS';
+      const isEvaluating = att.status === 'EVALUATING';
       let calculatedResultStatus = att.resultStatus;
       if (isTerminated) {
         calculatedResultStatus = 'TERMINATED';
       } else if (isOngoing) {
         calculatedResultStatus = 'ONGOING';
+      } else if (isEvaluating) {
+        calculatedResultStatus = 'EVALUATING';
       }
       return {
         ...att.toJSON(),

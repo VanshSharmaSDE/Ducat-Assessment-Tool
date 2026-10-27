@@ -218,7 +218,7 @@ export default function ResultDetailPage() {
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Candidate Score</span>
             <div className="flex items-baseline gap-2 mt-2">
               <span className="text-4xl font-extrabold text-slate-800 dark:text-slate-100 font-mono">
-                {isOngoing ? '—' : attempt.totalScore}
+                {isOngoing ? '—' : isEvaluating ? 'Evaluating...' : (attempt.totalScore ?? 0)}
               </span>
               <span className="text-xl font-medium text-slate-500 dark:text-slate-400 font-mono">/ {attempt.maxScore}</span>
             </div>
@@ -232,13 +232,32 @@ export default function ResultDetailPage() {
                   ? 'bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800'
                   : isOngoing
                   ? 'bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-800'
+                  : isEvaluating
+                  ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800'
                   : isPass
                   ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
                   : 'bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800'
               }`}
             >
-              {isTerminated ? <XCircle className="w-4 h-4" /> : isOngoing ? <Clock className="w-4 h-4" /> : isPass ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-              {isTerminated ? 'TERMINATED' : isOngoing ? 'ONGOING' : attempt.resultStatus} ({isOngoing ? 'In Progress' : `${attempt.percentage}%`})
+              {isTerminated ? (
+                <XCircle className="w-4 h-4" />
+              ) : isOngoing ? (
+                <Clock className="w-4 h-4" />
+              ) : isEvaluating ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : isPass ? (
+                <CheckCircle2 className="w-4 h-4" />
+              ) : (
+                <XCircle className="w-4 h-4" />
+              )}
+              {isTerminated
+                ? 'TERMINATED'
+                : isOngoing
+                ? 'ONGOING'
+                : isEvaluating
+                ? 'EVALUATING IN QUEUE'
+                : attempt.resultStatus}{' '}
+              ({isOngoing ? 'In Progress' : isEvaluating ? 'In Queue' : `${attempt.percentage}%`})
             </span>
           </div>
         </div>

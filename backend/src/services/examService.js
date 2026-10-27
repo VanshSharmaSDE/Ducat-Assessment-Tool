@@ -682,10 +682,10 @@ export class ExamService {
       throw error;
     }
 
-    // Grace period of 45 seconds for network latency
-    const graceMs = 45000;
+    // Grace period of 120 seconds for high-concurrency network latency
+    const graceMs = 120000;
     const now = new Date();
-    if (now.getTime() > new Date(attempt.endTime).getTime() + graceMs) {
+    if (now.getTime() > new Date(attempt.endTime).getTime() + graceMs && (!answers || answers.length === 0)) {
       attempt.status = 'EXPIRED';
       const { checkAndFinalizeExamAttempt } = await import('../workers/evaluationWorker.js');
       await checkAndFinalizeExamAttempt(attempt._id);

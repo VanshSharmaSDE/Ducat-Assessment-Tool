@@ -150,6 +150,24 @@ export default function AdminQuestionEditorPage() {
       return;
     }
 
+    // Require at least one public and one hidden test case for coding problems
+    const publicCases = testCases.filter((tc) => !tc.isHidden);
+    const hiddenCases = testCases.filter((tc) => tc.isHidden);
+
+    if (publicCases.length === 0 || hiddenCases.length === 0) {
+      const missing = [];
+      if (publicCases.length === 0) missing.push('at least one Public Test Case (Unhidden)');
+      if (hiddenCases.length === 0) missing.push('at least one Hidden Test Case (Private)');
+      const errorMsg = `Coding problems require ${missing.join(' and ')} for automated judging. Please add the required test cases in the Test Suite Management section below.`;
+      setError(errorMsg);
+      await showAlert({
+        title: 'Mandatory Test Cases Required',
+        message: errorMsg,
+        type: 'warning',
+      });
+      return;
+    }
+
     const isNew = !isEditing;
     const confirmed = await showConfirm({
       title: isNew ? 'Create Coding Problem' : 'Update Coding Problem',
@@ -662,40 +680,57 @@ export default function AdminQuestionEditorPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                <Shield className="w-4 h-4 text-blue-600" /> Test Suite Management (Unhidden & Hidden Cases)
+                <Shield className="w-4 h-4 text-blue-600" /> Test Suite Management (Public & Hidden Cases)
               </h2>
               <p className="text-xs text-slate-500 mt-1">
-                Configure test cases for automated code judging. Test cases are optional; problems can be saved without test cases and configured later.
+                Configure test cases for automated code judging. Every coding problem requires at least <strong className="text-slate-800">1 Public</strong> and <strong className="text-slate-800">1 Hidden (Private)</strong> test case.
               </p>
             </div>
 
             {/* Test Case Status Badges */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
                 testCases.filter((tc) => !tc.isHidden).length > 0
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  : 'bg-slate-100 text-slate-600 border border-slate-200'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-amber-50 text-amber-700 border-amber-300 animate-pulse'
               }`}>
                 {testCases.filter((tc) => !tc.isHidden).length > 0 ? (
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                 ) : (
-                  <Eye className="w-3.5 h-3.5 text-slate-400" />
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
                 )}
                 Public Cases ({testCases.filter((tc) => !tc.isHidden).length})
+                {testCases.filter((tc) => !tc.isHidden).length === 0 && (
+                  <span className="text-[10px] text-amber-600 uppercase font-black ml-1">(Required)</span>
+                )}
               </span>
 
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
                 testCases.filter((tc) => tc.isHidden).length > 0
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  : 'bg-slate-100 text-slate-600 border border-slate-200'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-amber-50 text-amber-700 border-amber-300 animate-pulse'
               }`}>
                 {testCases.filter((tc) => tc.isHidden).length > 0 ? (
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                 ) : (
-                  <EyeOff className="w-3.5 h-3.5 text-slate-400" />
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
                 )}
                 Hidden Cases ({testCases.filter((tc) => tc.isHidden).length})
+                {testCases.filter((tc) => tc.isHidden).length === 0 && (
+                  <span className="text-[10px] text-amber-600 uppercase font-black ml-1">(Required)</span>
+                )}
               </span>
+            </div>
+          </div>
+
+          {/* Policy Banner for Faculty & Admin */}
+          <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs flex items-start gap-3">
+            <AlertCircle className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-bold text-blue-950">Mandatory Policy for Faculty & Admins:</p>
+              <p className="text-blue-800 leading-relaxed">
+                Automated Docker evaluation requires <strong>at least one Public Test Case</strong> (visible to candidates during testing) and <strong>at least one Hidden Test Case</strong> (used for secure automated evaluation without revealing outputs). Problems cannot be submitted without meeting this requirement.
+              </p>
             </div>
           </div>
 

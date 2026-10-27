@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../api/axios';
+import { useModal } from '../context/ModalContext';
 import {
   ShieldAlert,
   Clock,
@@ -19,6 +20,7 @@ import {
 export default function ExamInstructionPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { showAlert } = useModal();
 
   const [exam, setExam] = useState(null);
   const [activeAttempt, setActiveAttempt] = useState(null);
@@ -55,7 +57,13 @@ export default function ExamInstructionPage() {
         setExam(res.data.data.exam);
         setActiveAttempt(res.data.data.activeAttempt);
       } catch (err) {
-        setError('Failed to load examination details.');
+        const msg = err.response?.data?.message || 'Failed to load examination details.';
+        setError(msg);
+        showAlert({
+          title: 'Error Loading Examination',
+          message: msg,
+          type: 'error',
+        });
       } finally {
         setLoading(false);
       }
@@ -64,10 +72,41 @@ export default function ExamInstructionPage() {
   }, [id]);
 
   const handleStartExam = async () => {
-    if (!agreed || isAlreadyTaken || isLimitReached) return;
+    if (!agreed) {
+      await showAlert({
+        title: 'Agreement Required',
+        message: 'Please review and accept the instructions and honor code by checking the checkbox below.',
+        type: 'warning',
+      });
+      return;
+    }
+
+    if (isAlreadyTaken) {
+      await showAlert({
+        title: 'Exam Already Completed',
+        message: 'You have already submitted or completed this examination. You cannot re-attempt it.',
+        type: 'warning',
+      });
+      return;
+    }
+
+    if (isLimitReached) {
+      await showAlert({
+        title: 'Attempt Limit Reached',
+        message: 'You have reached the maximum allowed attempts for this practice test.',
+        type: 'warning',
+      });
+      return;
+    }
 
     if (exam?.restrictToLaptop && isSmallScreen) {
-      setError('This exam is restricted to laptop/desktop screens only (width ≥ 1024px). Please open on a laptop or maximize your browser window.');
+      const msg = 'This exam is restricted to laptop/desktop screens only (screen width ≥ 1024px). Please open on a laptop or maximize your browser window.';
+      setError(msg);
+      await showAlert({
+        title: 'Desktop / Laptop Required',
+        message: msg,
+        type: 'error',
+      });
       return;
     }
 
@@ -109,12 +148,21 @@ export default function ExamInstructionPage() {
         }
       } catch (e) {}
 
-      const msg = err.response?.data?.message || '';
-      if (msg.toLowerCase().includes('already') || err.response?.data?.errorCode === 'ALREADY_SUBMITTED') {
-        setError('You already gave this exam. Please refresh your browser or check your assessment results.');
-      } else {
-        setError(msg || 'Failed to start exam. Check availability or existing attempts.');
+      const rawMsg = err.response?.data?.message || '';
+      let displayMsg = rawMsg || 'Failed to start exam. Check availability or existing attempts.';
+      let alertTitle = 'Cannot Start Examination';
+
+      if (rawMsg.toLowerCase().includes('already') || err.response?.data?.errorCode === 'ALREADY_SUBMITTED') {
+        displayMsg = 'You have already given or submitted this exam. Please check your assessment results.';
+        alertTitle = 'Exam Already Submitted';
       }
+
+      setError(displayMsg);
+      await showAlert({
+        title: alertTitle,
+        message: displayMsg,
+        type: 'error',
+      });
       setStarting(false);
     }
   };

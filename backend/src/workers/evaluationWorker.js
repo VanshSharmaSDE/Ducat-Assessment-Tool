@@ -14,6 +14,7 @@ import { isUnattemptedCode } from '../utils/starterCode.js';
 export async function processSubmissionJob(job) {
   const { submissionId, attemptId, questionId, language, sourceCode, jobId } = job.data;
   logger.info(`Processing submission job ${job.id || jobId} for submission ${submissionId}`);
+  let assignedMarks = 20;
 
   try {
     // 1. Mark status as RUNNING
@@ -39,7 +40,7 @@ export async function processSubmissionJob(job) {
 
     // Determine marks assigned to this question in the specific exam
     const attempt = await ExamAttempt.findById(attemptId);
-    let assignedMarks = question.marks || 20;
+    assignedMarks = question.marks || 20;
     if (attempt && attempt.examId) {
       const exam = await Exam.findById(attempt.examId);
       if (exam && Array.isArray(exam.questions)) {
@@ -198,17 +199,22 @@ export async function checkAndFinalizeExamAttempt(attemptId) {
     for (const res of results) {
       totalScore += res.score || 0;
     }
+    // Round to 2 decimal places to prevent float precision bugs (e.g. 9.999999999999 < 10)
+    totalScore = Math.round(totalScore * 100) / 100;
 
     const questionMarksSum = (exam.questions || []).reduce((acc, q) => acc + Number(q.marks || 0), 0);
     const maxScore = questionMarksSum > 0 ? questionMarksSum : (exam.totalMarks || 100);
     const percentage = maxScore > 0 ? +((totalScore / maxScore) * 100).toFixed(2) : 0;
     const resultStatus = totalScore >= (exam.passingMarks || 0) ? 'PASS' : 'FAIL';
 
+    const isTerminated = attempt.status === 'TERMINATED' || attempt.resultStatus === 'TERMINATED';
     attempt.totalScore = totalScore;
     attempt.maxScore = maxScore;
     attempt.percentage = percentage;
-    attempt.resultStatus = resultStatus;
-    attempt.status = 'EVALUATED';
+    if (!isTerminated) {
+      attempt.resultStatus = resultStatus;
+      attempt.status = 'EVALUATED';
+    }
     attempt.submittedAt = attempt.submittedAt || new Date();
     await attempt.save();
 

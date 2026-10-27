@@ -33,7 +33,7 @@ import {
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
-  const { showConfirm } = useModal();
+  const { showAlert, showConfirm } = useModal();
 
   const fileInputRef = useRef(null);
   const [pictureLoading, setPictureLoading] = useState(false);
@@ -112,12 +112,24 @@ export default function ProfilePage() {
 
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     if (!allowedTypes.includes(file.type.toLowerCase())) {
-      setPictureError('Invalid file format. Please upload a JPG, PNG, or WEBP image.');
+      const msg = 'Invalid file format. Please upload a JPG, PNG, or WEBP image.';
+      setPictureError(msg);
+      await showAlert({
+        title: 'Invalid File Format',
+        message: msg,
+        type: 'warning',
+      });
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setPictureError('File is too large. Maximum allowed size is 5MB.');
+      const msg = 'File is too large. Maximum allowed image size is 5MB.';
+      setPictureError(msg);
+      await showAlert({
+        title: 'Image Size Exceeded',
+        message: msg,
+        type: 'warning',
+      });
       return;
     }
 
@@ -139,9 +151,20 @@ export default function ProfilePage() {
         updateUser(res.data.data.user);
       }
       setPictureSuccess('Profile picture updated successfully');
+      await showAlert({
+        title: 'Profile Picture Updated',
+        message: 'Your profile picture has been updated successfully!',
+        type: 'success',
+      });
       setTimeout(() => setPictureSuccess(''), 4000);
     } catch (err) {
-      setPictureError(err.response?.data?.message || 'Failed to upload profile picture. Please try again.');
+      const msg = err.response?.data?.message || 'Failed to upload profile picture. Please try again.';
+      setPictureError(msg);
+      await showAlert({
+        title: 'Upload Failed',
+        message: msg,
+        type: 'error',
+      });
     } finally {
       setPictureLoading(false);
     }

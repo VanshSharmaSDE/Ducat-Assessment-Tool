@@ -647,17 +647,43 @@ export default function AdminUsersPage() {
       const imported = res.data?.importedCount ?? res.data?.data?.importedCount ?? 0;
       const updated = res.data?.updatedCount ?? res.data?.data?.updatedCount ?? 0;
       const failed = res.data?.failedCount ?? res.data?.data?.failedCount ?? 0;
+      const errors = res.data?.errors || res.data?.data?.errors || [];
 
-      await showAlert({
-        title: 'Upload Successful',
-        message: res.data?.message || `Processed candidates successfully! Created: ${imported}, Updated: ${updated}, Errors: ${failed}`,
-        type: failed > 0 ? 'warning' : 'success',
-      });
+      let errorSummary = '';
+      if (errors && errors.length > 0) {
+        const displayLimit = 6;
+        const displayedErrors = errors.slice(0, displayLimit);
+        errorSummary = `\n\nSpecific Errors:\n• ${displayedErrors.join('\n• ')}${errors.length > displayLimit ? `\n...and ${errors.length - displayLimit} more error(s)` : ''}`;
+      }
+
+      const totalProcessed = imported + updated;
+      if (totalProcessed === 0 && failed > 0) {
+        await showAlert({
+          title: 'Candidate Import Failed',
+          message: `Failed to import candidates from Excel spreadsheet.${errorSummary}`,
+          type: 'error',
+        });
+      } else if (failed > 0) {
+        await showAlert({
+          title: 'Import Completed with Errors',
+          message: `Imported: ${imported}, Updated: ${updated}, Failed: ${failed}.${errorSummary}`,
+          type: 'warning',
+        });
+      } else {
+        await showAlert({
+          title: 'Upload Successful',
+          message: `Successfully processed ${totalProcessed} candidate(s)! Created: ${imported}, Updated: ${updated}.`,
+          type: 'success',
+        });
+      }
       loadUsers();
     } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to process Excel upload';
+      const details = err.response?.data?.errors;
+      const detailStr = Array.isArray(details) && details.length > 0 ? `\n\nDetails:\n• ${details.slice(0, 6).join('\n• ')}` : '';
       await showAlert({
         title: 'Upload Processing Failed',
-        message: err.response?.data?.message || 'Failed to process Excel upload',
+        message: `${errorMsg}${detailStr}`,
         type: 'error',
       });
     } finally {

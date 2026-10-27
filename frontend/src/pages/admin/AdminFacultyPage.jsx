@@ -392,11 +392,24 @@ export default function AdminFacultyPage() {
       });
       setShowExcelModal(false);
       setExcelFile(null);
-      await showAlert({
-        title: 'Upload Successful',
-        message: res.data?.message || 'Faculty members uploaded successfully!',
-        type: 'success',
-      });
+      const serverErrors = res.data?.data?.errors || [];
+      const importedCount = res.data?.data?.importedCount ?? 0;
+
+      if (serverErrors.length > 0) {
+        const errorSummary = serverErrors.slice(0, 10).map((e) => `• ${e}`).join('\n');
+        const extra = serverErrors.length > 10 ? `\n...and ${serverErrors.length - 10} more errors.` : '';
+        await showAlert({
+          title: importedCount > 0 ? 'Partial Faculty Upload Completed' : 'Faculty Upload Completed With Errors',
+          message: `${res.data?.message || 'Processing finished.'}\n\nIssues encountered:\n${errorSummary}${extra}`,
+          type: importedCount > 0 ? 'warning' : 'error',
+        });
+      } else {
+        await showAlert({
+          title: 'Upload Successful',
+          message: res.data?.message || 'Faculty members uploaded successfully!',
+          type: 'success',
+        });
+      }
       loadFaculty();
     } catch (err) {
       await showAlert({

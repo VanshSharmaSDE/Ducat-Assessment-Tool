@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useParams, useNavigate } from "react-router-dom";
 import Editor from "@monaco-editor/react";
 import api from "../api/axios";
+import { showGlobalAlert } from "../context/ModalContext";
 import { useSocket } from "../context/SocketContext";
 import { useTheme } from "../context/ThemeContext";
 import logo from "../assets/logo.jpeg";
@@ -341,7 +342,13 @@ export default function CodingExamPage() {
         setVisitedQuestions(restoredVisited);
         setCurrentQIndex(restoredQIndex);
       } catch (err) {
-        setError(err.response?.data?.message || "Failed to load assessment.");
+        const msg = err.response?.data?.message || "Failed to load assessment.";
+        setError(msg);
+        showGlobalAlert({
+          title: "Assessment Load Error",
+          message: msg,
+          type: "error",
+        });
       } finally {
         setLoading(false);
       }
@@ -749,7 +756,13 @@ export default function CodingExamPage() {
     ).length;
     const allQuestionsVisited = totalQuestions > 0 && effectiveVisitedCount >= totalQuestions;
     if (!forced && !allQuestionsVisited) {
-      showToast(`Please visit all ${totalQuestions} questions before submitting assessment (${effectiveVisitedCount}/${totalQuestions} visited).`);
+      const msg = `Please visit all ${totalQuestions} questions before submitting assessment (${effectiveVisitedCount}/${totalQuestions} visited).`;
+      showToast(msg);
+      showGlobalAlert({
+        title: "Unvisited Questions",
+        message: msg,
+        type: "warning",
+      });
       return;
     }
 
@@ -791,9 +804,15 @@ export default function CodingExamPage() {
       // Navigate to evaluation waiting & results page
       navigate(`/results/${attemptRef.current._id}`);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to submit exam");
+      const msg = err.response?.data?.message || "Failed to submit exam. Please verify your connection and try again.";
+      setError(msg);
       setIsSubmitting(false);
       setShowSubmitModal(false);
+      showGlobalAlert({
+        title: "Submission Failed",
+        message: msg,
+        type: "error",
+      });
     }
   };
 

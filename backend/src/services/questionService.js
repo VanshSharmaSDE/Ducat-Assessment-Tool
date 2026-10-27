@@ -26,9 +26,23 @@ export class QuestionService {
       : [];
 
 
+    const qType = data.type || 'CODING';
+    if (qType === 'CODING') {
+      const cases = Array.isArray(data.testCases) ? data.testCases : [];
+      const hasPublic = cases.some((tc) => !tc.isHidden);
+      const hasHidden = cases.some((tc) => tc.isHidden);
+
+      if (!hasPublic || !hasHidden) {
+        const error = new Error('Coding questions require at least one public test case and at least one hidden (private) test case.');
+        error.statusCode = 400;
+        error.errorCode = 'TEST_CASES_REQUIRED';
+        throw error;
+      }
+    }
+
     const question = await Question.create({
       ...data,
-      type: data.type || 'CODING',
+      type: qType,
       examples: cleanedExamples,
       starterCode: starterCodeMap,
       createdBy: userId,

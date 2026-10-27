@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import api from '../../api/axios';
+import { useModal } from '../../context/ModalContext';
 import {
   FileCheck2,
   Settings,
@@ -37,6 +38,7 @@ const toLocalDatetimeInput = (dateVal) => {
 export default function AdminExamWizardPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { showAlert } = useModal();
   const isEditing = !!id;
 
   const [step, setStep] = useState(1);
@@ -188,7 +190,9 @@ export default function AdminExamWizardPage() {
           }
         }
       } catch (err) {
-        setError('Failed to load initial data');
+        const msg = err.response?.data?.message || 'Failed to load initial data';
+        setError(msg);
+        showAlert({ title: 'Error Loading Examination', message: msg, type: 'error' });
       } finally {
         setLoading(false);
       }
@@ -255,19 +259,27 @@ export default function AdminExamWizardPage() {
   const handleNextStep = () => {
     if (step === 1) {
       if (!formData.title?.trim()) {
-        setError('Assessment Title is required.');
+        const msg = 'Assessment Title is required.';
+        setError(msg);
+        showAlert({ title: 'Required Field Missing', message: msg, type: 'warning' });
         return;
       }
       if (!formData.organization?.trim()) {
-        setError('Please select a Target Organization for this examination.');
+        const msg = 'Please select a Target Organization for this examination.';
+        setError(msg);
+        showAlert({ title: 'Required Field Missing', message: msg, type: 'warning' });
         return;
       }
       if (!formData.targetTechnologies || formData.targetTechnologies.length === 0) {
-        setError('Please select at least one Target Technology for this examination.');
+        const msg = 'Please select at least one Target Technology for this examination.';
+        setError(msg);
+        showAlert({ title: 'Required Field Missing', message: msg, type: 'warning' });
         return;
       }
       if (!formData.targetBatches || formData.targetBatches.length === 0) {
-        setError('Please select at least one Target Batch for this examination.');
+        const msg = 'Please select at least one Target Batch for this examination.';
+        setError(msg);
+        showAlert({ title: 'Required Field Missing', message: msg, type: 'warning' });
         return;
       }
     }
@@ -276,33 +288,52 @@ export default function AdminExamWizardPage() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.title.trim()) {
-      setError('Please provide an assessment title.');
+    if (!formData.title?.trim()) {
+      const msg = 'Please provide an assessment title.';
+      setError(msg);
+      showAlert({ title: 'Validation Error', message: msg, type: 'warning' });
       setStep(1);
       return;
     }
 
     if (!formData.organization?.trim()) {
-      setError('Please select an Organization for this examination.');
+      const msg = 'Please select an Organization for this examination.';
+      setError(msg);
+      showAlert({ title: 'Validation Error', message: msg, type: 'warning' });
       setStep(1);
       return;
     }
 
     if (!formData.targetTechnologies || formData.targetTechnologies.length === 0) {
-      setError('Please select at least one Target Technology for this examination.');
+      const msg = 'Please select at least one Target Technology for this examination.';
+      setError(msg);
+      showAlert({ title: 'Validation Error', message: msg, type: 'warning' });
       setStep(1);
       return;
     }
 
     if (!formData.targetBatches || formData.targetBatches.length === 0) {
-      setError('Please select at least one Target Batch for this examination.');
+      const msg = 'Please select at least one Target Batch for this examination.';
+      setError(msg);
+      showAlert({ title: 'Validation Error', message: msg, type: 'warning' });
       setStep(1);
       return;
     }
 
     if (formData.questions.length === 0) {
-      setError('Please add at least one question.');
+      const msg = 'Please add at least one question to this examination.';
+      setError(msg);
+      showAlert({ title: 'No Questions Selected', message: msg, type: 'warning' });
       setStep(3);
+      return;
+    }
+
+    const calculatedTotal = formData.questions.reduce((sum, q) => sum + Number(q.marks || 0), 0);
+    if (Number(formData.passingMarks) > calculatedTotal && calculatedTotal > 0) {
+      const msg = `Passing marks (${formData.passingMarks}) cannot exceed the total marks of the questions (${calculatedTotal}). Please adjust passing marks or question marks.`;
+      setError(msg);
+      showAlert({ title: 'Invalid Passing Marks', message: msg, type: 'warning' });
+      setStep(2);
       return;
     }
 
@@ -334,7 +365,7 @@ export default function AdminExamWizardPage() {
           order: idx + 1,
           allowCodeRun: q.type === 'MCQ' ? false : (q.allowCodeRun !== undefined ? Boolean(q.allowCodeRun) : null),
         })),
-        totalMarks: formData.questions.reduce((sum, q) => sum + Number(q.marks || 0), 0) || Number(formData.totalMarks) || 100,
+        totalMarks: calculatedTotal || Number(formData.totalMarks) || 100,
       };
 
       if (isEditing) {
@@ -343,9 +374,17 @@ export default function AdminExamWizardPage() {
         await api.post('/admin/exams', payload);
       }
 
+      await showAlert({
+        title: 'Exam Saved Successfully',
+        message: isEditing ? 'The examination has been updated successfully.' : 'The examination has been created and published.',
+        type: 'success',
+      });
+
       navigate('/admin/exams');
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to save examination.');
+      const msg = err.response?.data?.message || 'Failed to save examination.';
+      setError(msg);
+      showAlert({ title: 'Failed to Save Exam', message: msg, type: 'error' });
       setSaving(false);
     }
   };
