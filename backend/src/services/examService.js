@@ -27,24 +27,20 @@ if (typeof setInterval !== 'undefined') {
 
 
 export class ExamService {
-  static async canStudentAccessExam(exam, studentUser) {
+  static async canStudentAccessExam(exam, studentUser, preloadedBatchDoc = null) {
     if (!studentUser) return false;
     // Practice exams are accessible to all students without restriction
     if (exam.isPractice) return true;
     // Admins and faculty have privileged access
     if (['ADMIN', 'FACULTY'].includes(studentUser.role)) return true;
 
-    // Determine who created this exam
-    const examCreatorId = String(exam.createdBy?._id || exam.createdBy || '');
-    let examCreator = exam.populated?.('createdBy') ? exam.createdBy : null;
-    if (!examCreator || !examCreator.role) {
-      examCreator = await User.findById(examCreatorId).select('role');
-    }
-    const isExamByAdmin = examCreator?.role === 'ADMIN';
+    // Check if exam is published / active
+    const isExamPublished = Boolean(exam.isPublished || exam.status === 'ACTIVE' || exam.status === 'UPCOMING');
+    if (!isExamPublished) return false;
 
     // Look up student's batch details (by batchId or batch name)
-    let batchDoc = null;
-    if (studentUser.batchId) {
+    let batchDoc = preloadedBatchDoc;
+    if (!batchDoc && studentUser.batchId) {
       batchDoc = await Batch.findById(studentUser.batchId);
     }
     if (!batchDoc && studentUser.batch && studentUser.batch.trim()) {
@@ -118,6 +114,14 @@ export class ExamService {
       return false;
     }
 
+    // Determine who created this exam
+    const examCreatorId = String(exam.createdBy?._id || exam.createdBy || '');
+    let examCreator = exam.populated?.('createdBy') ? exam.createdBy : null;
+    if (!examCreator || !examCreator.role) {
+      examCreator = await User.findById(examCreatorId).select('role');
+    }
+    const isExamByAdmin = examCreator?.role === 'ADMIN';
+
     // Creator / Assignment authorization:
     // 1. Admin exams are accessible across institution
     if (isExamByAdmin) return true;
@@ -152,201 +156,61 @@ export class ExamService {
   }
 
   static async getAvailableExams(userId, query = {}) {
-    const filter = { isPublished: true, isPractice: { $ne: true } };
-
     const student = await User.findById(userId).populate('createdBy', 'role name email');
-    if (student && student.role === 'USER') {
-      const assignedIds = (student.assignedFaculties || []).map((f) => String(f._id || f));
+    if (!student) return [];
 
-      // Admin exams are institution-wide and accessible to all eligible students
-      const adminIds = await User.find({ role: 'ADMIN' }).distinct('_id');
-      const allowedCreatorIds = [...adminIds.map(String)];
-
-      if (student.createdBy && student.createdBy.role === 'FACULTY') {
-        allowedCreatorIds.push(String(student.createdBy._id || student.createdBy));
-      }
-
-      // Imported / Assigned faculties: student can see exams created by faculties who imported them
-      if (assignedIds.length > 0) {
-        allowedCreatorIds.push(...assignedIds);
-      }
-
-      // Look up student's batch to include faculty who created or is assigned to the batch
-      let batchDoc = null;
-      if (student.batchId) {
-        batchDoc = await Batch.findById(student.batchId);
-      }
-      if (!batchDoc && student.batch && student.batch.trim()) {
-        const escapedBatch = student.batch.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-        const nameRegex = new RegExp(`^${escapedBatch}$`, 'i');
-        if (student.organization && student.organization.trim()) {
-          const escapedOrg = student.organization.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-          batchDoc = await Batch.findOne({
-            name: nameRegex,
-            organization: new RegExp(`^${escapedOrg}$`, 'i'),
-          });
-        }
-        if (!batchDoc) {
-          batchDoc = await Batch.findOne({ name: nameRegex });
-        }
-      }
-
-      if (batchDoc) {
-        if (batchDoc.createdBy) allowedCreatorIds.push(String(batchDoc.createdBy));
-        if (batchDoc.assignedFaculties && Array.isArray(batchDoc.assignedFaculties)) {
-          batchDoc.assignedFaculties.forEach((fId) => allowedCreatorIds.push(String(fId._id || fId)));
-        }
-      }
-
-      const uniqueCreatorIds = Array.from(new Set(allowedCreatorIds.filter(Boolean)));
-
-      // Student technology & batch values (with fallback to batch document)
-      const allStudentTechs = [
-        student.technology,
-        ...(Array.isArray(student.technologies) ? student.technologies : []),
-        batchDoc?.technology,
-      ]
-        .filter((t) => typeof t === 'string' && t.trim().length > 0)
-        .map((t) => t.trim());
-      const uniqueStudentTechs = Array.from(new Set(allStudentTechs));
-
-      const allBatchNames = [
-        student.batch,
-        batchDoc?.name,
-      ]
-        .filter((b) => typeof b === 'string' && b.trim().length > 0)
-        .map((b) => b.trim());
-      const uniqueBatchNames = Array.from(new Set(allBatchNames));
-
-      const studentOrg = String(student.organization || batchDoc?.organization || '').trim();
-
-      // Technology filter:
-      // Exam either has no target technologies (open to all), matches student's technology, OR targets student's batch
-      const techConditions = [
-        { targetTechnologies: { $size: 0 } },
-        { targetTechnologies: { $exists: false } },
-        { targetTechnologies: null },
-      ];
-      if (uniqueStudentTechs.length > 0) {
-        uniqueStudentTechs.forEach((st) => {
-          const escapedTech = st.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-          techConditions.push({ targetTechnologies: new RegExp(`^${escapedTech}$`, 'i') });
-          techConditions.push({ targetTechnologies: new RegExp(escapedTech, 'i') });
-          techConditions.push({ technology: new RegExp(`^${escapedTech}$`, 'i') });
-          techConditions.push({ technology: new RegExp(escapedTech, 'i') });
-        });
-      } else {
-        techConditions.push({ technology: '' });
-        techConditions.push({ technology: null });
-        techConditions.push({ technology: { $exists: false } });
-      }
-
-      // If exam is explicitly targeted to this student's batch, technology should not filter it out
-      uniqueBatchNames.forEach((bn) => {
-        const escapedBatch = bn.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-        techConditions.push({ targetBatches: new RegExp(`^${escapedBatch}$`, 'i') });
-      });
-      if (batchDoc?._id) {
-        techConditions.push({ targetBatches: String(batchDoc._id) });
-      }
-      if (student.batchId) {
-        techConditions.push({ targetBatches: String(student.batchId) });
-      }
-
-      // Batch filter:
-      // Exam either has no target batches (open to all batches in tech/org), OR matches student's batch
-      const batchConditions = [
-        { targetBatches: { $size: 0 } },
-        { targetBatches: { $exists: false } },
-        { targetBatches: null },
-      ];
-      uniqueBatchNames.forEach((bn) => {
-        const escapedBatch = bn.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-        batchConditions.push({ targetBatches: new RegExp(`^${escapedBatch}$`, 'i') });
-      });
-      if (batchDoc?._id) {
-        batchConditions.push({ targetBatches: String(batchDoc._id) });
-      }
-      if (student.batchId) {
-        batchConditions.push({ targetBatches: String(student.batchId) });
-      }
-
-      // Organization filter:
-      // Exam either has no organization (open to all), matches student's organization, OR targets student's batch
-      const orgConditions = [
-        { organization: '' },
-        { organization: null },
-        { organization: { $exists: false } },
-      ];
-      if (studentOrg) {
-        const escapedOrg = studentOrg.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-        orgConditions.push({ organization: new RegExp(`^${escapedOrg}$`, 'i') });
-      }
-      uniqueBatchNames.forEach((bn) => {
-        const escapedBatch = bn.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-        orgConditions.push({ targetBatches: new RegExp(`^${escapedBatch}$`, 'i') });
-      });
-      if (batchDoc?._id) {
-        orgConditions.push({ targetBatches: String(batchDoc._id) });
-      }
-      if (student.batchId) {
-        orgConditions.push({ targetBatches: String(student.batchId) });
-      }
-
-      // Creator / Target Access Conditions:
-      // A student can see an exam if:
-      // 1. It was created by an allowed creator (Admin, student's faculty, batch's faculty), OR
-      // 2. The exam's targetBatches specifically includes the student's batch!
-      // 3. The exam is in the student's organization with no specific target batches (open to their technology)!
-      const accessConditions = [
-        { createdBy: { $in: uniqueCreatorIds } },
-      ];
-      uniqueBatchNames.forEach((bn) => {
-        const escapedBatch = bn.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-        accessConditions.push({ targetBatches: new RegExp(`^${escapedBatch}$`, 'i') });
-      });
-      if (batchDoc?._id) {
-        accessConditions.push({ targetBatches: String(batchDoc._id) });
-      }
-      if (student.batchId) {
-        accessConditions.push({ targetBatches: String(student.batchId) });
-      }
-      if (studentOrg) {
-        const escapedOrg = studentOrg.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-        const orgRegex = new RegExp(`^${escapedOrg}$`, 'i');
-        accessConditions.push({
-          organization: orgRegex,
-          targetBatches: { $size: 0 },
-        });
-        accessConditions.push({
-          organization: orgRegex,
-          targetBatches: { $exists: false },
-        });
-        accessConditions.push({
-          organization: orgRegex,
-          targetBatches: null,
-        });
-      }
-
-      const andClauses = [
-        { $or: accessConditions },
-        { $or: techConditions },
-        { $or: batchConditions },
-      ];
-      if (studentOrg) {
-        andClauses.push({ $or: orgConditions });
-      }
-
-      filter.$and = andClauses;
-    } else if (student && student.role === 'FACULTY') {
-      // Faculty previewing exams
-      filter.createdBy = student._id;
+    if (student.role === 'FACULTY') {
+      // Faculty previewing their own created exams
+      const facultyExams = await Exam.find({ createdBy: student._id }).sort({ startDate: 1 });
+      return ExamService.mapExamsWithAttempts(facultyExams, userId);
     }
 
-    const exams = await Exam.find(filter).sort({ startDate: 1 });
-    const now = new Date();
+    // Resolve student's batchDoc once for in-memory validation performance
+    let batchDoc = null;
+    if (student.batchId) {
+      batchDoc = await Batch.findById(student.batchId);
+    }
+    if (!batchDoc && student.batch && student.batch.trim()) {
+      const escapedBatch = student.batch.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const nameRegex = new RegExp(`^${escapedBatch}$`, 'i');
+      if (student.organization && student.organization.trim()) {
+        const escapedOrg = student.organization.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        batchDoc = await Batch.findOne({
+          name: nameRegex,
+          organization: new RegExp(`^${escapedOrg}$`, 'i'),
+        });
+      }
+      if (!batchDoc) {
+        batchDoc = await Batch.findOne({ name: nameRegex });
+      }
+    }
 
-    // Fetch user attempts to map attempt status (sorted latest first)
+    // Find non-practice published or active/upcoming exams
+    const candidateFilter = {
+      isPractice: { $ne: true },
+      $or: [
+        { isPublished: true },
+        { status: { $in: ['ACTIVE', 'UPCOMING'] } },
+      ],
+    };
+
+    const candidateExams = await Exam.find(candidateFilter)
+      .populate('createdBy', 'role name email')
+      .sort({ startDate: 1 });
+
+    const accessibleExams = [];
+    for (const exam of candidateExams) {
+      const canAccess = await ExamService.canStudentAccessExam(exam, student, batchDoc);
+      if (canAccess) {
+        accessibleExams.push(exam);
+      }
+    }
+
+    return ExamService.mapExamsWithAttempts(accessibleExams, userId);
+  }
+
+  static async mapExamsWithAttempts(exams, userId) {
+    const now = new Date();
     const attempts = await ExamAttempt.find({ userId }).sort({ createdAt: -1 });
     const attemptMap = new Map();
     attempts.forEach((att) => {
@@ -356,7 +220,7 @@ export class ExamService {
       }
     });
 
-    const result = exams.map((exam) => {
+    return exams.map((exam) => {
       const examObj = exam.toObject();
       const attempt = attemptMap.get(exam._id.toString());
 
@@ -390,8 +254,6 @@ export class ExamService {
         attemptId: attempt ? attempt._id : null,
       };
     });
-
-    return result;
   }
 
   static async getPracticeExams(userId) {

@@ -21,21 +21,8 @@ export function getSocketUrl() {
   }
 
   if (typeof window !== 'undefined' && window.location) {
-    const { protocol, hostname } = window.location;
-
-    // Local development - Vite dev server proxies /socket.io
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return window.location.origin;
-    }
-
-    // Already on the API subdomain
-    if (hostname.startsWith('api.')) {
-      return window.location.origin;
-    }
-
-    // Production VPS: frontend is on domain.com or www.domain.com, backend is on api.domain.com
-    const cleanDomain = hostname.replace(/^www\./, '');
-    return `${protocol}//api.${cleanDomain}`;
+    // Current origin (works seamlessly with reverse proxy like /socket.io in production VPS)
+    return window.location.origin;
   }
 
   return '';
@@ -53,7 +40,7 @@ export function SocketProvider({ children }) {
     const socketOptions = {
       auth: { token },
       query: token ? { token } : {},
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       withCredentials: true,
       autoConnect: true,
       reconnection: true,
@@ -87,16 +74,20 @@ export function SocketProvider({ children }) {
 
     const handleConnectError = (err) => {
       connectErrors++;
-      // If primary API subdomain URL fails repeatedly and we have an origin fallback, attempt origin
-      if (!hasConnected && connectErrors >= 2 && primaryUrl !== window.location.origin) {
-        try {
-          activeSocket.disconnect();
-          activeSocket = io(window.location.origin, socketOptions);
-          socketRef.current = activeSocket;
-          attachListeners(activeSocket);
-          setSocket(activeSocket);
-        } catch (e) {
-          // ignore fallback error
+      // If primary origin URL fails and we are on a custom domain, attempt api subdomain fallback
+      if (!hasConnected && connectErrors >= 2) {
+        const { protocol, hostname } = window.location;
+        const apiFallback = `${protocol}//api.${hostname.replace(/^www\./, '')}`;
+        if (primaryUrl !== apiFallback) {
+          try {
+            activeSocket.disconnect();
+            activeSocket = io(apiFallback, socketOptions);
+            socketRef.current = activeSocket;
+            attachListeners(activeSocket);
+            setSocket(activeSocket);
+          } catch (e) {
+            // ignore fallback error
+          }
         }
       }
     };

@@ -53,8 +53,16 @@ export default function UserDashboard() {
     highestScore: 0,
   };
 
-  const availableCount = exams.filter((e) => e.examStatus === 'ACTIVE' && e.userStatus !== 'COMPLETED').length;
-  const upcomingExams = exams.filter((e) => e.examStatus === 'UPCOMING');
+  const availableCount = exams.filter(
+    (e) => (e.examStatus === 'ACTIVE' || e.examStatus === 'UPCOMING') && e.userStatus !== 'COMPLETED'
+  ).length;
+  const activeAndUpcomingExams = exams
+    .filter((e) => e.examStatus === 'ACTIVE' || e.examStatus === 'UPCOMING')
+    .sort((a, b) => {
+      if (a.examStatus === 'ACTIVE' && b.examStatus !== 'ACTIVE') return -1;
+      if (b.examStatus === 'ACTIVE' && a.examStatus !== 'ACTIVE') return 1;
+      return new Date(a.startDate) - new Date(b.startDate);
+    });
 
   if (loading) {
     return (
@@ -175,7 +183,7 @@ export default function UserDashboard() {
           <div className="flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
               <Layers className="w-5 h-5 text-blue-600" />
-              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Active Assessments</h2>
+              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Scheduled Assessments</h2>
             </div>
             <Link to="/exams" className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1">
               View All <ArrowRight className="w-3.5 h-3.5" />
@@ -183,16 +191,16 @@ export default function UserDashboard() {
           </div>
 
           <div className="flex-1 flex flex-col space-y-3 min-h-[460px]">
-            {exams.filter((e) => e.examStatus === 'ACTIVE').length === 0 ? (
+            {activeAndUpcomingExams.length === 0 ? (
               <div className="flex-1 min-h-[440px] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-8 sm:p-12 flex flex-col items-center justify-center text-center shadow-sm">
                 <div className="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/40 flex items-center justify-center mb-4 text-[#4f6bf7]">
                   <BookOpen className="w-8 h-8" />
                 </div>
                 <h3 className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100">
-                  No active assessments right now
+                  No assessments scheduled right now
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mt-2 leading-relaxed">
-                  There are no live exams scheduled for your batch at this moment. You can practice in the sandbox environment anytime or explore the full exam schedule.
+                  There are no live or upcoming exams scheduled for your batch at this moment. You can practice in the sandbox environment anytime or explore the full exam schedule.
                 </p>
                 <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
                   <Link
@@ -212,75 +220,92 @@ export default function UserDashboard() {
                 </div>
               </div>
             ) : (
-              exams
-                .filter((e) => e.examStatus === 'ACTIVE')
-                .slice(0, 3)
-                .map((exam) => (
-                  <div
-                    key={exam._id}
-                    className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm hover:shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                  >
-                    <div className="space-y-1.5 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-slate-800 dark:text-slate-100 text-base truncate">{exam.title}</span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                          ACTIVE
-                        </span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                          {exam.difficulty}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">{exam.description}</p>
-                      <div className="flex items-center gap-3 flex-wrap text-[11px] pt-1">
-                        <span className="font-mono text-emerald-600 dark:text-emerald-400 font-medium">
-                          Starts: {new Date(exam.startDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                        </span>
-                        <span className="text-slate-300 dark:text-slate-600">•</span>
-                        <span className="font-mono text-rose-600 dark:text-rose-400 font-medium">
-                          Expires: {new Date(exam.endDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400 pt-0.5">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5 text-slate-400" />
-                          {exam.duration} mins
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Code2 className="w-3.5 h-3.5 text-slate-400" />
-                          {exam.questionCount} Questions
-                        </span>
-                        <span className="flex items-center gap-1 font-medium text-slate-600 dark:text-slate-300">
-                          Total: {exam.totalMarks} Marks
-                        </span>
-                      </div>
-                    </div>
+              activeAndUpcomingExams
+                .slice(0, 4)
+                .map((exam) => {
+                  const isActive = exam.examStatus === 'ACTIVE';
+                  const isUpcoming = exam.examStatus === 'UPCOMING';
 
-                    <div className="shrink-0 flex items-center">
-                      {exam.userStatus === 'COMPLETED' ? (
-                        <Link
-                          to={exam.attemptId ? `/results/${exam.attemptId}` : '/results'}
-                          className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors"
-                        >
-                          View Result
-                        </Link>
-                      ) : exam.userStatus === 'IN_PROGRESS' ? (
-                        <Link
-                          to={`/exams/${exam._id}/take`}
-                          className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 transition-colors shadow-md shadow-blue-600/15"
-                        >
-                          Resume Exam
-                        </Link>
-                      ) : (
-                        <Link
-                          to={`/exams/${exam._id}/instructions`}
-                          className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-500 transition-colors shadow-md shadow-blue-600/20"
-                        >
-                          Start Assessment
-                        </Link>
-                      )}
+                  return (
+                    <div
+                      key={exam._id}
+                      className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm hover:shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    >
+                      <div className="space-y-1.5 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-slate-800 dark:text-slate-100 text-base truncate">{exam.title}</span>
+                          {isActive ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                              ACTIVE
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                              UPCOMING
+                            </span>
+                          )}
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                            {exam.difficulty}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">{exam.description}</p>
+                        <div className="flex items-center gap-3 flex-wrap text-[11px] pt-1">
+                          <span className="font-mono text-emerald-600 dark:text-emerald-400 font-medium">
+                            Starts: {new Date(exam.startDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                          </span>
+                          <span className="text-slate-300 dark:text-slate-600">•</span>
+                          <span className="font-mono text-rose-600 dark:text-rose-400 font-medium">
+                            Expires: {new Date(exam.endDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400 pt-0.5">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5 text-slate-400" />
+                            {exam.duration} mins
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Code2 className="w-3.5 h-3.5 text-slate-400" />
+                            {exam.questionCount} Questions
+                          </span>
+                          <span className="flex items-center gap-1 font-medium text-slate-600 dark:text-slate-300">
+                            Total: {exam.totalMarks} Marks
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 flex items-center">
+                        {exam.userStatus === 'COMPLETED' ? (
+                          <Link
+                            to={exam.attemptId ? `/results/${exam.attemptId}` : '/results'}
+                            className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors"
+                          >
+                            View Result
+                          </Link>
+                        ) : exam.userStatus === 'IN_PROGRESS' ? (
+                          <Link
+                            to={`/exams/${exam._id}/take`}
+                            className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 transition-colors shadow-md shadow-blue-600/15"
+                          >
+                            Resume Exam
+                          </Link>
+                        ) : isUpcoming ? (
+                          <Link
+                            to={`/exams/${exam._id}/instructions`}
+                            className="px-4 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-300 text-xs font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 transition-colors"
+                          >
+                            View Details
+                          </Link>
+                        ) : (
+                          <Link
+                            to={`/exams/${exam._id}/instructions`}
+                            className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-500 transition-colors shadow-md shadow-blue-600/20"
+                          >
+                            Start Assessment
+                          </Link>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
             )}
           </div>
         </div>
