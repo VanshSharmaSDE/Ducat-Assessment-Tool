@@ -7,6 +7,7 @@ import { Submission } from '../models/Submission.js';
 import { ExecutionJob } from '../models/ExecutionJob.js';
 import { addSubmissionJob, runCustomCodeInPool } from '../queues/queueManager.js';
 import { User } from '../models/User.js';
+import { Batch } from '../models/Batch.js';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../utils/logger.js';
 import { emitToAdmin, emitToAttempt } from '../socket.js';
@@ -34,45 +35,49 @@ export class ExamService {
     if (['ADMIN', 'FACULTY'].includes(studentUser.role)) return true;
 
     // Determine who created this exam
-    const examCreatorId = String(exam.createdBy?._id || exam.createdBy);
+    const examCreatorId = String(exam.createdBy?._id || exam.createdBy || '');
     let examCreator = exam.populated?.('createdBy') ? exam.createdBy : null;
     if (!examCreator || !examCreator.role) {
       examCreator = await User.findById(examCreatorId).select('role');
     }
     const isExamByAdmin = examCreator?.role === 'ADMIN';
 
-    // Determine who created this student
-    const studentCreatorId = String(studentUser.createdBy?._id || studentUser.createdBy || '');
-
-    // Check if the student is assigned to / imported by the faculty who created this exam
-    const isAssignedToExamCreator = (studentUser.assignedFaculties || []).some(
-      (fId) => String(fId?._id || fId) === examCreatorId
-    );
-    const isCreatedByExamCreator = studentCreatorId === examCreatorId;
-
-    // Creator isolation check:
-    // If exam was created by Admin: accessible by all students across the institution
-    // If exam was created by Faculty: accessible ONLY if student was created or imported by that faculty
-    if (!isExamByAdmin && !isCreatedByExamCreator && !isAssignedToExamCreator) {
-      return false;
+    // Look up student's batch details (by batchId or batch name)
+    let batchDoc = null;
+    if (studentUser.batchId) {
+      batchDoc = await Batch.findById(studentUser.batchId);
+    }
+    if (!batchDoc && studentUser.batch && studentUser.batch.trim()) {
+      const escapedBatch = studentUser.batch.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const nameRegex = new RegExp(`^${escapedBatch}$`, 'i');
+      if (studentUser.organization && studentUser.organization.trim()) {
+        const escapedOrg = studentUser.organization.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        batchDoc = await Batch.findOne({
+          name: nameRegex,
+          organization: new RegExp(`^${escapedOrg}$`, 'i'),
+        });
+      }
+      if (!batchDoc) {
+        batchDoc = await Batch.findOne({ name: nameRegex });
+      }
     }
 
-    // Technology Matching Check:
-    // An exam may be conducted for specific technologies (e.g. React, Java).
-    // Students can only access exams configured for their assigned technology.
-    const examTechs = [
-      ...(Array.isArray(exam.targetTechnologies) ? exam.targetTechnologies : []),
-      exam.technology,
+    const studentTechs = [
+      studentUser.technology,
+      ...(Array.isArray(studentUser.technologies) ? studentUser.technologies : []),
+      batchDoc?.technology,
     ]
       .filter(Boolean)
       .map((t) => String(t).trim().toLowerCase());
 
-    if (examTechs.length > 0) {
-      const studentTech = String(studentUser.technology || '').trim().toLowerCase();
-      if (!studentTech || !examTechs.includes(studentTech)) {
-        return false;
-      }
-    }
+    const studentBatchNames = [
+      studentUser.batch,
+      batchDoc?.name,
+    ]
+      .filter(Boolean)
+      .map((b) => String(b).trim().toLowerCase());
+
+    const studentOrg = String(studentUser.organization || batchDoc?.organization || '').trim().toLowerCase();
 
     // Batch Matching Check:
     // If targetBatches is specified, student must belong to one of the target batches
@@ -80,14 +85,70 @@ export class ExamService {
       .filter(Boolean)
       .map((b) => String(b).trim().toLowerCase());
 
-    if (examBatches.length > 0) {
-      const studentBatch = String(studentUser.batch || '').trim().toLowerCase();
-      if (!studentBatch || !examBatches.includes(studentBatch)) {
+    const isTargetedToStudentBatch = examBatches.length > 0 && Boolean(
+      studentBatchNames.some((bn) => examBatches.includes(bn)) ||
+      (studentUser.batchId && examBatches.includes(String(studentUser.batchId).toLowerCase())) ||
+      (batchDoc && examBatches.includes(String(batchDoc._id).toLowerCase()))
+    );
+
+    if (examBatches.length > 0 && !isTargetedToStudentBatch) {
+      return false;
+    }
+
+    // Technology Matching Check:
+    const examTechs = [
+      ...(Array.isArray(exam.targetTechnologies) ? exam.targetTechnologies : []),
+      exam.technology,
+    ]
+      .filter(Boolean)
+      .map((t) => String(t).trim().toLowerCase());
+
+    if (examTechs.length > 0 && !isTargetedToStudentBatch) {
+      const hasMatchingTech = studentTechs.length === 0 || studentTechs.some((st) =>
+        examTechs.some((et) => et === st || et.includes(st) || st.includes(et))
+      );
+      if (!hasMatchingTech) {
         return false;
       }
     }
 
-    return true;
+    // Organization Matching Check:
+    const examOrg = String(exam.organization || '').trim().toLowerCase();
+    if (examOrg && studentOrg && examOrg !== studentOrg && !isTargetedToStudentBatch) {
+      return false;
+    }
+
+    // Creator / Assignment authorization:
+    // 1. Admin exams are accessible across institution
+    if (isExamByAdmin) return true;
+
+    // 2. Exam explicitly targets student's batch
+    if (isTargetedToStudentBatch) return true;
+
+    // 3. Faculty creator is student's creator or student's assigned faculty
+    const studentCreatorId = String(studentUser.createdBy?._id || studentUser.createdBy || '');
+    const isCreatedByExamCreator = studentCreatorId === examCreatorId;
+    const isAssignedToExamCreator = (studentUser.assignedFaculties || []).some(
+      (fId) => String(fId?._id || fId) === examCreatorId
+    );
+    if (isCreatedByExamCreator || isAssignedToExamCreator) return true;
+
+    // 4. Faculty creator created or is assigned to student's batch
+    if (batchDoc) {
+      const batchCreatorId = String(batchDoc.createdBy?._id || batchDoc.createdBy || '');
+      const isBatchCreator = batchCreatorId === examCreatorId;
+      const isBatchAssigned = (batchDoc.assignedFaculties || []).some(
+        (fId) => String(fId?._id || fId) === examCreatorId
+      );
+      if (isBatchCreator || isBatchAssigned) return true;
+    }
+
+    // 5. Exam belongs to the same organization and has no target batches (open to technology in this org)
+    if (examOrg && studentOrg && examOrg === studentOrg && examBatches.length === 0) {
+      return true;
+    }
+
+    return false;
   }
 
   static async getAvailableExams(userId, query = {}) {
@@ -110,40 +171,173 @@ export class ExamService {
         allowedCreatorIds.push(...assignedIds);
       }
 
-      const uniqueCreatorIds = Array.from(new Set(allowedCreatorIds.filter(Boolean)));
-      filter.createdBy = { $in: uniqueCreatorIds };
-
-      // Filter by student's technology
-      const studentTech = String(student.technology || '').trim();
-      const techConditions = [
-        { targetTechnologies: { $size: 0 }, technology: '' },
-        { targetTechnologies: { $exists: false }, technology: { $exists: false } },
-        { targetTechnologies: null, technology: null },
-      ];
-      if (studentTech) {
-        const escapedTech = studentTech.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-        const techRegex = new RegExp(`^${escapedTech}$`, 'i');
-        techConditions.push({ targetTechnologies: techRegex });
-        techConditions.push({ technology: techRegex });
+      // Look up student's batch to include faculty who created or is assigned to the batch
+      let batchDoc = null;
+      if (student.batchId) {
+        batchDoc = await Batch.findById(student.batchId);
+      }
+      if (!batchDoc && student.batch && student.batch.trim()) {
+        const escapedBatch = student.batch.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        const nameRegex = new RegExp(`^${escapedBatch}$`, 'i');
+        if (student.organization && student.organization.trim()) {
+          const escapedOrg = student.organization.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+          batchDoc = await Batch.findOne({
+            name: nameRegex,
+            organization: new RegExp(`^${escapedOrg}$`, 'i'),
+          });
+        }
+        if (!batchDoc) {
+          batchDoc = await Batch.findOne({ name: nameRegex });
+        }
       }
 
-      // Filter by student's batch
-      const studentBatch = String(student.batch || '').trim();
+      if (batchDoc) {
+        if (batchDoc.createdBy) allowedCreatorIds.push(String(batchDoc.createdBy));
+        if (batchDoc.assignedFaculties && Array.isArray(batchDoc.assignedFaculties)) {
+          batchDoc.assignedFaculties.forEach((fId) => allowedCreatorIds.push(String(fId._id || fId)));
+        }
+      }
+
+      const uniqueCreatorIds = Array.from(new Set(allowedCreatorIds.filter(Boolean)));
+
+      // Student technology & batch values (with fallback to batch document)
+      const allStudentTechs = [
+        student.technology,
+        ...(Array.isArray(student.technologies) ? student.technologies : []),
+        batchDoc?.technology,
+      ]
+        .filter((t) => typeof t === 'string' && t.trim().length > 0)
+        .map((t) => t.trim());
+      const uniqueStudentTechs = Array.from(new Set(allStudentTechs));
+
+      const allBatchNames = [
+        student.batch,
+        batchDoc?.name,
+      ]
+        .filter((b) => typeof b === 'string' && b.trim().length > 0)
+        .map((b) => b.trim());
+      const uniqueBatchNames = Array.from(new Set(allBatchNames));
+
+      const studentOrg = String(student.organization || batchDoc?.organization || '').trim();
+
+      // Technology filter:
+      // Exam either has no target technologies (open to all), matches student's technology, OR targets student's batch
+      const techConditions = [
+        { targetTechnologies: { $size: 0 } },
+        { targetTechnologies: { $exists: false } },
+        { targetTechnologies: null },
+      ];
+      if (uniqueStudentTechs.length > 0) {
+        uniqueStudentTechs.forEach((st) => {
+          const escapedTech = st.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+          techConditions.push({ targetTechnologies: new RegExp(`^${escapedTech}$`, 'i') });
+          techConditions.push({ targetTechnologies: new RegExp(escapedTech, 'i') });
+          techConditions.push({ technology: new RegExp(`^${escapedTech}$`, 'i') });
+          techConditions.push({ technology: new RegExp(escapedTech, 'i') });
+        });
+      } else {
+        techConditions.push({ technology: '' });
+        techConditions.push({ technology: null });
+        techConditions.push({ technology: { $exists: false } });
+      }
+
+      // If exam is explicitly targeted to this student's batch, technology should not filter it out
+      uniqueBatchNames.forEach((bn) => {
+        const escapedBatch = bn.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        techConditions.push({ targetBatches: new RegExp(`^${escapedBatch}$`, 'i') });
+      });
+      if (batchDoc?._id) {
+        techConditions.push({ targetBatches: String(batchDoc._id) });
+      }
+      if (student.batchId) {
+        techConditions.push({ targetBatches: String(student.batchId) });
+      }
+
+      // Batch filter:
+      // Exam either has no target batches (open to all batches in tech/org), OR matches student's batch
       const batchConditions = [
         { targetBatches: { $size: 0 } },
         { targetBatches: { $exists: false } },
         { targetBatches: null },
       ];
-      if (studentBatch) {
-        const escapedBatch = studentBatch.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-        const batchRegex = new RegExp(`^${escapedBatch}$`, 'i');
-        batchConditions.push({ targetBatches: batchRegex });
+      uniqueBatchNames.forEach((bn) => {
+        const escapedBatch = bn.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        batchConditions.push({ targetBatches: new RegExp(`^${escapedBatch}$`, 'i') });
+      });
+      if (batchDoc?._id) {
+        batchConditions.push({ targetBatches: String(batchDoc._id) });
+      }
+      if (student.batchId) {
+        batchConditions.push({ targetBatches: String(student.batchId) });
       }
 
-      filter.$and = [
+      // Organization filter:
+      // Exam either has no organization (open to all), matches student's organization, OR targets student's batch
+      const orgConditions = [
+        { organization: '' },
+        { organization: null },
+        { organization: { $exists: false } },
+      ];
+      if (studentOrg) {
+        const escapedOrg = studentOrg.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        orgConditions.push({ organization: new RegExp(`^${escapedOrg}$`, 'i') });
+      }
+      uniqueBatchNames.forEach((bn) => {
+        const escapedBatch = bn.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        orgConditions.push({ targetBatches: new RegExp(`^${escapedBatch}$`, 'i') });
+      });
+      if (batchDoc?._id) {
+        orgConditions.push({ targetBatches: String(batchDoc._id) });
+      }
+      if (student.batchId) {
+        orgConditions.push({ targetBatches: String(student.batchId) });
+      }
+
+      // Creator / Target Access Conditions:
+      // A student can see an exam if:
+      // 1. It was created by an allowed creator (Admin, student's faculty, batch's faculty), OR
+      // 2. The exam's targetBatches specifically includes the student's batch!
+      // 3. The exam is in the student's organization with no specific target batches (open to their technology)!
+      const accessConditions = [
+        { createdBy: { $in: uniqueCreatorIds } },
+      ];
+      uniqueBatchNames.forEach((bn) => {
+        const escapedBatch = bn.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        accessConditions.push({ targetBatches: new RegExp(`^${escapedBatch}$`, 'i') });
+      });
+      if (batchDoc?._id) {
+        accessConditions.push({ targetBatches: String(batchDoc._id) });
+      }
+      if (student.batchId) {
+        accessConditions.push({ targetBatches: String(student.batchId) });
+      }
+      if (studentOrg) {
+        const escapedOrg = studentOrg.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        const orgRegex = new RegExp(`^${escapedOrg}$`, 'i');
+        accessConditions.push({
+          organization: orgRegex,
+          targetBatches: { $size: 0 },
+        });
+        accessConditions.push({
+          organization: orgRegex,
+          targetBatches: { $exists: false },
+        });
+        accessConditions.push({
+          organization: orgRegex,
+          targetBatches: null,
+        });
+      }
+
+      const andClauses = [
+        { $or: accessConditions },
         { $or: techConditions },
         { $or: batchConditions },
       ];
+      if (studentOrg) {
+        andClauses.push({ $or: orgConditions });
+      }
+
+      filter.$and = andClauses;
     } else if (student && student.role === 'FACULTY') {
       // Faculty previewing exams
       filter.createdBy = student._id;

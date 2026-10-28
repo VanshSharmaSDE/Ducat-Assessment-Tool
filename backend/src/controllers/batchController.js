@@ -366,20 +366,30 @@ export class BatchController {
 
       const studentFilter = { _id: { $in: studentIds }, role: 'USER' };
       if (!isSuperAdmin) {
+        const facultyOrg = req.user?.organization?.trim();
+        const orgCondition = facultyOrg
+          ? [{ organization: { $regex: new RegExp(`^${facultyOrg.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i') } }]
+          : [];
         studentFilter.$or = [
           { createdBy: req.user._id },
           { assignedFaculties: req.user._id },
+          ...orgCondition,
         ];
       }
 
-      const result = await User.updateMany(studentFilter, {
+      const updateData = {
         $set: {
           batch: batch.name,
           technology: batch.technology,
           organization: batch.organization,
           batchId: batch._id,
         },
-      });
+      };
+      if (req.user?.role === 'FACULTY') {
+        updateData.$addToSet = { assignedFaculties: req.user._id };
+      }
+
+      const result = await User.updateMany(studentFilter, updateData);
 
       res.status(200).json({
         success: true,
@@ -422,14 +432,6 @@ export class BatchController {
       const user = await User.findById(studentId);
       if (!user) {
         return res.status(404).json({ success: false, message: 'Student not found.' });
-      }
-
-      const isUserCreator = String(user.createdBy) === String(req.user._id);
-      const isUserAssignedFaculty = (user.assignedFaculties || []).some(
-        (fId) => String(fId._id || fId) === String(req.user._id)
-      );
-      if (!isSuperAdmin && !isUserCreator && !isUserAssignedFaculty) {
-        return res.status(403).json({ success: false, message: 'Access denied.' });
       }
 
       user.batch = '';

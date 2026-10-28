@@ -245,16 +245,24 @@ export class AdminService {
       myBatchIds = myBatchDocs.map((b) => b._id);
       myBatchNames = myBatchDocs.map((b) => b.name);
 
+      const facultyOrg = currentUser.organization ? currentUser.organization.trim() : '';
+      const escapedOrg = facultyOrg ? facultyOrg.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&') : '';
+
       conditions.push({
         $or: [
           { createdBy: currentUser._id },
           { assignedFaculties: currentUser._id },
           { batchId: { $in: myBatchIds } },
           { batch: { $in: myBatchNames } },
+          ...(escapedOrg ? [
+            { batch: '', organization: { $regex: new RegExp(`^${escapedOrg}$`, 'i') } },
+            { batch: null, organization: { $regex: new RegExp(`^${escapedOrg}$`, 'i') } },
+            { batch: { $exists: false }, organization: { $regex: new RegExp(`^${escapedOrg}$`, 'i') } },
+            { batchId: null, organization: { $regex: new RegExp(`^${escapedOrg}$`, 'i') } },
+          ] : []),
         ],
       });
-      if (currentUser.organization && currentUser.organization.trim()) {
-        const escapedOrg = currentUser.organization.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      if (escapedOrg) {
         conditions.push({ organization: { $regex: new RegExp(`^${escapedOrg}$`, 'i') } });
       }
     }
