@@ -56,6 +56,7 @@ export default function UserDashboard() {
   const availableCount = exams.filter(
     (e) => (e.examStatus === 'ACTIVE' || e.examStatus === 'UPCOMING') && e.userStatus !== 'COMPLETED'
   ).length;
+  const upcomingExams = exams.filter((e) => e.examStatus === 'UPCOMING');
   const activeAndUpcomingExams = exams
     .filter((e) => e.examStatus === 'ACTIVE' || e.examStatus === 'UPCOMING')
     .sort((a, b) => {
