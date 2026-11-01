@@ -37,6 +37,7 @@ import AdminTechnologiesPage from './pages/admin/AdminTechnologiesPage';
 import AdminOrganizationsPage from './pages/admin/AdminOrganizationsPage';
 import AdminMcqQuestionsPage from './pages/admin/AdminMcqQuestionsPage';
 import AdminMcqQuestionEditorPage from './pages/admin/AdminMcqQuestionEditorPage';
+import AdminAiExamGeneratorPage from './pages/admin/AdminAiExamGeneratorPage';
 
 // Helper to determine destination by role
 export const getRoleHomeRoute = (role) => {
@@ -48,7 +49,7 @@ export const getRoleHomeRoute = (role) => {
 
 // Root route resolver to automatically direct users based on role
 function RoleHomeRedirect() {
-  const { user, loading } = useAuth();
+  const { user, loading, activeExam } = useAuth();
 
   if (loading) {
     return (
@@ -62,12 +63,17 @@ function RoleHomeRedirect() {
     return <Navigate to="/login" replace />;
   }
 
+  // Active Ongoing Exam Lock: If student has an ongoing active exam attempt, lock straight to it
+  if (user.role === 'USER' && activeExam?.hasActiveExam && activeExam?.examId) {
+    return <Navigate to={`/exams/${activeExam.examId}/take`} replace />;
+  }
+
   return <Navigate to={getRoleHomeRoute(user.role)} replace />;
 }
 
 // Protected Route Guard
 function RequireAuth({ children, allowedRoles }) {
-  const { user, loading } = useAuth();
+  const { user, loading, activeExam } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -85,6 +91,16 @@ function RequireAuth({ children, allowedRoles }) {
   // If user role is not permitted on this route, redirect to their proper portal
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to={getRoleHomeRoute(user.role)} replace />;
+  }
+
+  // Active Ongoing Exam Lock for Students:
+  // If candidate has an active IN_PROGRESS examination session and attempts to navigate to ANY other route,
+  // immediately lock and redirect them back to the active ongoing exam screen until submitted or expired.
+  if (user.role === 'USER' && activeExam?.hasActiveExam && activeExam?.examId) {
+    const activeExamRoute = `/exams/${activeExam.examId}/take`;
+    if (location.pathname !== activeExamRoute) {
+      return <Navigate to={activeExamRoute} replace />;
+    }
   }
 
   return children;
@@ -153,6 +169,7 @@ export default function App() {
         <Route index element={<AdminDashboardPage />} />
         <Route path="exams" element={<AdminExamsPage />} />
         <Route path="exams/new" element={<AdminExamWizardPage />} />
+        <Route path="exams/ai-generator" element={<AdminAiExamGeneratorPage />} />
         <Route path="exams/:id/edit" element={<AdminExamWizardPage />} />
         <Route path="questions" element={<AdminQuestionsPage />} />
         <Route path="questions/new" element={<AdminQuestionEditorPage />} />

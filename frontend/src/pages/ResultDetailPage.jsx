@@ -19,8 +19,11 @@ import {
   X,
   CheckSquare,
   Download,
+  Sparkles,
+  BrainCircuit,
 } from 'lucide-react';
 import { generateResultPdf } from '../utils/resultPdfGenerator';
+import AiCandidateReviewModal from '../components/admin/AiCandidateReviewModal';
 
 export default function ResultDetailPage() {
   const { id } = useParams();
@@ -31,6 +34,7 @@ export default function ResultDetailPage() {
   const [errorMsg, setErrorMsg] = useState(null);
   const [activeCodeModal, setActiveCodeModal] = useState(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [showAiReviewModal, setShowAiReviewModal] = useState(false);
 
   const handleDownloadPdf = async () => {
     if (!data) return;
@@ -155,8 +159,18 @@ export default function ResultDetailPage() {
           </p>
         </div>
 
-        {/* Download PDF Action Button */}
+        {/* Actions Button Group */}
         <div className="shrink-0 flex items-center gap-2 self-start sm:self-center">
+          <button
+            onClick={() => setShowAiReviewModal(true)}
+            disabled={isEvaluating}
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-medium text-xs rounded-xl shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+            title="Generate AI Code Review and Performance Audit"
+          >
+            <Sparkles className="w-4 h-4 text-slate-300" />
+            <span>Review with AI</span>
+          </button>
+
           <button
             onClick={handleDownloadPdf}
             disabled={downloadingPdf || isEvaluating}
@@ -577,6 +591,15 @@ export default function ResultDetailPage() {
           </div>
         </div>
       )}
+
+      {/* AI Candidate Review Modal */}
+      <AiCandidateReviewModal
+        isOpen={showAiReviewModal}
+        onClose={() => setShowAiReviewModal(false)}
+        attemptId={id}
+        candidateName={attempt.user?.name || 'Candidate'}
+        examTitle={attempt.exam?.title || 'Assessment'}
+      />
     </div>
   );
 }

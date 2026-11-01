@@ -10,8 +10,10 @@ router.use(authenticateUser);
 
 router.get('/', ExamController.getAvailableExams);
 router.get('/practice', ExamController.getPracticeExams);
+router.get('/active-session', ExamController.getActiveSession);
 router.get('/:id', ExamController.getExamDetails);
 router.post('/:id/start', ExamController.startExam);
+router.post('/:id/save-progress', ExamController.saveProgress);
 router.post('/:id/event', validate(examEventSchema), ExamController.recordEvent);
 router.post('/:id/run-code', validate(runCustomCodeSchema), ExamController.runCustomCode);
 router.post('/:id/submit', validate(submitExamSchema), ExamController.submitExam);

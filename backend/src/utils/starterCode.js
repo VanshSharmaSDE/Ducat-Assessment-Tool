@@ -94,3 +94,68 @@ export function isUnattemptedCode(sourceCode, language, questionStarterCode = nu
   return false;
 }
 
+/**
+ * Normalizes and validates an array or string of languages against SUPPORTED_LANGUAGES.
+ * Automatically resolves common aliases (e.g. 'c program' -> 'c', 'py' -> 'python', 'c++' -> 'cpp')
+ * and filters out non-language strings like 'fullstack' or 'mern'.
+ * If the resulting set is empty, it uses contextTopic to infer languages (e.g. "c program" -> ['c', 'cpp'])
+ * or falls back safely to CODING_LANGUAGES.
+ */
+export function normalizeAllowedLanguages(rawLanguages, contextTopic = '') {
+  const validSet = new Set(SUPPORTED_LANGUAGES);
+  const result = new Set();
+
+  const list = Array.isArray(rawLanguages)
+    ? rawLanguages
+    : typeof rawLanguages === 'string'
+    ? rawLanguages.split(/[,\s]+/)
+    : [];
+
+  const mapAlias = (val) => {
+    if (!val || typeof val !== 'string') return null;
+    const s = val.trim().toLowerCase();
+    if (validSet.has(s)) return s;
+    if (s === 'c++' || s === 'cplusplus' || s === 'c plus plus') return 'cpp';
+    if (s === 'py' || s === 'python3' || s === 'python 3') return 'python';
+    if (s === 'js' || s === 'node' || s === 'nodejs' || s === 'typescript' || s === 'ts') return 'javascript';
+    if (s === 'c program' || s === 'c programming' || s === 'c language' || s === 'ansi c') return 'c';
+    if (s === 'core java' || s === 'jdk') return 'java';
+    if (s === 'mysql' || s === 'postgres' || s === 'postgresql' || s === 'sqlite') return 'sql';
+    return null;
+  };
+
+  for (const item of list) {
+    const mapped = mapAlias(item);
+    if (mapped) {
+      result.add(mapped);
+    }
+  }
+
+  // If no valid language was matched, check context topic
+  if (result.size === 0 && contextTopic) {
+    const lowerTopic = String(contextTopic).toLowerCase();
+    if (/\b(c\s+program|c\s+programming|c\s+language|\bc\b(?!\+\+|#))\b/i.test(lowerTopic)) {
+      result.add('c');
+      result.add('cpp');
+    } else if (/\b(c\+\+|cpp)\b/i.test(lowerTopic)) {
+      result.add('cpp');
+      result.add('c');
+    } else if (/\b(python|py)\b/i.test(lowerTopic)) {
+      result.add('python');
+    } else if (/\b(java)\b/i.test(lowerTopic)) {
+      result.add('java');
+    } else if (/\b(javascript|js|node)\b/i.test(lowerTopic)) {
+      result.add('javascript');
+    } else if (/\b(sql|database|query)\b/i.test(lowerTopic)) {
+      result.add('sql');
+    }
+  }
+
+  // Fallback to standard coding languages if empty
+  if (result.size === 0) {
+    return ['c', 'cpp', 'java', 'python', 'javascript'];
+  }
+
+  return Array.from(result);
+}
+

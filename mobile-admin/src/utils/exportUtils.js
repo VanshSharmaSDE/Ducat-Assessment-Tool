@@ -1,0 +1,144 @@
+import { Linking, Share, Alert, Platform } from 'react-native';
+import { storage } from './storage';
+import { getActiveServerUrl } from '../config/apiConfig';
+
+const ACCESS_TOKEN_KEY = '@skillcodex_access_token';
+
+/**
+ * Build authenticated Excel export URL for results
+ */
+export async function getResultsExportUrl(params = {}) {
+  const baseUrl = getActiveServerUrl();
+  const token = await storage.getItem(ACCESS_TOKEN_KEY);
+  const queryParts = [];
+
+  if (token) {
+    queryParts.push(`token=${encodeURIComponent(token)}`);
+  }
+
+  for (const [key, val] of Object.entries(params)) {
+    if (val !== undefined && val !== null && String(val).trim() !== '' && val !== 'ALL') {
+      queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(val).trim())}`);
+    }
+  }
+
+  const qs = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+  return `${baseUrl}/admin/results/export-excel${qs}`;
+}
+
+/**
+ * Build authenticated Excel export URL for a specific exam
+ */
+export async function getExamExportUrl(examId) {
+  const baseUrl = getActiveServerUrl();
+  const token = await storage.getItem(ACCESS_TOKEN_KEY);
+  const queryParts = [];
+
+  if (token) {
+    queryParts.push(`token=${encodeURIComponent(token)}`);
+  }
+
+  const qs = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+  return `${baseUrl}/admin/exams/${examId}/export-excel${qs}`;
+}
+
+/**
+ * Trigger direct download of results Excel via browser / download manager
+ */
+export async function downloadResultsExcel(params = {}) {
+  try {
+    const url = await getResultsExportUrl(params);
+    const supported = await Linking.canOpenURL(url);
+    if (!supported) {
+      Alert.alert('Cannot Open Link', 'Unable to initiate file download with your browser.');
+      return;
+    }
+    await Linking.openURL(url);
+  } catch (err) {
+    Alert.alert('Export Error', err.message || 'Failed to download Excel report.');
+  }
+}
+
+/**
+ * Trigger direct download of an exam's results Excel
+ */
+export async function downloadExamResultsExcel(examId, examTitle = 'Exam') {
+  try {
+    const url = await getExamExportUrl(examId);
+    const supported = await Linking.canOpenURL(url);
+    if (!supported) {
+      Alert.alert('Cannot Open Link', 'Unable to initiate file download with your browser.');
+      return;
+    }
+    await Linking.openURL(url);
+  } catch (err) {
+    Alert.alert('Export Error', err.message || `Failed to download results for "${examTitle}".`);
+  }
+}
+
+/**
+ * Format and share an executive submission dossier text via native share sheet
+ */
+export async function shareSubmissionDossier({ attempt, candidate, exam, questions = [] }) {
+  try {
+    const candidateName = candidate?.name || attempt?.user?.name || 'Candidate';
+    const rollNo = candidate?.rollNumber || candidate?.studentId || attempt?.user?.rollNumber || 'N/A';
+    const email = candidate?.email || attempt?.user?.email || 'N/A';
+    const batch = candidate?.batch || attempt?.user?.batch || 'N/A';
+    const tech = candidate?.technology || attempt?.user?.technology || 'N/A';
+    const org = candidate?.organization || attempt?.user?.organization || 'N/A';
+
+    const examTitle = exam?.title || attempt?.exam?.title || 'Examination';
+    const score = attempt?.percentage !== undefined ? `${attempt?.percentage}%` : `${attempt?.totalScore || 0}/${attempt?.maxScore || 100}`;
+    const marks = `${attempt?.totalScore || 0} / ${attempt?.maxScore || exam?.totalMarks || 100}`;
+    const status = (attempt?.resultStatus || attempt?.status || 'SUBMITTED').toUpperCase();
+    const violations = attempt?.violationCount !== undefined ? attempt.violationCount : (attempt?.events?.length || 0);
+
+    let mcqCount = 0;
+    let codingCount = 0;
+    let correctMcq = 0;
+
+    questions.forEach((q) => {
+      const isMcq = q.questionType === 'MCQ' || q.type === 'MCQ';
+      if (isMcq) {
+        mcqCount++;
+        if (q.result?.status === 'PASSED' || q.result?.isCorrect) {
+          correctMcq++;
+        }
+      } else {
+        codingCount++;
+      }
+    });
+
+    const lines = [
+      `========================================`,
+      `SKILLCODEX EXECUTIVE ASSESSMENT REPORT`,
+      `========================================`,
+      `Candidate: ${candidateName} (${rollNo})`,
+      `Email: ${email}`,
+      `Batch: ${batch} | Tech: ${tech}`,
+      `Organization: ${org}`,
+      `----------------------------------------`,
+      `Exam: ${examTitle}`,
+      `Outcome Status: ${status}`,
+      `Percentage: ${score}`,
+      `Marks Scored: ${marks}`,
+      `Anti-Cheat Violations: ${violations}`,
+      attempt?.terminationReason ? `Termination Reason: ${attempt.terminationReason}` : '',
+      `----------------------------------------`,
+      `Problem Breakdown:`,
+      mcqCount > 0 ? `• Multiple Choice: ${correctMcq}/${mcqCount} correct` : '',
+      codingCount > 0 ? `• Coding Problems: ${codingCount} evaluated` : '',
+      `----------------------------------------`,
+      `Generated by SkillCodex Mobile Admin Portal`,
+      `========================================`,
+    ].filter(Boolean);
+
+    await Share.share({
+      title: `${candidateName} - Assessment Report`,
+      message: lines.join('\n'),
+    });
+  } catch (err) {
+    console.warn('Share dossier error', err.message);
+  }
+}

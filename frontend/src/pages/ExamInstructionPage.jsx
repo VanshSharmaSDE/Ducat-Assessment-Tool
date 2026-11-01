@@ -54,8 +54,17 @@ export default function ExamInstructionPage() {
     async function loadExam() {
       try {
         const res = await api.get(`/exams/${id}`);
-        setExam(res.data.data.exam);
-        setActiveAttempt(res.data.data.activeAttempt);
+        const examData = res.data.data.exam;
+        const activeAtt = res.data.data.activeAttempt;
+        setExam(examData);
+        setActiveAttempt(activeAtt);
+
+        // If this examination is already started and in-progress with time remaining,
+        // candidate MUST be redirected straight to the take screen!
+        if (activeAtt?.status === 'IN_PROGRESS' && (activeAtt.remainingSeconds === undefined || activeAtt.remainingSeconds > 0)) {
+          navigate(`/exams/${id}/take`, { replace: true });
+          return;
+        }
       } catch (err) {
         const msg = err.response?.data?.message || 'Failed to load examination details.';
         setError(msg);

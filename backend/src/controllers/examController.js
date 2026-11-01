@@ -105,5 +105,36 @@ export class ExamController {
       next(err);
     }
   }
+
+  static async getActiveSession(req, res, next) {
+    try {
+      const result = await ExamService.getActiveSession(req.user?._id);
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async saveProgress(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { attemptId, answers, currentQIndex, visitedQuestions } = req.body;
+      const result = await ExamService.saveProgress(id, req.user?._id, {
+        attemptId,
+        answers,
+        currentQIndex,
+        visitedQuestions,
+      });
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 

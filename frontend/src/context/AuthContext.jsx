@@ -11,7 +11,27 @@ const ACTIVITY_THROTTLE_MS = 10 * 1000; // Throttle activity localStorage writes
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activeExam, setActiveExam] = useState(null);
   const lastRecordedActivityRef = useRef(Date.now());
+
+  const checkActiveExam = useCallback(async () => {
+    try {
+      const res = await api.get('/exams/active-session');
+      if (res.data?.data?.hasActiveExam) {
+        setActiveExam(res.data.data);
+        return res.data.data;
+      } else {
+        setActiveExam(null);
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }, []);
+
+  const clearActiveExam = useCallback(() => {
+    setActiveExam(null);
+  }, []);
 
   const recordActivity = useCallback(() => {
     const now = Date.now();
@@ -39,6 +59,7 @@ export function AuthProvider({ children }) {
       localStorage.removeItem('user');
       localStorage.removeItem('lastActivity');
       setUser(null);
+      setActiveExam(null);
       window.location.href = '/login?reason=inactivity';
     }
   }, []);
@@ -61,23 +82,29 @@ export function AuthProvider({ children }) {
 
       try {
         const res = await api.get('/auth/me');
-        setUser(res.data.data.user);
+        const fetchedUser = res.data.data.user;
+        setUser(fetchedUser);
         const now = Date.now();
         lastRecordedActivityRef.current = now;
         localStorage.setItem('lastActivity', now.toString());
+
+        if (fetchedUser?.role === 'USER') {
+          await checkActiveExam();
+        }
       } catch (err) {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
         localStorage.removeItem('lastActivity');
         setUser(null);
+        setActiveExam(null);
       } finally {
         setLoading(false);
       }
     }
 
     loadUser();
-  }, [handleInactivityLogout]);
+  }, [handleInactivityLogout, checkActiveExam]);
 
   // Set up activity listeners and periodic inactivity check for any authenticated user (Admin, Faculty, Student)
   useEffect(() => {
@@ -161,7 +188,11 @@ export function AuthProvider({ children }) {
     lastRecordedActivityRef.current = now;
     localStorage.setItem('lastActivity', now.toString());
     setUser(user);
-    return user;
+    let activeSession = null;
+    if (user?.role === 'USER') {
+      activeSession = await checkActiveExam();
+    }
+    return { ...user, activeExam: activeSession };
   };
 
   const logout = async () => {
@@ -176,6 +207,7 @@ export function AuthProvider({ children }) {
       localStorage.removeItem('user');
       localStorage.removeItem('lastActivity');
       setUser(null);
+      setActiveExam(null);
     }
   };
 
@@ -184,7 +216,19 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        logout,
+        updateUser,
+        activeExam,
+        setActiveExam,
+        checkActiveExam,
+        clearActiveExam,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -4,6 +4,7 @@ import api from '../../api/axios';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
 import { useModal } from '../../context/ModalContext';
+import AiResultsAnalysisModal from '../../components/admin/AiResultsAnalysisModal';
 import {
   Award,
   Search,
@@ -17,6 +18,8 @@ import {
   FileText,
   Ban,
   Radio,
+  Sparkles,
+  BrainCircuit,
 } from 'lucide-react';
 
 export default function AdminResultsPage() {
@@ -28,6 +31,7 @@ export default function AdminResultsPage() {
   const [results, setResults] = useState([]);
   const [selectedResults, setSelectedResults] = useState([]);
   const [actionLoading, setActionLoading] = useState(false);
+  const [showAiAnalysisModal, setShowAiAnalysisModal] = useState(false);
 
   // Search & Filters
   const [candidateSearch, setCandidateSearch] = useState('');
@@ -171,7 +175,7 @@ export default function AdminResultsPage() {
           const text = await err.response.data.text();
           const parsed = JSON.parse(text);
           if (parsed.message) errMsg = parsed.message;
-        } catch (_) {}
+        } catch (_) { }
       } else if (err.response?.data?.message) {
         errMsg = err.response.data.message;
       }
@@ -223,7 +227,7 @@ export default function AdminResultsPage() {
           const text = await err.response.data.text();
           const parsed = JSON.parse(text);
           if (parsed.message) errMsg = parsed.message;
-        } catch (_) {}
+        } catch (_) { }
       } else if (err.response?.data?.message) {
         errMsg = err.response.data.message;
       }
@@ -429,6 +433,16 @@ export default function AdminResultsPage() {
             </button>
           )}
 
+          {/* Analyze with AI Button */}
+          <button
+            onClick={() => setShowAiAnalysisModal(true)}
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-medium text-xs rounded-xl shadow-xs transition-colors shrink-0 cursor-pointer"
+            title="Analyze cohort performance and generate institutional report with local AI"
+          >
+            <Sparkles className="w-4 h-4 text-slate-300" />
+            <span>Analyze with AI</span>
+          </button>
+
           {/* Export Excel Button */}
           <button
             onClick={handleExportExcel}
@@ -439,8 +453,8 @@ export default function AdminResultsPage() {
             {exporting
               ? 'Exporting...'
               : examFilter
-              ? 'Export Selected Exam (Excel)'
-              : 'Export All Results (Excel)'}
+                ? 'Export Selected Exam (Excel)'
+                : 'Export All Results (Excel)'}
           </button>
 
           {/* Export Word Doc Button */}
@@ -453,9 +467,10 @@ export default function AdminResultsPage() {
             {exportingDocx
               ? 'Exporting Word...'
               : examFilter
-              ? 'Export Selected Exam (Word)'
-              : 'Export All (Word)'}
+                ? 'Export Selected Exam (Word)'
+                : 'Export All (Word)'}
           </button>
+
         </div>
       </div>
 
@@ -624,9 +639,8 @@ export default function AdminResultsPage() {
                     return (
                       <tr
                         key={att._id}
-                        className={`text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors ${
-                          isSelected ? 'bg-blue-50/50 dark:bg-blue-950/40' : ''
-                        }`}
+                        className={`text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors ${isSelected ? 'bg-blue-50/50 dark:bg-blue-950/40' : ''
+                          }`}
                       >
                         <td className="py-3 px-4">
                           <input
@@ -658,11 +672,10 @@ export default function AdminResultsPage() {
                                 {att.userId?.createdBy?.name || 'Admin / Direct'}
                               </span>
                               <span
-                                className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
-                                  att.userId?.createdBy?.role === 'FACULTY'
+                                className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${att.userId?.createdBy?.role === 'FACULTY'
                                     ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800'
                                     : 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700'
-                                }`}
+                                  }`}
                               >
                                 {att.userId?.createdBy?.role || 'SYSTEM'}
                               </span>
@@ -701,11 +714,10 @@ export default function AdminResultsPage() {
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
                           <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                              (att.violationCount || 0) > 0
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${(att.violationCount || 0) > 0
                                 ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800'
                                 : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
-                            }`}
+                              }`}
                           >
                             <ShieldAlert className="w-3 h-3" />
                             {att.violationCount || 0}
@@ -848,6 +860,24 @@ export default function AdminResultsPage() {
           </div>
         )}
       </div>
+
+      {/* AI Cohort Analysis Modal */}
+      <AiResultsAnalysisModal
+        isOpen={showAiAnalysisModal}
+        onClose={() => setShowAiAnalysisModal(false)}
+        activeFilters={{
+          candidateSearch,
+          resultStatusFilter,
+          examFilter,
+          technologyFilter,
+          batchFilter,
+          genderFilter,
+          languageFilter,
+        }}
+        availableExams={availableExams}
+        availableTechnologies={availableTechnologies}
+        availableBatches={availableBatches}
+      />
     </div>
   );
 }

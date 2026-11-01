@@ -5,15 +5,21 @@ import { User } from '../models/User.js';
 export async function authenticateUser(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    let token = null;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else if (req.query && req.query.token) {
+      token = req.query.token;
+    }
+
+    if (!token) {
       return res.status(401).json({
         success: false,
         message: 'Authentication token required',
         errorCode: 'UNAUTHORIZED',
       });
     }
-
-    const token = authHeader.split(' ')[1];
     let decoded;
 
     try {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { useModal } from '../../context/ModalContext';
 import {
@@ -17,10 +17,13 @@ import {
   Download,
   HelpCircle,
   X,
-  FileText
+  FileText,
+  Sparkles
 } from 'lucide-react';
+import AiMcqQuestionModal from '../../components/admin/AiMcqQuestionModal';
 
 export default function AdminMcqQuestionsPage() {
+  const navigate = useNavigate();
   const { showAlert, showConfirm } = useModal();
   const [questions, setQuestions] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,6 +33,9 @@ export default function AdminMcqQuestionsPage() {
 
   // Bulk Selection State
   const [selectedQuestions, setSelectedQuestions] = useState([]);
+
+  // AI Modal State
+  const [showAiModal, setShowAiModal] = useState(false);
 
   // Excel Bulk Import Modal State
   const [showExcelModal, setShowExcelModal] = useState(false);
@@ -285,6 +291,14 @@ export default function AdminMcqQuestionsPage() {
           )}
 
           <button
+            onClick={() => setShowAiModal(true)}
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-medium text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4 text-slate-300" />
+            <span>Generate with AI</span>
+          </button>
+
+          <button
             onClick={() => {
               setExcelFile(null);
               setUploadStatus(null);
@@ -499,6 +513,7 @@ export default function AdminMcqQuestionsPage() {
                     </div>
                     <ul className="space-y-1 text-slate-600 dark:text-slate-300">
                       <li><strong className="text-slate-800 dark:text-slate-100 font-mono">Question Title <span className="text-red-500 font-bold">*</span> :</strong> Problem / question statement</li>
+                      <li><strong className="text-slate-800 dark:text-slate-100 font-mono">Description:</strong> Optional code snippet or background context</li>
                       <li><strong className="text-slate-800 dark:text-slate-100 font-mono">Option A <span className="text-red-500 font-bold">*</span> :</strong> First option choice</li>
                       <li><strong className="text-slate-800 dark:text-slate-100 font-mono">Option B <span className="text-red-500 font-bold">*</span> :</strong> Second option choice</li>
                       <li><strong className="text-slate-800 dark:text-slate-100 font-mono">Correct Answer <span className="text-red-500 font-bold">*</span> :</strong> Option letter (A, B, C, D, E) or index (1..5)</li>
@@ -514,7 +529,6 @@ export default function AdminMcqQuestionsPage() {
                       <li><strong className="text-slate-800 dark:text-slate-100 font-mono">Option C, Option D, Option E:</strong> Additional choices</li>
                       <li><strong className="text-slate-800 dark:text-slate-100 font-mono">Difficulty:</strong> EASY, MEDIUM, or HARD (default: MEDIUM)</li>
                       <li><strong className="text-slate-800 dark:text-slate-100 font-mono">Marks:</strong> Points awarded (default: 1)</li>
-                      <li><strong className="text-slate-800 dark:text-slate-100 font-mono">Description:</strong> Optional code snippet or background context</li>
                       <li><strong className="text-slate-800 dark:text-slate-100 font-mono">Explanation:</strong> Rationales displayed in evaluation review</li>
                       <li><strong className="text-slate-800 dark:text-slate-100 font-mono">Tags:</strong> Comma-separated categories or topics</li>
                     </ul>
@@ -613,6 +627,15 @@ export default function AdminMcqQuestionsPage() {
           </div>
         </div>
       )}
+      {/* AI MCQ Generation Modal */}
+      <AiMcqQuestionModal
+        isOpen={showAiModal}
+        onClose={() => setShowAiModal(false)}
+        onSuccess={loadQuestions}
+        onInsertToEditor={(q) => {
+          navigate('/admin/mcq-questions/new', { state: { initialData: q } });
+        }}
+      />
     </div>
   );
 }

@@ -15,7 +15,7 @@ import logo from '../assets/logo.jpeg';
 import loginBg from '../assets/login-bg.jpg';
 
 export default function LoginPage() {
-  const { user, login } = useAuth();
+  const { user, login, activeExam, checkActiveExam } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const { showAlert } = useModal();
   const navigate = useNavigate();
@@ -27,16 +27,18 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // If already logged in, redirect straight to their respective home
+  // If already logged in, redirect straight to their respective home or active ongoing exam
   React.useEffect(() => {
     if (user) {
       if (user.role === 'ADMIN' || user.role === 'FACULTY') {
         navigate('/admin', { replace: true });
+      } else if (activeExam?.hasActiveExam && activeExam?.examId) {
+        navigate(`/exams/${activeExam.examId}/take`, { replace: true });
       } else {
         navigate('/dashboard', { replace: true });
       }
     }
-  }, [user, navigate]);
+  }, [user, activeExam, navigate]);
 
   // Check if redirected due to concurrent session login or inactivity timeout
   const isConcurrentLogout = new URLSearchParams(location.search).get('reason') === 'concurrent_session';
@@ -67,6 +69,11 @@ export default function LoginPage() {
         const target = (from && from.startsWith('/admin')) ? from : '/admin';
         navigate(target, { replace: true });
       } else {
+        const session = loggedUser.activeExam || (await checkActiveExam());
+        if (session?.hasActiveExam && session?.examId) {
+          navigate(`/exams/${session.examId}/take`, { replace: true });
+          return;
+        }
         const target = (from && from !== '/login' && !from.startsWith('/admin') && !from.startsWith('/faculty'))
           ? from
           : '/dashboard';

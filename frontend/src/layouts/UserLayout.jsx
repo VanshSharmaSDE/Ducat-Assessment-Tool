@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getProfilePictureUrl, handleAvatarError } from '../utils/imageUrl';
 import logo from '../assets/logo.jpeg';
@@ -20,9 +20,14 @@ import {
 } from 'lucide-react';
 
 export default function UserLayout() {
-  const { user, logout } = useAuth();
+  const { user, logout, activeExam } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // If candidate has an active ongoing exam, lock layout and redirect to ongoing exam take screen
+  if (user?.role === 'USER' && activeExam?.hasActiveExam && activeExam?.examId) {
+    return <Navigate to={`/exams/${activeExam.examId}/take`} replace />;
+  }
 
   const handleLogout = async () => {
     await logout();

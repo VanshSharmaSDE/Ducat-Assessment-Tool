@@ -29,6 +29,13 @@ if (!fs.existsSync(profilesDir)) {
 export const app = express();
 const server = http.createServer(app);
 
+// Allow up to 12 minutes for local LLM inference / long-running operations
+server.timeout = 12 * 60 * 1000;
+server.keepAliveTimeout = 12 * 60 * 1000;
+if (server.requestTimeout !== undefined) {
+  server.requestTimeout = 12 * 60 * 1000;
+}
+
 // Security Middleware (allowing cross-origin for local uploads)
 app.use(
   helmet({

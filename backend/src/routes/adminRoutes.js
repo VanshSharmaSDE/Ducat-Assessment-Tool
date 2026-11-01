@@ -7,6 +7,7 @@ import { ResultController } from '../controllers/resultController.js';
 import { BatchController } from '../controllers/batchController.js';
 import { TechnologyController } from '../controllers/technologyController.js';
 import { OrganizationController } from '../controllers/organizationController.js';
+import { AiController } from '../controllers/aiController.js';
 import { authenticateUser, requireAdmin, requireAdminOrFaculty } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import {
@@ -134,5 +135,14 @@ router.get('/results/:id', ResultController.getResultDetails);
 router.get('/submissions', AdminController.getAllSubmissions);
 router.get('/submissions/export-docx', exportSubmissionsDocx);
 
+// AI Local LLM (Ollama) Endpoints
+router.get('/ai/ollama/status', AiController.checkOllamaStatus);
+router.get('/ai/ollama/models', AiController.getOllamaModels);
+router.post('/ai/generate-exam', AiController.generateExam);
+router.post('/ai/generate-coding', AiController.generateCodingQuestion);
+router.post('/ai/generate-mcq', AiController.generateMcqQuestions);
+router.post('/ai/save-generated-exam', AiController.saveGeneratedExam);
+router.post('/ai/analyze-results', AiController.analyzeResultsCohort);
+router.post('/ai/analyze-candidate/:id', AiController.analyzeCandidateResult);
 
 export default router;

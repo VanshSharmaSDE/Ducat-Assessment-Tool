@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { useModal } from '../../context/ModalContext';
+import AiCandidateReviewModal from '../../components/admin/AiCandidateReviewModal';
 import {
   Award,
   ChevronLeft,
@@ -17,6 +18,8 @@ import {
   X,
   RotateCcw,
   Download,
+  Sparkles,
+  BrainCircuit,
 } from 'lucide-react';
 import { generateResultPdf } from '../../utils/resultPdfGenerator';
 
@@ -28,6 +31,7 @@ export default function AdminResultDetailPage() {
   const [loading, setLoading] = useState(true);
   const [retakeLoading, setRetakeLoading] = useState(false);
   const [activeCodeModal, setActiveCodeModal] = useState(null);
+  const [showAiReviewModal, setShowAiReviewModal] = useState(false);
 
   useEffect(() => {
     async function loadResult() {
@@ -115,6 +119,14 @@ export default function AdminResultDetailPage() {
           </p>
         </div>
         <div className="shrink-0 flex items-center gap-2">
+          <button
+            onClick={() => setShowAiReviewModal(true)}
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-medium text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+            title="Generate AI Code Review and Performance Audit"
+          >
+            <Sparkles className="w-4 h-4 text-slate-300" />
+            <span>Review with AI</span>
+          </button>
           <button
             onClick={() => generateResultPdf(data)}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold text-xs transition-colors shadow-sm cursor-pointer"
@@ -525,6 +537,15 @@ export default function AdminResultDetailPage() {
           </div>
         </div>
       )}
+
+      {/* AI Candidate Review Modal */}
+      <AiCandidateReviewModal
+        isOpen={showAiReviewModal}
+        onClose={() => setShowAiReviewModal(false)}
+        attemptId={id}
+        candidateName={attempt.user?.name || 'Candidate'}
+        examTitle={attempt.exam?.title || 'Assessment'}
+      />
     </div>
   );
 }

@@ -87,6 +87,22 @@ const examAttemptSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    draftAnswers: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+    currentQuestionIndex: {
+      type: Number,
+      default: 0,
+    },
+    visitedQuestionIndices: {
+      type: [Number],
+      default: [0],
+    },
+    lastSavedAt: {
+      type: Date,
+      default: Date.now,
+    },
   },
   {
     timestamps: true,

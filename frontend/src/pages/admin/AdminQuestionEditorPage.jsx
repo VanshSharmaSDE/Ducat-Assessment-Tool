@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../../api/axios';
 import { useModal } from '../../context/ModalContext';
 import {
@@ -15,14 +15,17 @@ import {
   FileCode,
   Terminal,
   Clock,
-  Layers
+  Layers,
+  Sparkles
 } from 'lucide-react';
+import AiCodingQuestionModal from '../../components/admin/AiCodingQuestionModal';
 
 const ALL_LANGUAGES = ['java', 'python', 'javascript', 'c', 'cpp', 'sql'];
 
 export default function AdminQuestionEditorPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const isEditing = !!id;
   const { showAlert, showConfirm } = useModal();
 
@@ -30,6 +33,7 @@ export default function AdminQuestionEditorPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showAiModal, setShowAiModal] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -56,6 +60,41 @@ export default function AdminQuestionEditorPage() {
     isHidden: true,
     marks: 5,
   });
+
+  const populateFromAi = (q) => {
+    setFormData((prev) => ({
+      ...prev,
+      title: q.title || '',
+      description: q.description || '',
+      inputFormat: q.inputFormat || '',
+      outputFormat: q.outputFormat || '',
+      constraints: q.constraints || '',
+      explanation: q.explanation || '',
+      difficulty: q.difficulty || 'MEDIUM',
+      marks: Number(q.marks) || 20,
+      timeLimit: q.timeLimit || 2,
+      memoryLimit: q.memoryLimit || 256,
+      comparisonMode: q.comparisonMode || 'TRIMMED',
+      allowCodeRun: q.allowCodeRun !== undefined ? Boolean(q.allowCodeRun) : true,
+      allowedLanguages: q.allowedLanguages || ALL_LANGUAGES,
+      examples: q.examples?.length ? q.examples : [{ input: '', output: '', explanation: '' }],
+    }));
+    if (q.testCases && q.testCases.length > 0) {
+      setTestCases(
+        q.testCases.map((tc, idx) => ({
+          ...tc,
+          _id: tc._id || `temp-${idx}`,
+          order: tc.order || idx + 1,
+        }))
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (!isEditing && location.state?.initialData) {
+      populateFromAi(location.state.initialData);
+    }
+  }, [isEditing, location.state]);
 
   useEffect(() => {
     async function loadQuestion() {
@@ -379,6 +418,15 @@ export default function AdminQuestionEditorPage() {
           </h1>
           <p className="text-sm text-slate-500 mt-1">Configure statement, I/O formats, limits and test suites</p>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setShowAiModal(true)}
+          className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-medium text-xs rounded-xl shadow-xs transition-colors cursor-pointer self-start sm:self-auto shrink-0"
+        >
+          <Sparkles className="w-4 h-4 text-slate-300" />
+          <span>Generate with AI</span>
+        </button>
       </div>
 
       {error && (
@@ -936,6 +984,13 @@ export default function AdminQuestionEditorPage() {
           </button>
         </div>
       </form>
+
+      {/* AI Coding Generation Modal */}
+      <AiCodingQuestionModal
+        isOpen={showAiModal}
+        onClose={() => setShowAiModal(false)}
+        onInsertToEditor={(q) => populateFromAi(q)}
+      />
     </div>
   );
 }

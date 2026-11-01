@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../../api/axios';
 import { useModal } from '../../context/ModalContext';
 import {
@@ -10,13 +10,14 @@ import {
   AlertCircle,
   CheckCircle2,
   HelpCircle,
-  Layers,
-  Award
+  Sparkles
 } from 'lucide-react';
+import AiMcqQuestionModal from '../../components/admin/AiMcqQuestionModal';
 
 export default function AdminMcqQuestionEditorPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const isEditing = !!id;
   const { showAlert, showConfirm } = useModal();
 
@@ -24,6 +25,7 @@ export default function AdminMcqQuestionEditorPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showAiModal, setShowAiModal] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -39,6 +41,24 @@ export default function AdminMcqQuestionEditorPage() {
     ],
     correctAnswer: 0,
   });
+
+  const populateFromAi = (q) => {
+    setFormData({
+      title: q.title || '',
+      description: q.description || '',
+      difficulty: q.difficulty || 'MEDIUM',
+      marks: Number(q.marks) || 5,
+      explanation: q.explanation || '',
+      options: (q.options || []).map((opt) => ({ text: typeof opt === 'string' ? opt : opt.text })),
+      correctAnswer: Number(q.correctAnswer) || 0,
+    });
+  };
+
+  useEffect(() => {
+    if (!isEditing && location.state?.initialData) {
+      populateFromAi(location.state.initialData);
+    }
+  }, [isEditing, location.state]);
 
   useEffect(() => {
     async function loadQuestion() {
@@ -217,16 +237,27 @@ export default function AdminMcqQuestionEditorPage() {
 
   return (
     <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
-      <div>
-        <Link to="/admin/mcq-questions" className="text-xs text-slate-500 hover:text-slate-800 transition-colors mb-3 inline-block">
-          &larr; Back to MCQ Question Bank
-        </Link>
-        <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2.5">
-          {isEditing ? 'Edit MCQ Question' : 'Create New MCQ Question'}
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Configure question statement, options, correct choice, and scoring weight
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <Link to="/admin/mcq-questions" className="text-xs text-slate-500 hover:text-slate-800 transition-colors mb-3 inline-block">
+            &larr; Back to MCQ Question Bank
+          </Link>
+          <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2.5">
+            {isEditing ? 'Edit MCQ Question' : 'Create New MCQ Question'}
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Configure question statement, options, correct choice, and scoring weight
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowAiModal(true)}
+          className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-medium text-xs rounded-xl shadow-xs transition-colors cursor-pointer self-start sm:self-auto shrink-0"
+        >
+          <Sparkles className="w-4 h-4 text-slate-300" />
+          <span>Generate with AI</span>
+        </button>
       </div>
 
       {error && (
@@ -445,6 +476,13 @@ export default function AdminMcqQuestionEditorPage() {
           </button>
         </div>
       </form>
+
+      {/* AI MCQ Generation Modal */}
+      <AiMcqQuestionModal
+        isOpen={showAiModal}
+        onClose={() => setShowAiModal(false)}
+        onInsertToEditor={(q) => populateFromAi(q)}
+      />
     </div>
   );
 }

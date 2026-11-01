@@ -5,6 +5,7 @@ import api from "../api/axios";
 import { showGlobalAlert } from "../context/ModalContext";
 import { useSocket } from "../context/SocketContext";
 import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext";
 import logo from "../assets/logo.jpeg";
 import {
   Clock,
@@ -74,6 +75,7 @@ export default function CodingExamPage() {
   const navigate = useNavigate();
   const { socket } = useSocket();
   const { theme: appTheme, isDark, toggleTheme } = useTheme();
+  const { setActiveExam, clearActiveExam } = useAuth();
 
   // Student editor theme choice: 'auto' | 'vs-dark' | 'vs'
   const [editorThemeChoice, setEditorThemeChoice] = useState(() => {
@@ -107,6 +109,9 @@ export default function CodingExamPage() {
   const [isRunningCode, setIsRunningCode] = useState(false);
   const [showConsoleDrawer, setShowConsoleDrawer] = useState(false);
   const [activeConsoleTab, setActiveConsoleTab] = useState("input"); // "input" | "output"
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [lastCloudSync, setLastCloudSync] = useState(null);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [windowSize, setWindowSize] = useState({
     width: typeof window !== "undefined" ? window.innerWidth : 1280,
     height: typeof window !== "undefined" ? window.innerHeight : 800,
@@ -251,18 +256,26 @@ export default function CodingExamPage() {
         const examData = res.data.data.exam;
         const activeAttempt = res.data.data.activeAttempt;
 
-        if (!activeAttempt || activeAttempt.status !== "IN_PROGRESS") {
-          // If not started yet, redirect to instructions
+        if (!activeAttempt || activeAttempt.status !== "IN_PROGRESS" || (activeAttempt.remainingSeconds !== undefined && activeAttempt.remainingSeconds <= 0)) {
+          clearActiveExam();
           navigate(`/exams/${id}/instructions`);
           return;
         }
+
+        // Lock ongoing examination session across entire candidate portal
+        setActiveExam({
+          hasActiveExam: true,
+          examId: id,
+          attemptId: activeAttempt._id,
+          title: examData.title,
+        });
 
         setExam(examData);
         setAttempt(activeAttempt);
         setRemainingSeconds(activeAttempt.remainingSeconds || 0);
         setViolationCount(activeAttempt.violationCount || 0);
 
-        // Initialize answers state from localStorage or default starter templates
+        // Initialize answers state from localStorage or cloud draft backup
         const storedKey = `exam_progress_${id}_${activeAttempt._id}`;
         const localSaved = localStorage.getItem(storedKey);
         let initialAnswers = {};
@@ -271,6 +284,11 @@ export default function CodingExamPage() {
           try {
             initialAnswers = JSON.parse(localSaved);
           } catch (e) {}
+        }
+
+        // If candidate opens in another browser/device or clears cache, restore from server draft answers
+        if (activeAttempt.draftAnswers && typeof activeAttempt.draftAnswers === 'object') {
+          initialAnswers = { ...activeAttempt.draftAnswers, ...initialAnswers };
         }
 
         (examData.questions || []).filter(Boolean).forEach((q) => {
@@ -300,7 +318,7 @@ export default function CodingExamPage() {
 
         setAnswers(initialAnswers);
 
-        // Restore visited questions from localStorage
+        // Restore visited questions from localStorage OR server draft
         const visitedKey = `exam_visited_${id}_${activeAttempt._id}`;
         const savedVisited = localStorage.getItem(visitedKey);
         const restoredVisited = new Set();
@@ -320,6 +338,16 @@ export default function CodingExamPage() {
           } catch (e) {}
         }
 
+        // If local storage is empty, recover visited from server
+        if (restoredVisited.size <= 1 && Array.isArray(activeAttempt.visitedQuestionIndices)) {
+          activeAttempt.visitedQuestionIndices.forEach((idx) => {
+            const n = Number(idx);
+            if (!isNaN(n) && n >= 0 && n < validQList.length) {
+              restoredVisited.add(n);
+            }
+          });
+        }
+
         // Any question with an active attempt is definitely visited
         validQList.forEach((q, idx) => {
           if (q && q._id && isQuestionAttempted(q, initialAnswers[q._id])) {
@@ -327,7 +355,7 @@ export default function CodingExamPage() {
           }
         });
 
-        // Restore last active question index
+        // Restore last active question index from localStorage or server draft
         const lastQKey = `exam_current_q_${id}_${activeAttempt._id}`;
         const savedQIndex = localStorage.getItem(lastQKey);
         let restoredQIndex = 0;
@@ -336,6 +364,8 @@ export default function CodingExamPage() {
           if (!isNaN(parsedIdx) && parsedIdx >= 0 && parsedIdx < validQList.length) {
             restoredQIndex = parsedIdx;
           }
+        } else if (typeof activeAttempt.currentQuestionIndex === 'number' && activeAttempt.currentQuestionIndex < validQList.length) {
+          restoredQIndex = activeAttempt.currentQuestionIndex;
         }
         restoredVisited.add(restoredQIndex);
 
@@ -355,7 +385,7 @@ export default function CodingExamPage() {
     }
 
     initExam();
-  }, [id, navigate]);
+  }, [id, navigate, setActiveExam, clearActiveExam]);
 
   // Persist local answers to localStorage
   useEffect(() => {
@@ -364,6 +394,88 @@ export default function CodingExamPage() {
       localStorage.setItem(storedKey, JSON.stringify(answers));
     }
   }, [answers, id, attempt]);
+
+  // Cloud autosave function: persists answers & questions to server so student can restore from any browser
+  const saveCloudProgress = useCallback(
+    async (currentAns, qIdx, visitedSet) => {
+      if (!attemptRef.current?._id) return;
+      setIsSyncing(true);
+      try {
+        await api.post(`/exams/${id}/save-progress`, {
+          attemptId: attemptRef.current._id,
+          answers: currentAns,
+          currentQIndex: qIdx,
+          visitedQuestions: Array.from(visitedSet || []),
+        });
+        setLastCloudSync(new Date());
+        setIsOffline(false);
+      } catch (err) {
+        if (!navigator.onLine || err.code === "ERR_NETWORK" || !err.response) {
+          setIsOffline(true);
+        }
+      } finally {
+        setIsSyncing(false);
+      }
+    },
+    [id]
+  );
+
+  // Debounced cloud autosave whenever candidate writes code, answers MCQ, or changes question
+  const autosaveTimerRef = useRef(null);
+  useEffect(() => {
+    if (!attempt?._id) return;
+
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+    }
+
+    autosaveTimerRef.current = setTimeout(() => {
+      saveCloudProgress(answersRef.current, currentQIndex, visitedQuestions);
+    }, 2500);
+
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+      }
+    };
+  }, [answers, currentQIndex, visitedQuestions, attempt, saveCloudProgress]);
+
+  // Online / Offline recovery listeners
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false);
+      showToast("Network restored. Syncing examination progress with cloud...");
+      saveCloudProgress(answersRef.current, currentQIndex, visitedQuestions);
+    };
+
+    const handleOffline = () => {
+      setIsOffline(true);
+      showToast("⚠️ Network lost. Offline protection active — your answers are saved locally and will auto-sync upon reconnection.");
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [currentQIndex, visitedQuestions, saveCloudProgress]);
+
+  // History Lock: trap browser back button so candidate cannot exit ongoing exam session
+  useEffect(() => {
+    window.history.pushState({ inExam: true }, "", window.location.href);
+
+    const handlePopState = () => {
+      window.history.pushState({ inExam: true }, "", window.location.href);
+      showToast("⚠️ Navigation Locked: Examination in progress! You cannot navigate back until you submit or time expires.");
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
 
   // Server-synchronized countdown timer
   useEffect(() => {
@@ -468,6 +580,7 @@ export default function CodingExamPage() {
 
         if (terminated) {
           await exitFullscreenSafe();
+          clearActiveExam();
           setTerminatedModal({
             message: `Your examination has been terminated due to exceeding ${maxViolations} proctoring violations.`,
             attemptId: attemptRef.current?._id,
@@ -642,6 +755,7 @@ export default function CodingExamPage() {
         }
         if (data.terminated) {
           exitFullscreenSafe();
+          clearActiveExam();
           setTerminatedModal({
             message: "Your examination has been terminated due to excessive proctoring violations.",
             attemptId: attemptRef.current?._id,
@@ -800,6 +914,9 @@ export default function CodingExamPage() {
       localStorage.removeItem(`exam_progress_${id}_${attemptRef.current._id}`);
       localStorage.removeItem(`exam_visited_${id}_${attemptRef.current._id}`);
       localStorage.removeItem(`exam_current_q_${id}_${attemptRef.current._id}`);
+
+      // Release ongoing examination lock
+      clearActiveExam();
 
       // Navigate to evaluation waiting & results page
       navigate(`/results/${attemptRef.current._id}`);
@@ -993,8 +1110,26 @@ export default function CodingExamPage() {
           </div>
         </div>
 
-        {/* Center / Right Controls: Timer, Violations, Fullscreen, Submit */}
-        <div className="flex items-center gap-3">
+        {/* Center / Right Controls: Sync status, Timer, Violations, Fullscreen, Submit */}
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {/* Cloud Auto-Sync & Offline Resilience Indicator */}
+          {isOffline ? (
+            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+              <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+              <span>Offline (Saved locally)</span>
+            </div>
+          ) : isSyncing ? (
+            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
+              <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
+              <span>Saving...</span>
+            </div>
+          ) : (
+            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span>Cloud Saved</span>
+            </div>
+          )}
+
           {/* Proctoring Violation Counter */}
           <div
             className={`hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold border ${

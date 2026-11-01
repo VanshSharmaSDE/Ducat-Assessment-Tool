@@ -425,6 +425,9 @@ export class ExamService {
             attemptsToday,
             maxDailyAttempts: 2,
             attemptsRemainingToday: Math.max(0, 2 - attemptsToday),
+            draftAnswers: active.draftAnswers || {},
+            currentQuestionIndex: active.currentQuestionIndex ?? 0,
+            visitedQuestionIndices: active.visitedQuestionIndices || [0],
           };
         } else if (attemptsToday >= 2) {
           activeAttempt = {
@@ -439,6 +442,10 @@ export class ExamService {
       } else {
         const attempt = await ExamAttempt.findOne({ userId, examId });
         if (attempt) {
+          if (attempt.status === 'IN_PROGRESS' && now > attempt.endTime) {
+            attempt.status = 'EXPIRED';
+            await attempt.save();
+          }
           activeAttempt = {
             _id: attempt._id,
             status: attempt.status,
@@ -446,6 +453,9 @@ export class ExamService {
             endTime: attempt.endTime,
             remainingSeconds: Math.max(0, Math.floor((new Date(attempt.endTime) - now) / 1000)),
             violationCount: attempt.violationCount,
+            draftAnswers: attempt.draftAnswers || {},
+            currentQuestionIndex: attempt.currentQuestionIndex ?? 0,
+            visitedQuestionIndices: attempt.visitedQuestionIndices || [0],
           };
         }
       }
@@ -1074,6 +1084,89 @@ export class ExamService {
     });
 
     return result;
+  }
+
+  static async getActiveSession(userId) {
+    if (!userId) return { hasActiveExam: false };
+
+    const now = new Date();
+    // Find any IN_PROGRESS attempt for this user
+    const attempts = await ExamAttempt.find({
+      userId,
+      status: 'IN_PROGRESS',
+    }).sort({ createdAt: -1 });
+
+    for (const attempt of attempts) {
+      if (now > attempt.endTime) {
+        attempt.status = 'EXPIRED';
+        await attempt.save();
+        continue;
+      }
+
+      const exam = await Exam.findById(attempt.examId).select('title duration isPractice isPublished');
+      if (!exam || !exam.isPublished) {
+        continue;
+      }
+
+      return {
+        hasActiveExam: true,
+        examId: attempt.examId.toString(),
+        attemptId: attempt._id.toString(),
+        title: exam.title,
+        duration: exam.duration,
+        isPractice: Boolean(exam.isPractice),
+        remainingSeconds: Math.max(0, Math.floor((new Date(attempt.endTime) - now) / 1000)),
+        endTime: attempt.endTime,
+        startedAt: attempt.startedAt,
+      };
+    }
+
+    return { hasActiveExam: false };
+  }
+
+  static async saveProgress(examId, userId, { attemptId, answers, currentQIndex, visitedQuestions }) {
+    if (!userId || !examId) {
+      const error = new Error('Invalid parameters');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    let query = { examId, userId, status: 'IN_PROGRESS' };
+    if (attemptId && mongoose.Types.ObjectId.isValid(attemptId)) {
+      query._id = attemptId;
+    }
+
+    const attempt = await ExamAttempt.findOne(query);
+    if (!attempt) {
+      return { success: false, message: 'No active in-progress attempt found' };
+    }
+
+    const now = new Date();
+    if (now > attempt.endTime) {
+      attempt.status = 'EXPIRED';
+      await attempt.save();
+      return { success: false, message: 'Examination time has expired', expired: true };
+    }
+
+    if (answers && typeof answers === 'object') {
+      attempt.draftAnswers = answers;
+      attempt.markModified('draftAnswers');
+    }
+    if (typeof currentQIndex === 'number' && currentQIndex >= 0) {
+      attempt.currentQuestionIndex = currentQIndex;
+    }
+    if (Array.isArray(visitedQuestions)) {
+      attempt.visitedQuestionIndices = visitedQuestions.map(Number).filter((n) => !isNaN(n));
+    }
+    attempt.lastSavedAt = now;
+
+    await attempt.save();
+
+    return {
+      success: true,
+      lastSavedAt: attempt.lastSavedAt,
+      remainingSeconds: Math.max(0, Math.floor((new Date(attempt.endTime) - now) / 1000)),
+    };
   }
 }
 

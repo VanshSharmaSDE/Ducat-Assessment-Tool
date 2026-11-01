@@ -1,14 +1,15 @@
 import { Question } from '../models/Question.js';
 import { TestCase } from '../models/TestCase.js';
 import { Exam } from '../models/Exam.js';
-import { SUPPORTED_LANGUAGES, DEFAULT_STARTER_CODE } from '../utils/starterCode.js';
+import { SUPPORTED_LANGUAGES, DEFAULT_STARTER_CODE, normalizeAllowedLanguages } from '../utils/starterCode.js';
 
 export class QuestionService {
   static async createQuestion(data, userId) {
     const starterCodeMap = new Map();
-    const allowed = data.allowedLanguages && data.allowedLanguages.length > 0
-      ? data.allowedLanguages
-      : SUPPORTED_LANGUAGES;
+    const qType = data.type || 'CODING';
+    const allowed = qType === 'CODING'
+      ? normalizeAllowedLanguages(data.allowedLanguages, data.title || '')
+      : (data.allowedLanguages && data.allowedLanguages.length > 0 ? data.allowedLanguages : SUPPORTED_LANGUAGES);
 
     allowed.forEach((lang) => {
       const customCode = data.starterCode ? data.starterCode[lang] : null;
@@ -26,11 +27,8 @@ export class QuestionService {
       : [];
 
 
-    const qType = data.type || 'CODING';
     if (qType === 'CODING') {
-      const allowedLangs = data.allowedLanguages && data.allowedLanguages.length > 0
-        ? data.allowedLanguages
-        : SUPPORTED_LANGUAGES;
+      const allowedLangs = allowed;
       const isSqlOnly = allowedLangs.length === 1 && String(allowedLangs[0]).toLowerCase() === 'sql';
 
       if (!isSqlOnly) {
@@ -50,6 +48,7 @@ export class QuestionService {
     const question = await Question.create({
       ...data,
       type: qType,
+      allowedLanguages: allowed,
       examples: cleanedExamples,
       starterCode: starterCodeMap,
       createdBy: userId,
@@ -87,6 +86,10 @@ export class QuestionService {
       error.statusCode = 403;
       error.errorCode = 'FORBIDDEN';
       throw error;
+    }
+
+    if (data.allowedLanguages) {
+      data.allowedLanguages = normalizeAllowedLanguages(data.allowedLanguages, data.title || question.title || '');
     }
 
     if (data.examples && Array.isArray(data.examples)) {

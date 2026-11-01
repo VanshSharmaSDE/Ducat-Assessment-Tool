@@ -16,7 +16,8 @@ import {
   Eye,
   AlertCircle,
   Download,
-  UserCheck
+  UserCheck,
+  Sparkles
 } from 'lucide-react';
 
 export default function AdminExamsPage() {
@@ -218,8 +219,16 @@ export default function AdminExamsPage() {
           )}
 
           <Link
+            to="/admin/exams/ai-generator"
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-medium text-xs rounded-xl shadow-xs transition-colors shrink-0 cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4 text-slate-300" />
+            <span>Generate with AI</span>
+          </Link>
+
+          <Link
             to="/admin/exams/new"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-sm shadow-blue-600/15 transition-all shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs rounded-xl shadow-xs transition-colors shrink-0 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Create Examination</span>

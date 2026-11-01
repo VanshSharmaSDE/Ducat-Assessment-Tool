@@ -19,8 +19,10 @@ import {
   FileText,
   Play,
   Lock,
-  Code2
+  Code2,
+  Sparkles
 } from 'lucide-react';
+import AiCodingQuestionModal from '../../components/admin/AiCodingQuestionModal';
 
 export default function AdminQuestionsPage() {
   const navigate = useNavigate();
@@ -33,6 +35,9 @@ export default function AdminQuestionsPage() {
 
   // Bulk Selection State
   const [selectedQuestions, setSelectedQuestions] = useState([]);
+
+  // AI Generation Modal State
+  const [showAiModal, setShowAiModal] = useState(false);
 
   // Excel Bulk Import Modal State
   const [showExcelModal, setShowExcelModal] = useState(false);
@@ -300,6 +305,14 @@ export default function AdminQuestionsPage() {
               <span>Delete Selected ({selectedQuestions.length})</span>
             </button>
           )}
+
+          <button
+            onClick={() => setShowAiModal(true)}
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-medium text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4 text-slate-300" />
+            <span>Generate with AI</span>
+          </button>
 
           <button
             onClick={() => {
@@ -652,6 +665,15 @@ export default function AdminQuestionsPage() {
         </div>
       )}
 
+      {/* AI Coding Problem Modal */}
+      <AiCodingQuestionModal
+        isOpen={showAiModal}
+        onClose={() => setShowAiModal(false)}
+        onSuccess={loadQuestions}
+        onInsertToEditor={(q) => {
+          navigate('/admin/questions/new', { state: { initialData: q } });
+        }}
+      />
     </div>
   );
 }
