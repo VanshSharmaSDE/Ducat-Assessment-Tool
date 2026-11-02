@@ -23,6 +23,7 @@ import {
   CheckSquare,
   Settings,
   FolderTree,
+  Server,
 } from 'lucide-react';
 
 export default function AdminLayout() {
@@ -47,6 +48,7 @@ export default function AdminLayout() {
     { label: isSuperAdmin ? 'Batches' : 'My Batches', path: '/admin/batches', icon: FolderTree },
     ...(isSuperAdmin ? [{ label: 'Organizations', path: '/admin/organizations', icon: Building2 }] : []),
     ...(isSuperAdmin ? [{ label: 'Faculty Management', path: '/admin/faculty', icon: GraduationCap }] : []),
+    ...(isSuperAdmin ? [{ label: 'VPS Management', path: '/admin/vps', icon: Server }] : []),
     { label: isSuperAdmin ? 'Results & Reports' : 'Student Results', path: '/admin/results', icon: Award },
     { label: isSuperAdmin ? 'Admin Profile' : 'Faculty Profile', path: '/admin/profile', icon: User },
     { label: 'Settings', path: '/admin/settings', icon: Settings },

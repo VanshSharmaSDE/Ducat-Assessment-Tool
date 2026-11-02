@@ -38,6 +38,15 @@ import AdminOrganizationsPage from './pages/admin/AdminOrganizationsPage';
 import AdminMcqQuestionsPage from './pages/admin/AdminMcqQuestionsPage';
 import AdminMcqQuestionEditorPage from './pages/admin/AdminMcqQuestionEditorPage';
 
+// VPS Management Module (ADMIN only)
+import VpsLayout from './pages/admin/vps/VpsLayout';
+import VpsOverviewPage from './pages/admin/vps/VpsOverviewPage';
+import VpsContainersPage from './pages/admin/vps/VpsContainersPage';
+import VpsApplicationsPage from './pages/admin/vps/VpsApplicationsPage';
+import VpsServicesPage from './pages/admin/vps/VpsServicesPage';
+import VpsLogsPage from './pages/admin/vps/VpsLogsPage';
+import VpsActivityPage from './pages/admin/vps/VpsActivityPage';
+
 // Helper to determine destination by role
 export const getRoleHomeRoute = (role) => {
   if (role === 'ADMIN' || role === 'FACULTY') {
@@ -167,9 +176,28 @@ export default function App() {
         <Route path="faculty" element={<AdminFacultyPage />} />
         <Route path="results" element={<AdminResultsPage />} />
         <Route path="results/:id" element={<AdminResultDetailPage />} />
+
+        {/* VPS Management Routes (Restricted strictly to Super Administrator) */}
+        <Route
+          path="vps"
+          element={
+            <RequireAuth allowedRoles={['ADMIN']}>
+              <VpsLayout />
+            </RequireAuth>
+          }
+        >
+          <Route index element={<VpsOverviewPage />} />
+          <Route path="containers" element={<VpsContainersPage />} />
+          <Route path="applications" element={<VpsApplicationsPage />} />
+          <Route path="services" element={<VpsServicesPage />} />
+          <Route path="logs" element={<VpsLogsPage />} />
+          <Route path="activity" element={<VpsActivityPage />} />
+        </Route>
+
         <Route path="profile" element={<ProfilePage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
+
 
       {/* Catch-all Fallback */}
       <Route path="*" element={<Navigate to="/login" replace />} />

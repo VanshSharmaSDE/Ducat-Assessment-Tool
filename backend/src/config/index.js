@@ -58,4 +58,15 @@ export const config = {
     password: process.env.SMTP_PASSWORD || '',
     fromEmail: process.env.FROM_EMAIL || 'no-reply@assessment.com',
   },
+
+  vps: {
+    metricsCacheTtlMs: parseInt(process.env.VPS_METRICS_CACHE_TTL_MS || '5000', 10),
+    maxLogLines: parseInt(process.env.VPS_MAX_LOG_LINES || '500', 10),
+    allowedApplications: (process.env.VPS_ALLOWED_APPS || 'coding-assessment-backend,codeassess-backend,evaluation-worker,node-app').split(',').map(s => s.trim()).filter(Boolean),
+    monitoredServices: (process.env.VPS_MONITORED_SERVICES || 'mongodb,nginx,docker,vps-agent').split(',').map(s => s.trim()).filter(Boolean),
+    agentUrl: process.env.VPS_AGENT_URL || '',
+    agentToken: process.env.VPS_AGENT_TOKEN || '',
+    dockerHost: process.env.DOCKER_HOST || process.env.VPS_DOCKER_HOST || '',
+  },
 };
+
